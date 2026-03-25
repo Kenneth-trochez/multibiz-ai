@@ -1,7 +1,20 @@
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createProductAction } from "../../actions/products";
 import { getCurrentBusiness } from "@/lib/tenant/getCurrentBusiness";
-import { Package, Boxes, AlertTriangle } from "lucide-react";
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
+import Link from "next/link";
+import ProductsList from "./productsList";
+
+type ProductRow = {
+  id: string;
+  name: string;
+  description: string | null;
+  sku: string | null;
+  price: number;
+  stock: number;
+  active: boolean;
+  created_at: string;
+};
 
 function getThemeClasses(theme: string) {
   switch (theme) {
@@ -9,42 +22,60 @@ function getThemeClasses(theme: string) {
       return {
         pageBg: "bg-[#181818] text-white",
         card: "bg-[#222222] border-[#333333]",
+        input: "bg-[#2b2b2b] border-[#444444] text-white",
         textMuted: "text-[#bdbdbd]",
-        badge: "bg-[#2b2b2b] text-white border-[#444444]",
-        accent: "bg-white text-black",
+        label: "text-[#f1f1f1]",
+        buttonPrimary: "bg-white text-black hover:bg-[#e8e8e8]",
+        buttonSecondary:
+          "bg-[#2b2b2b] border-[#444444] text-white hover:bg-[#343434]",
+        danger: "bg-red-600 text-white hover:bg-red-700",
       };
-
     case "elegant":
       return {
         pageBg: "bg-[#f4efe8] text-[#2b211b]",
         card: "bg-[#fffaf5] border-[#e6d8c8]",
+        input: "bg-white border-[#d8c7b7] text-[#2b211b]",
         textMuted: "text-[#7a6858]",
-        badge: "bg-white text-[#2b211b] border-[#d8c7b7]",
-        accent: "bg-[#6b4f3a] text-white",
+        label: "text-[#3e3027]",
+        buttonPrimary: "bg-[#6b4f3a] text-white hover:bg-[#5a4331]",
+        buttonSecondary:
+          "bg-white border-[#d8c7b7] text-[#2b211b] hover:bg-[#f3e8dc]",
+        danger: "bg-red-600 text-white hover:bg-red-700",
       };
-
     case "minimal":
       return {
         pageBg: "bg-[#f8f8f8] text-[#1f1f1f]",
         card: "bg-white border-[#e5e5e5]",
+        input: "bg-white border-[#d6d6d6] text-[#1f1f1f]",
         textMuted: "text-[#6f6f6f]",
-        badge: "bg-white text-[#1f1f1f] border-[#d6d6d6]",
-        accent: "bg-[#111111] text-white",
+        label: "text-[#222222]",
+        buttonPrimary: "bg-[#111111] text-white hover:bg-[#222222]",
+        buttonSecondary:
+          "bg-white border-[#d6d6d6] text-[#1f1f1f] hover:bg-[#f1f1f1]",
+        danger: "bg-red-600 text-white hover:bg-red-700",
       };
-
     case "warm":
     default:
       return {
         pageBg: "bg-[#f6f1e8] text-[#2f241d]",
         card: "bg-white border-[#eadfce]",
+        input: "bg-white border-[#d9c6b2] text-[#2f241d]",
         textMuted: "text-[#6b5b4d]",
-        badge: "bg-white text-[#2f241d] border-[#d9c6b2]",
-        accent: "bg-[#a56a3a] text-white",
+        label: "text-[#3f3128]",
+        buttonPrimary: "bg-[#a56a3a] text-white hover:bg-[#8d582e]",
+        buttonSecondary:
+          "bg-white border-[#d9c6b2] text-[#2f241d] hover:bg-[#f3e8dc]",
+        danger: "bg-red-600 text-white hover:bg-red-700",
       };
   }
 }
 
-export default async function ProductsPage() {
+export default async function ProductsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string; success?: string; page?: string }>;
+}) {
+  const params = await searchParams;
   const ctx = await getCurrentBusiness();
 
   if (!ctx?.business) {
@@ -55,156 +86,200 @@ export default async function ProductsPage() {
   const theme = getThemeClasses(business.theme || "warm");
   const supabase = await createClient();
 
-  const [
-    { count: totalProducts, error: totalProductsError },
-    { count: activeProducts, error: activeProductsError },
-    { count: lowStockProducts, error: lowStockProductsError },
-  ] = await Promise.all([
-    supabase
-      .from("products")
-      .select("*", { count: "exact", head: true })
-      .eq("business_id", business.id),
+  const currentPage = Math.max(1, Number(params.page || "1") || 1);
+  const pageSize = 10;
+  const from = (currentPage - 1) * pageSize;
+  const to = from + pageSize - 1;
 
-    supabase
-      .from("products")
-      .select("*", { count: "exact", head: true })
-      .eq("business_id", business.id)
-      .eq("active", true),
+  const { count, error: countError } = await supabase
+    .from("products")
+    .select("*", { count: "exact", head: true })
+    .eq("business_id", business.id);
 
-    supabase
-      .from("products")
-      .select("*", { count: "exact", head: true })
-      .eq("business_id", business.id)
-      .lte("stock", 5),
-  ]);
+  const { data: products, error } = await supabase
+    .from("products")
+    .select("id, name, description, sku, price, stock, active, created_at")
+    .eq("business_id", business.id)
+    .order("created_at", { ascending: false })
+    .range(from, to);
 
-  if (totalProductsError || activeProductsError || lowStockProductsError) {
+  if (error || countError) {
     return (
       <main className={`min-h-screen p-6 ${theme.pageBg}`}>
         <div className={`rounded-2xl border p-6 ${theme.card}`}>
-          Error cargando productos.
+          Error cargando productos: {error?.message || countError?.message}
         </div>
       </main>
     );
   }
 
-  return (
-    <main className={`min-h-screen ${theme.pageBg}`}>
-      <div className="mx-auto max-w-7xl space-y-6 p-6">
-        <div className="flex flex-col gap-2">
-          <div className="inline-flex w-fit items-center rounded-full border px-3 py-1 text-xs font-medium uppercase tracking-[0.18em]">
-            Inventario
-          </div>
+  const totalProducts = count || 0;
+  const totalPages = Math.max(1, Math.ceil(totalProducts / pageSize));
 
+  return (
+    <main className={`min-h-screen p-6 ${theme.pageBg}`}>
+      <div className="mx-auto max-w-7xl space-y-6">
+        <div>
           <h1 className="text-3xl font-bold">Productos</h1>
-          <p className={`text-sm ${theme.textMuted}`}>
-            Administra el catálogo e inventario de productos del negocio.
+          <p className={`mt-1 text-sm ${theme.textMuted}`}>
+            Administra el catálogo e inventario del negocio actual.
           </p>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className={`rounded-2xl border p-5 shadow-sm ${theme.card}`}>
-            <div className="mb-3 flex items-center justify-between">
-              <p className={`text-sm ${theme.textMuted}`}>Total productos</p>
-              <Package className="h-5 w-5" />
-            </div>
-            <p className="text-3xl font-bold">{totalProducts || 0}</p>
-          </div>
+        {params.error && (
+          <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {params.error}
+          </p>
+        )}
 
-          <div className={`rounded-2xl border p-5 shadow-sm ${theme.card}`}>
-            <div className="mb-3 flex items-center justify-between">
-              <p className={`text-sm ${theme.textMuted}`}>Productos activos</p>
-              <Boxes className="h-5 w-5" />
-            </div>
-            <p className="text-3xl font-bold">{activeProducts || 0}</p>
-          </div>
+        {params.success === "created" && (
+          <p className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+            Producto creado correctamente.
+          </p>
+        )}
 
-          <div className={`rounded-2xl border p-5 shadow-sm ${theme.card}`}>
-            <div className="mb-3 flex items-center justify-between">
-              <p className={`text-sm ${theme.textMuted}`}>Stock bajo</p>
-              <AlertTriangle className="h-5 w-5" />
-            </div>
-            <p className="text-3xl font-bold">{lowStockProducts || 0}</p>
-          </div>
-        </div>
+        {params.success === "updated" && (
+          <p className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+            Producto actualizado correctamente.
+          </p>
+        )}
 
-        <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-          <section className={`rounded-2xl border p-6 shadow-sm ${theme.card}`}>
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-semibold">Módulo de productos</h2>
-                <p className={`mt-1 text-sm ${theme.textMuted}`}>
-                  Aquí gestionaremos catálogo, stock, precios, SKU y estado.
-                </p>
-              </div>
+        {params.success === "deleted" && (
+          <p className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+            Producto eliminado correctamente.
+          </p>
+        )}
 
-              <span
-                className={`rounded-full border px-3 py-1 text-xs font-medium ${theme.badge}`}
-              >
-                Próximo paso
-              </span>
-            </div>
+        <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+          <section className="space-y-4">
+            <ProductsList
+              products={(products || []) as ProductRow[]}
+              theme={theme}
+            />
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="rounded-2xl border border-dashed p-4">
-                <h3 className="font-medium">Crear productos</h3>
-                <p className={`mt-1 text-sm ${theme.textMuted}`}>
-                  Agregar nombre, SKU, precio, stock y descripción.
-                </p>
-              </div>
+            <div className="flex items-center justify-between">
+              <p className={`text-sm ${theme.textMuted}`}>
+                Página {currentPage} de {totalPages}
+              </p>
 
-              <div className="rounded-2xl border border-dashed p-4">
-                <h3 className="font-medium">Editar inventario</h3>
-                <p className={`mt-1 text-sm ${theme.textMuted}`}>
-                  Actualizar stock, activar o desactivar productos.
-                </p>
-              </div>
+              <div className="flex items-center gap-2">
+                <Link
+                  href={`/dashboard/products?page=${currentPage - 1}`}
+                  className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
+                    currentPage <= 1
+                      ? "pointer-events-none opacity-50"
+                      : theme.buttonSecondary
+                  }`}
+                >
+                  ← Anterior
+                </Link>
 
-              <div className="rounded-2xl border border-dashed p-4">
-                <h3 className="font-medium">Control por negocio</h3>
-                <p className={`mt-1 text-sm ${theme.textMuted}`}>
-                  Cada producto se filtra por <code>business_id</code>.
-                </p>
-              </div>
-
-              <div className="rounded-2xl border border-dashed p-4">
-                <h3 className="font-medium">Integración futura</h3>
-                <p className={`mt-1 text-sm ${theme.textMuted}`}>
-                  Se conectará con ventas y luego con balance.
-                </p>
+                <Link
+                  href={`/dashboard/products?page=${currentPage + 1}`}
+                  className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
+                    currentPage >= totalPages
+                      ? "pointer-events-none opacity-50"
+                      : theme.buttonSecondary
+                  }`}
+                >
+                  Siguiente →
+                </Link>
               </div>
             </div>
           </section>
 
-          <aside className={`rounded-2xl border p-6 shadow-sm ${theme.card}`}>
-            <h2 className="text-xl font-semibold">Resumen</h2>
-            <p className={`mt-2 text-sm ${theme.textMuted}`}>
-              Este módulo servirá para administrar todos los productos que vende
-              el negocio, incluso si no están ligados a citas.
-            </p>
+          <section className={`h-fit rounded-2xl border p-6 shadow-sm ${theme.card}`}>
+            <h2 className="mb-4 text-xl font-semibold">Nuevo producto</h2>
 
-            <div className="mt-5 space-y-3">
-              <div className="rounded-2xl border p-4">
-                <p className="text-sm font-medium">Incluye</p>
-                <p className={`mt-1 text-sm ${theme.textMuted}`}>
-                  Catálogo, stock, SKU, precio y estado del producto.
-                </p>
+            <form action={createProductAction} className="grid gap-4">
+              <input type="hidden" name="businessId" value={business.id} />
+
+              <div>
+                <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
+                  Nombre
+                </label>
+                <input
+                  name="name"
+                  className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+                  required
+                />
               </div>
 
-              <div className="rounded-2xl border p-4">
-                <p className="text-sm font-medium">Preparado para</p>
-                <p className={`mt-1 text-sm ${theme.textMuted}`}>
-                  Ventas manuales, cortes de caja y exportación futura.
-                </p>
+              <div>
+                <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
+                  SKU
+                </label>
+                <input
+                  name="sku"
+                  className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+                  placeholder="Opcional"
+                />
               </div>
 
-              <div className={`rounded-2xl p-4 ${theme.accent}`}>
-                <p className="text-sm font-semibold">
-                  Base lista para escalar a inventario real.
-                </p>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
+                    Precio
+                  </label>
+                  <input
+                    name="price"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    defaultValue="0"
+                    className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
+                    Stock
+                  </label>
+                  <input
+                    name="stock"
+                    type="number"
+                    min="0"
+                    step="1"
+                    defaultValue="0"
+                    className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+                    required
+                  />
+                </div>
               </div>
-            </div>
-          </aside>
+
+              <div>
+                <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
+                  Descripción
+                </label>
+                <textarea
+                  name="description"
+                  rows={3}
+                  className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+                  placeholder="Opcional"
+                />
+              </div>
+
+              <div className="flex items-center gap-3">
+                <input id="active_new_product" type="checkbox" name="active" defaultChecked />
+                <label
+                  htmlFor="active_new_product"
+                  className={`text-sm font-medium ${theme.label}`}
+                >
+                  Producto activo
+                </label>
+              </div>
+
+              <div>
+                <button
+                  type="submit"
+                  className={`rounded-xl px-4 py-2 font-medium transition ${theme.buttonPrimary}`}
+                >
+                  Guardar producto
+                </button>
+              </div>
+            </form>
+          </section>
         </div>
       </div>
     </main>
