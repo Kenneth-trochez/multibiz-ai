@@ -11,6 +11,8 @@ type IconName =
   | "services"
   | "staff"
   | "appointments"
+  | "products"
+  | "sales"
   | "balance"
   | "settings";
 
@@ -138,6 +140,16 @@ export default async function DashboardLayout({
       href: "/dashboard/appointments",
       label: "Citas",
       icon: "appointments",
+    },
+    {
+      href: "/dashboard/products",
+      label: "Productos",
+      icon: "products",
+    },
+    {
+      href: "/dashboard/sales",
+      label: "Ventas",
+      icon: "sales",
     },
     {
       href: "/dashboard/balance",

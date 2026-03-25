@@ -10,6 +10,8 @@ import {
   CalendarDays,
   Settings as SettingsIcon,
   BarChart3,
+  Package,
+  ShoppingCart,
 } from "lucide-react";
 
 type IconName =
@@ -18,6 +20,8 @@ type IconName =
   | "services"
   | "staff"
   | "appointments"
+  | "products"
+  | "sales"
   | "balance"
   | "settings";
 
@@ -39,6 +43,10 @@ function getIcon(icon: IconName) {
       return UserCog;
     case "appointments":
       return CalendarDays;
+    case "products":
+      return Package;
+    case "sales":
+      return ShoppingCart;
     case "balance":
       return BarChart3;
     case "settings":
