@@ -1,4 +1,7 @@
-import { createStaffAction } from "../../actions/staff";
+import {
+  createAndInviteStaffAction,
+  createStaffAction,
+} from "../../actions/staff";
 import { getCurrentBusiness } from "@/lib/tenant/getCurrentBusiness";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
@@ -14,9 +17,11 @@ type StaffMember = {
   id: string;
   display_name: string;
   specialty: string | null;
+  email: string | null;
   active: boolean;
   created_at: string;
   role_id: string | null;
+  invite_status: string | null;
   role: {
     id: string;
     name: string;
@@ -114,9 +119,11 @@ export default async function StaffPage({
         id,
         display_name,
         specialty,
+        email,
         active,
         created_at,
         role_id,
+        invite_status,
         role:roles(id,name)
       `)
       .eq("business_id", business.id)
@@ -148,9 +155,11 @@ export default async function StaffPage({
     id: member.id,
     display_name: member.display_name,
     specialty: member.specialty,
+    email: member.email ?? null,
     active: member.active,
     created_at: member.created_at,
     role_id: member.role_id ?? null,
+    invite_status: member.invite_status ?? null,
     role: Array.isArray(member.role)
       ? member.role[0] || null
       : member.role || null,
@@ -187,6 +196,12 @@ export default async function StaffPage({
         {params.success === "deleted" && (
           <p className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
             Miembro eliminado correctamente.
+          </p>
+        )}
+
+        {params.success === "invited" && (
+          <p className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+            Invitación enviada correctamente.
           </p>
         )}
 
@@ -248,6 +263,21 @@ export default async function StaffPage({
 
               <div>
                 <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
+                  Correo
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+                  placeholder="ejemplo@correo.com"
+                />
+                <p className={`mt-1 text-xs ${theme.textMuted}`}>
+                  Déjalo vacío si solo quieres crear el staff sin acceso al sistema.
+                </p>
+              </div>
+
+              <div>
+                <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
                   Rol
                 </label>
                 <select
@@ -290,12 +320,20 @@ export default async function StaffPage({
                 </label>
               </div>
 
-              <div>
+              <div className="flex flex-wrap gap-3">
                 <button
                   type="submit"
                   className={`rounded-xl px-4 py-2 font-medium transition ${theme.buttonPrimary}`}
                 >
                   Guardar miembro
+                </button>
+
+                <button
+                  type="submit"
+                  formAction={createAndInviteStaffAction}
+                  className={`rounded-xl border px-4 py-2 font-medium transition ${theme.buttonSecondary}`}
+                >
+                  Guardar e invitar
                 </button>
               </div>
             </form>
