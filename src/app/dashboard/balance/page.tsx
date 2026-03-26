@@ -22,6 +22,37 @@ type CompletedAppointment = {
   } | null;
 };
 
+type SaleRecord = {
+  id: string;
+  sale_at: string;
+  subtotal: number;
+  discount: number;
+  total: number;
+  notes: string | null;
+  customer: {
+    id: string;
+    name: string;
+    phone: string | null;
+  } | null;
+  staff: {
+    id: string;
+    display_name: string;
+  } | null;
+};
+
+type SaleItemRecord = {
+  id: string;
+  sale_id: string;
+  quantity: number;
+  unit_price: number;
+  line_total: number;
+  product: {
+    id: string;
+    name: string;
+    sku: string | null;
+  } | null;
+};
+
 function getThemeClasses(theme: string) {
   switch (theme) {
     case "dark":
@@ -178,9 +209,11 @@ export default async function BalancePage({
   const [
     { data: completedAppointmentsRaw, error: completedError },
     { data: allAppointmentsRaw, error: allAppointmentsError },
+    { data: salesRaw, error: salesError },
     { count: customersCount },
     { count: servicesCount },
     { count: staffCount },
+    { count: productsCount },
   ] = await Promise.all([
     supabase
       .from("appointments")
@@ -205,6 +238,23 @@ export default async function BalancePage({
       .lt("appointment_at", range.endExclusive),
 
     supabase
+      .from("sales")
+      .select(`
+        id,
+        sale_at,
+        subtotal,
+        discount,
+        total,
+        notes,
+        customer:customers(id,name,phone),
+        staff:staff(id,display_name)
+      `)
+      .eq("business_id", business.id)
+      .gte("sale_at", range.start)
+      .lt("sale_at", range.endExclusive)
+      .order("sale_at", { ascending: false }),
+
+    supabase
       .from("customers")
       .select("*", { count: "exact", head: true })
       .eq("business_id", business.id),
@@ -218,14 +268,19 @@ export default async function BalancePage({
       .from("staff")
       .select("*", { count: "exact", head: true })
       .eq("business_id", business.id),
+
+    supabase
+      .from("products")
+      .select("*", { count: "exact", head: true })
+      .eq("business_id", business.id),
   ]);
 
-  if (completedError || allAppointmentsError) {
+  if (completedError || allAppointmentsError || salesError) {
     return (
       <main className={`min-h-screen p-6 ${theme.pageBg}`}>
         <div className={`rounded-3xl border p-6 ${theme.card}`}>
           Error cargando balance:{" "}
-          {completedError?.message || allAppointmentsError?.message}
+          {completedError?.message || allAppointmentsError?.message || salesError?.message}
         </div>
       </main>
     );
@@ -245,21 +300,88 @@ export default async function BalancePage({
     staff: Array.isArray(apt.staff) ? apt.staff[0] || null : apt.staff || null,
   }));
 
+  const sales: SaleRecord[] = (salesRaw || []).map((sale: any) => ({
+    id: sale.id,
+    sale_at: sale.sale_at,
+    subtotal: Number(sale.subtotal || 0),
+    discount: Number(sale.discount || 0),
+    total: Number(sale.total || 0),
+    notes: sale.notes,
+    customer: Array.isArray(sale.customer)
+      ? sale.customer[0] || null
+      : sale.customer || null,
+    staff: Array.isArray(sale.staff) ? sale.staff[0] || null : sale.staff || null,
+  }));
+
+  const saleIds = sales.map((sale) => sale.id);
+
+  let saleItems: SaleItemRecord[] = [];
+
+  if (saleIds.length > 0) {
+    const { data: saleItemsRaw, error: saleItemsError } = await supabase
+      .from("sale_items")
+      .select(`
+        id,
+        sale_id,
+        quantity,
+        unit_price,
+        line_total,
+        product:products(id,name,sku)
+      `)
+      .in("sale_id", saleIds);
+
+    if (saleItemsError) {
+      return (
+        <main className={`min-h-screen p-6 ${theme.pageBg}`}>
+          <div className={`rounded-3xl border p-6 ${theme.card}`}>
+            Error cargando items de ventas: {saleItemsError.message}
+          </div>
+        </main>
+      );
+    }
+
+    saleItems = (saleItemsRaw || []).map((item: any) => ({
+      id: item.id,
+      sale_id: item.sale_id,
+      quantity: Number(item.quantity || 0),
+      unit_price: Number(item.unit_price || 0),
+      line_total: Number(item.line_total || 0),
+      product: Array.isArray(item.product)
+        ? item.product[0] || null
+        : item.product || null,
+    }));
+  }
+
   const allAppointments = allAppointmentsRaw || [];
 
-  const totalRevenue = completedAppointments.reduce(
+  const appointmentRevenue = completedAppointments.reduce(
     (sum, apt) => sum + Number(apt.service?.price || 0),
     0
   );
 
+  const salesRevenue = sales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
+  const totalRevenue = appointmentRevenue + salesRevenue;
+
   const completedCount = completedAppointments.length;
-  const averageTicket = completedCount > 0 ? totalRevenue / completedCount : 0;
+  const salesCount = sales.length;
+
+  const averageTicketAppointments =
+    completedCount > 0 ? appointmentRevenue / completedCount : 0;
+
+  const averageTicketSales = salesCount > 0 ? salesRevenue / salesCount : 0;
 
   const uniqueClients = new Set(
-    completedAppointments
-      .map((apt) => apt.customer?.id)
-      .filter(Boolean)
+    completedAppointments.map((apt) => apt.customer?.id).filter(Boolean)
   ).size;
+
+  const uniqueSaleClients = new Set(
+    sales.map((sale) => sale.customer?.id).filter(Boolean)
+  ).size;
+
+  const totalUniqueClients = new Set([
+    ...completedAppointments.map((apt) => apt.customer?.id).filter(Boolean),
+    ...sales.map((sale) => sale.customer?.id).filter(Boolean),
+  ]).size;
 
   const statusCounts = {
     pending: 0,
@@ -319,7 +441,36 @@ export default async function BalancePage({
     .sort((a, b) => b.revenue - a.revenue)
     .slice(0, 5);
 
-  const dailyRevenue: { key: string; label: string; revenue: number }[] = [];
+  const productMap = new Map<
+    string,
+    { name: string; count: number; revenue: number }
+  >();
+
+  for (const item of saleItems) {
+    const key = item.product?.id || "unknown";
+    const current = productMap.get(key) || {
+      name: item.product?.name || "Sin producto",
+      count: 0,
+      revenue: 0,
+    };
+
+    current.count += Number(item.quantity || 0);
+    current.revenue += Number(item.line_total || 0);
+    productMap.set(key, current);
+  }
+
+  const topProducts = [...productMap.values()]
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 5);
+
+  const dailyRevenue: {
+    key: string;
+    label: string;
+    appointmentsRevenue: number;
+    salesRevenue: number;
+    totalRevenue: number;
+  }[] = [];
+
   const daysInMonth = new Date(range.parsed.year, range.parsed.month, 0).getDate();
 
   for (let day = 1; day <= daysInMonth; day++) {
@@ -328,46 +479,65 @@ export default async function BalancePage({
       "0"
     )}-${String(day).padStart(2, "0")}`;
 
-    const revenue = completedAppointments
+    const appointmentsRevenue = completedAppointments
       .filter((apt) => getDateKey(apt.appointment_at) === key)
       .reduce((sum, apt) => sum + Number(apt.service?.price || 0), 0);
+
+    const salesDayRevenue = sales
+      .filter((sale) => getDateKey(sale.sale_at) === key)
+      .reduce((sum, sale) => sum + Number(sale.total || 0), 0);
 
     dailyRevenue.push({
       key,
       label: String(day).padStart(2, "0"),
-      revenue,
+      appointmentsRevenue,
+      salesRevenue: salesDayRevenue,
+      totalRevenue: appointmentsRevenue + salesDayRevenue,
     });
   }
 
-  const maxDailyRevenue = Math.max(...dailyRevenue.map((d) => d.revenue), 1);
+  const maxDailyRevenue = Math.max(...dailyRevenue.map((d) => d.totalRevenue), 1);
   const maxServiceRevenue = Math.max(...topServices.map((s) => s.revenue), 1);
   const maxStaffRevenue = Math.max(...topStaff.map((s) => s.revenue), 1);
+  const maxProductRevenue = Math.max(...topProducts.map((p) => p.revenue), 1);
   const maxStatus = Math.max(...Object.values(statusCounts), 1);
 
   const metricCards = [
     {
-      title: "Ingresos del período",
+      title: "Ingresos totales",
       value: `L ${totalRevenue.toFixed(2)}`,
-      subtitle: range.label,
+      subtitle: `${range.label} · citas + ventas`,
       icon: "money" as const,
     },
     {
-      title: "Citas completadas",
-      value: String(completedCount),
-      subtitle: "Dentro del filtro actual",
+      title: "Ingresos por citas",
+      value: `L ${appointmentRevenue.toFixed(2)}`,
+      subtitle: `${completedCount} cita(s) completada(s)`,
       icon: "calendar" as const,
     },
     {
-      title: "Clientes atendidos",
-      value: String(uniqueClients),
-      subtitle: "Clientes únicos del período",
+      title: "Ingresos por ventas",
+      value: `L ${salesRevenue.toFixed(2)}`,
+      subtitle: `${salesCount} venta(s) registrada(s)`,
+      icon: "sales" as const,
+    },
+    {
+      title: "Clientes únicos",
+      value: String(totalUniqueClients),
+      subtitle: `${uniqueClients} por citas · ${uniqueSaleClients} por ventas`,
       icon: "users" as const,
     },
     {
-      title: "Ticket promedio",
-      value: `L ${averageTicket.toFixed(2)}`,
+      title: "Ticket promedio citas",
+      value: `L ${averageTicketAppointments.toFixed(2)}`,
       subtitle: "Promedio por cita completada",
       icon: "briefcase" as const,
+    },
+    {
+      title: "Ticket promedio ventas",
+      value: `L ${averageTicketSales.toFixed(2)}`,
+      subtitle: "Promedio por venta registrada",
+      icon: "sales" as const,
     },
   ];
 
@@ -389,10 +559,17 @@ export default async function BalancePage({
           maxServiceRevenue={maxServiceRevenue}
           topStaff={topStaff}
           maxStaffRevenue={maxStaffRevenue}
+          topProducts={topProducts}
+          maxProductRevenue={maxProductRevenue}
           completedAppointments={completedAppointments}
+          sales={sales}
+          saleItems={saleItems}
           customersCount={customersCount || 0}
           servicesCount={servicesCount || 0}
           staffCount={staffCount || 0}
+          productsCount={productsCount || 0}
+          appointmentRevenue={appointmentRevenue}
+          salesRevenue={salesRevenue}
           totalRevenue={totalRevenue}
         />
       </div>

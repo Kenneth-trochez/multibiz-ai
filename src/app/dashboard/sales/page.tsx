@@ -3,6 +3,20 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentBusiness } from "@/lib/tenant/getCurrentBusiness";
 import SalesClient from "./SalesClient";
 
+type SaleItemRow = {
+  id: string;
+  sale_id: string;
+  product_id: string;
+  quantity: number;
+  unit_price: number;
+  line_total: number;
+  product: {
+    id: string;
+    name: string;
+    sku: string | null;
+  } | null;
+};
+
 type SaleRow = {
   id: string;
   sale_at: string;
@@ -21,6 +35,7 @@ type SaleRow = {
     specialty: string | null;
   } | null;
   items_count: number;
+  items: SaleItemRow[];
 };
 
 type ProductOption = {
@@ -137,7 +152,7 @@ export default async function SalesPage({
       `)
       .eq("business_id", business.id)
       .order("sale_at", { ascending: false })
-      .limit(20),
+      .limit(50),
 
     supabase
       .from("products")
@@ -173,11 +188,20 @@ export default async function SalesPage({
   const saleIds = (sales || []).map((sale: any) => sale.id);
 
   let itemsCountMap = new Map<string, number>();
+  let itemsBySaleMap = new Map<string, SaleItemRow[]>();
 
   if (saleIds.length > 0) {
     const { data: saleItems, error: saleItemsError } = await supabase
       .from("sale_items")
-      .select("sale_id")
+      .select(`
+        id,
+        sale_id,
+        product_id,
+        quantity,
+        unit_price,
+        line_total,
+        product:products(id,name,sku)
+      `)
       .in("sale_id", saleIds);
 
     if (saleItemsError) {
@@ -190,10 +214,25 @@ export default async function SalesPage({
       );
     }
 
-    itemsCountMap = saleItems.reduce((map: Map<string, number>, item: any) => {
-      map.set(item.sale_id, (map.get(item.sale_id) || 0) + 1);
-      return map;
-    }, new Map<string, number>());
+    for (const item of saleItems || []) {
+      const normalizedItem: SaleItemRow = {
+        id: item.id,
+        sale_id: item.sale_id,
+        product_id: item.product_id,
+        quantity: Number(item.quantity || 0),
+        unit_price: Number(item.unit_price || 0),
+        line_total: Number(item.line_total || 0),
+        product: Array.isArray(item.product)
+          ? item.product[0] || null
+          : item.product || null,
+      };
+
+      itemsCountMap.set(item.sale_id, (itemsCountMap.get(item.sale_id) || 0) + 1);
+
+      const current = itemsBySaleMap.get(item.sale_id) || [];
+      current.push(normalizedItem);
+      itemsBySaleMap.set(item.sale_id, current);
+    }
   }
 
   const normalizedSales: SaleRow[] = (sales || []).map((sale: any) => ({
@@ -208,6 +247,7 @@ export default async function SalesPage({
       : sale.customer || null,
     staff: Array.isArray(sale.staff) ? sale.staff[0] || null : sale.staff || null,
     items_count: itemsCountMap.get(sale.id) || 0,
+    items: itemsBySaleMap.get(sale.id) || [],
   }));
 
   return (
@@ -222,6 +262,18 @@ export default async function SalesPage({
         {params.success === "created" && (
           <p className="mb-4 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
             Venta creada correctamente.
+          </p>
+        )}
+
+        {params.success === "updated" && (
+          <p className="mb-4 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+            Venta actualizada correctamente.
+          </p>
+        )}
+
+        {params.success === "deleted" && (
+          <p className="mb-4 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+            Venta eliminada correctamente.
           </p>
         )}
       </div>
