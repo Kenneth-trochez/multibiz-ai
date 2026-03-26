@@ -3,7 +3,7 @@ import { getCurrentBusiness } from "@/lib/tenant/getCurrentBusiness";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import ProductsList from "./productsList";
+import ProductsList from "./ProductsList";
 
 type ProductRow = {
   id: string;

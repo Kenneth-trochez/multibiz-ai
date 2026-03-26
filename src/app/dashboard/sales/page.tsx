@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentBusiness } from "@/lib/tenant/getCurrentBusiness";
-import SalesClient from "./Salesclient";
+import SalesClient from "./SalesClient";
 
 type SaleRow = {
   id: string;
