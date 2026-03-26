@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireSectionAccess } from "@/lib/auth/requireSectionAccess";
 import { createClient } from "@/lib/supabase/server";
-import { changePlanAction } from "../../actions/subscriptions";
+import { startPlanCheckoutAction } from "../../actions/billing";
 
 type PlanRow = {
   id: string;
@@ -354,7 +354,7 @@ export default async function ProfilePage({
                             Plan actual
                           </button>
                         ) : (
-                          <form action={changePlanAction}>
+                          <form action={startPlanCheckoutAction}>
                             <input type="hidden" name="planCode" value={plan.code} />
                             <button
                               type="submit"
