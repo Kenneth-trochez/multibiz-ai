@@ -1,6 +1,7 @@
 import { createServiceAction } from "../../actions/services";
 import { requireSectionAccess } from "@/lib/auth/requireSectionAccess";
 import { createClient } from "@/lib/supabase/server";
+import { getThemeClasses } from "@/lib/theme/getThemeClasses";
 import Link from "next/link";
 import ServicesList from "./ServicesList";
 
@@ -13,60 +14,6 @@ type Service = {
   active: boolean;
   created_at: string;
 };
-
-function getThemeClasses(theme: string) {
-  switch (theme) {
-    case "dark":
-      return {
-        pageBg: "bg-[#181818] text-white",
-        card: "bg-[#222222] border-[#333333]",
-        input: "bg-[#2b2b2b] border-[#444444] text-white",
-        textMuted: "text-[#bdbdbd]",
-        label: "text-[#f1f1f1]",
-        buttonPrimary: "bg-white text-black hover:bg-[#e8e8e8]",
-        buttonSecondary:
-          "bg-[#2b2b2b] border-[#444444] text-white hover:bg-[#343434]",
-        danger: "bg-red-600 text-white hover:bg-red-700",
-      };
-    case "elegant":
-      return {
-        pageBg: "bg-[#f4efe8] text-[#2b211b]",
-        card: "bg-[#fffaf5] border-[#e6d8c8]",
-        input: "bg-white border-[#d8c7b7] text-[#2b211b]",
-        textMuted: "text-[#7a6858]",
-        label: "text-[#3e3027]",
-        buttonPrimary: "bg-[#6b4f3a] text-white hover:bg-[#5a4331]",
-        buttonSecondary:
-          "bg-white border-[#d8c7b7] text-[#2b211b] hover:bg-[#f3e8dc]",
-        danger: "bg-red-600 text-white hover:bg-red-700",
-      };
-    case "minimal":
-      return {
-        pageBg: "bg-[#f8f8f8] text-[#1f1f1f]",
-        card: "bg-white border-[#e5e5e5]",
-        input: "bg-white border-[#d6d6d6] text-[#1f1f1f]",
-        textMuted: "text-[#6f6f6f]",
-        label: "text-[#222222]",
-        buttonPrimary: "bg-[#111111] text-white hover:bg-[#222222]",
-        buttonSecondary:
-          "bg-white border-[#d6d6d6] text-[#1f1f1f] hover:bg-[#f1f1f1]",
-        danger: "bg-red-600 text-white hover:bg-red-700",
-      };
-    case "warm":
-    default:
-      return {
-        pageBg: "bg-[#f6f1e8] text-[#2f241d]",
-        card: "bg-white border-[#eadfce]",
-        input: "bg-white border-[#d9c6b2] text-[#2f241d]",
-        textMuted: "text-[#6b5b4d]",
-        label: "text-[#3f3128]",
-        buttonPrimary: "bg-[#a56a3a] text-white hover:bg-[#8d582e]",
-        buttonSecondary:
-          "bg-white border-[#d9c6b2] text-[#2f241d] hover:bg-[#f3e8dc]",
-        danger: "bg-red-600 text-white hover:bg-red-700",
-      };
-  }
-}
 
 export default async function ServicesPage({
   searchParams,

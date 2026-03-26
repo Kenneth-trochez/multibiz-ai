@@ -2,48 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireSectionAccess } from "@/lib/auth/requireSectionAccess";
 import { createClient } from "@/lib/supabase/server";
-
-function getThemeClasses(theme: string) {
-  switch (theme) {
-    case "dark":
-      return {
-        pageBg: "bg-[#181818] text-white",
-        card: "bg-white/5 border-white/10 backdrop-blur-xl",
-        textMuted: "text-[#bdbdbd]",
-        buttonPrimary: "bg-white text-black hover:bg-[#e8e8e8]",
-        buttonSecondary:
-          "bg-white/10 border-white/20 text-white hover:bg-white/15",
-      };
-    case "elegant":
-      return {
-        pageBg: "bg-[#f4efe8] text-[#2b211b]",
-        card: "bg-white/60 border-white/50 backdrop-blur-xl",
-        textMuted: "text-[#7a6858]",
-        buttonPrimary: "bg-[#6b4f3a] text-white hover:bg-[#5a4331]",
-        buttonSecondary:
-          "bg-white/70 border-[#d8c7b7] text-[#2b211b] hover:bg-[#f3e8dc]",
-      };
-    case "minimal":
-      return {
-        pageBg: "bg-[#f8f8f8] text-[#1f1f1f]",
-        card: "bg-white/70 border-white/60 backdrop-blur-xl",
-        textMuted: "text-[#6f6f6f]",
-        buttonPrimary: "bg-[#111111] text-white hover:bg-[#222222]",
-        buttonSecondary:
-          "bg-white border-[#d6d6d6] text-[#1f1f1f] hover:bg-[#f1f1f1]",
-      };
-    case "warm":
-    default:
-      return {
-        pageBg: "bg-[#f6f1e8] text-[#2f241d]",
-        card: "bg-white/55 border-white/50 backdrop-blur-xl",
-        textMuted: "text-[#6b5b4d]",
-        buttonPrimary: "bg-[#a56a3a] text-white hover:bg-[#8d582e]",
-        buttonSecondary:
-          "bg-white/80 border-[#d9c6b2] text-[#2f241d] hover:bg-[#f3e8dc]",
-      };
-  }
-}
+import { getThemeClasses } from "@/lib/theme/getThemeClasses";
 
 export default async function CheckoutSessionPage({
   params,

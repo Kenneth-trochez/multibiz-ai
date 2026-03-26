@@ -1,66 +1,6 @@
 import { requireSectionAccess } from "@/lib/auth/requireSectionAccess";
+import { getThemeClasses } from "@/lib/theme/getThemeClasses";
 import { updateBusinessAction } from "../../actions/business";
-
-function getThemeClasses(theme: string) {
-  switch (theme) {
-    case "dark":
-      return {
-        pageBg: "bg-[#181818] text-white",
-        textMuted: "text-[#bdbdbd]",
-        label: "text-[#f1f1f1]",
-        input:
-          "bg-white/10 border-white/20 text-white placeholder:text-white/50 backdrop-blur-md",
-        select: "bg-[#2b2b2b] border-[#444444] text-white",
-        option: "bg-[#2b2b2b] text-white",
-        buttonPrimary: "bg-white text-black hover:bg-[#e8e8e8]",
-        glassCard:
-          "bg-white/10 border border-white/20 text-white shadow-2xl backdrop-blur-xl",
-      };
-
-    case "elegant":
-      return {
-        pageBg: "bg-[#f4efe8] text-[#2b211b]",
-        textMuted: "text-[#7a6858]",
-        label: "text-[#3e3027]",
-        input:
-          "bg-white/70 border-white/40 text-[#2b211b] placeholder:text-[#7a6858] backdrop-blur-md",
-        select: "bg-white/80 border-[#d8c7b7] text-[#2b211b]",
-        option: "bg-white text-[#2b211b]",
-        buttonPrimary: "bg-[#6b4f3a] text-white hover:bg-[#5a4331]",
-        glassCard:
-          "bg-white/60 border border-white/50 text-[#2b211b] shadow-2xl backdrop-blur-xl",
-      };
-
-    case "minimal":
-      return {
-        pageBg: "bg-[#f8f8f8] text-[#1f1f1f]",
-        textMuted: "text-[#6f6f6f]",
-        label: "text-[#222222]",
-        input:
-          "bg-white/80 border-white/60 text-[#1f1f1f] placeholder:text-[#6f6f6f] backdrop-blur-md",
-        select: "bg-white border-[#d6d6d6] text-[#1f1f1f]",
-        option: "bg-white text-[#1f1f1f]",
-        buttonPrimary: "bg-[#111111] text-white hover:bg-[#222222]",
-        glassCard:
-          "bg-white/70 border border-white/60 text-[#1f1f1f] shadow-2xl backdrop-blur-xl",
-      };
-
-    case "warm":
-    default:
-      return {
-        pageBg: "bg-[#f6f1e8] text-[#2f241d]",
-        textMuted: "text-[#6b5b4d]",
-        label: "text-[#3f3128]",
-        input:
-          "bg-white/70 border-white/40 text-[#2f241d] placeholder:text-[#6b5b4d] backdrop-blur-md",
-        select: "bg-white border-[#d9c6b2] text-[#2f241d]",
-        option: "bg-white text-[#2f241d]",
-        buttonPrimary: "bg-[#a56a3a] text-white hover:bg-[#8d582e]",
-        glassCard:
-          "bg-white/55 border border-white/50 text-[#2f241d] shadow-2xl backdrop-blur-xl",
-      };
-  }
-}
 
 export default async function SettingsPage() {
   const ctx = await requireSectionAccess("settings");
@@ -69,7 +9,7 @@ export default async function SettingsPage() {
   const theme = getThemeClasses(business.theme || "warm");
 
   return (
-    <main className={`min-h-screen ${theme.pageBg}`}>
+    <main className={theme.pageBg}>
       <div className="mx-auto flex min-h-[calc(100vh-120px)] max-w-4xl items-center justify-center px-4 py-8 md:px-6">
         <section className={`w-full rounded-[28px] p-6 md:p-8 ${theme.glassCard}`}>
           <div className="mb-6 text-center">
@@ -140,16 +80,48 @@ export default async function SettingsPage() {
                 className={`w-full rounded-2xl border px-4 py-3 outline-none transition ${theme.select}`}
               >
                 <option value="warm" className={theme.option}>
-                  Warm
+                  Cálido clásico
                 </option>
                 <option value="elegant" className={theme.option}>
-                  Elegant
-                </option>
-                <option value="dark" className={theme.option}>
-                  Dark
+                  Elegante suave
                 </option>
                 <option value="minimal" className={theme.option}>
-                  Minimal
+                  Minimalista claro
+                </option>
+
+                <option value="blush_pop" className={theme.option}>
+                  Rosa moderno
+                </option>
+                <option value="cotton_candy" className={theme.option}>
+                  Rosa pastel
+                </option>
+                <option value="pearl_rose" className={theme.option}>
+                  Rosa elegante
+                </option>
+                <option value="mint_day" className={theme.option}>
+                  Verde menta
+                </option>
+                <option value="sky_breeze" className={theme.option}>
+                  Azul cielo
+                </option>
+
+                <option value="dark" className={theme.option}>
+                  Oscuro clásico
+                </option>
+                <option value="rose_glam" className={theme.option}>
+                  Rose Glam
+                </option>
+                <option value="sunset_pop" className={theme.option}>
+                  Sunset Pop
+                </option>
+                <option value="violet_neon" className={theme.option}>
+                  Violet Neon
+                </option>
+                <option value="aqua_lux" className={theme.option}>
+                  Aqua Lux
+                </option>
+                <option value="ruby_night" className={theme.option}>
+                  Ruby Night
                 </option>
               </select>
             </div>

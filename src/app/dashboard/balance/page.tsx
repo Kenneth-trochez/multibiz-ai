@@ -1,6 +1,7 @@
 import { requireSectionAccess } from "@/lib/auth/requireSectionAccess";
 import { requirePlanFeature } from "@/lib/billing/requirePlanFeature";
 import { createClient } from "@/lib/supabase/server";
+import { getThemeClasses } from "@/lib/theme/getThemeClasses";
 import BalanceClient from "./BalanceClient";
 
 type CompletedAppointment = {
@@ -52,55 +53,6 @@ type SaleItemRecord = {
     sku: string | null;
   } | null;
 };
-
-function getThemeClasses(theme: string) {
-  switch (theme) {
-    case "dark":
-      return {
-        pageBg: "bg-[#181818] text-white",
-        card: "bg-[#222222] border-[#333333]",
-        subtle: "bg-[#2a2a2a] border-[#3a3a3a]",
-        textMuted: "text-[#bdbdbd]",
-        accent: "bg-white text-black",
-        buttonSecondary:
-          "bg-[#2b2b2b] border-[#444444] text-white hover:bg-[#343434]",
-      };
-
-    case "elegant":
-      return {
-        pageBg: "bg-[#f4efe8] text-[#2b211b]",
-        card: "bg-[#fffaf5] border-[#e6d8c8]",
-        subtle: "bg-[#f9f2e8] border-[#eadfce]",
-        textMuted: "text-[#7a6858]",
-        accent: "bg-[#6b4f3a] text-white",
-        buttonSecondary:
-          "bg-white border-[#d8c7b7] text-[#2b211b] hover:bg-[#f3e8dc]",
-      };
-
-    case "minimal":
-      return {
-        pageBg: "bg-[#f8f8f8] text-[#1f1f1f]",
-        card: "bg-white border-[#e5e5e5]",
-        subtle: "bg-[#f3f3f3] border-[#e1e1e1]",
-        textMuted: "text-[#6f6f6f]",
-        accent: "bg-[#111111] text-white",
-        buttonSecondary:
-          "bg-white border-[#d6d6d6] text-[#1f1f1f] hover:bg-[#f1f1f1]",
-      };
-
-    case "warm":
-    default:
-      return {
-        pageBg: "bg-[#f6f1e8] text-[#2f241d]",
-        card: "bg-white border-[#eadfce]",
-        subtle: "bg-[#f9f2e8] border-[#eadfce]",
-        textMuted: "text-[#6b5b4d]",
-        accent: "bg-[#a56a3a] text-white",
-        buttonSecondary:
-          "bg-white border-[#d9c6b2] text-[#2f241d] hover:bg-[#f3e8dc]",
-      };
-  }
-}
 
 function getDatePartsInTegucigalpa(date: Date) {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -539,7 +491,7 @@ export default async function BalancePage({
   ];
 
   return (
-    <main className={`min-h-screen ${theme.pageBg}`}>
+    <main className={theme.pageBg}>
       <div className="mx-auto max-w-7xl space-y-6 p-4 md:p-6">
         <BalanceClient
           theme={theme}

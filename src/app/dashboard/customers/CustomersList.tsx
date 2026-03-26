@@ -17,13 +17,26 @@ type Customer = {
 
 type Theme = {
   pageBg: string;
+  sidebarBg: string;
+  sidebarCard: string;
   card: string;
+  cardSoft: string;
+  subtle: string;
   input: string;
+  select: string;
+  option: string;
   textMuted: string;
   label: string;
+  hover: string;
+  active: string;
+  accent: string;
+  softAccent: string;
   buttonPrimary: string;
   buttonSecondary: string;
+  logoutButton: string;
   danger: string;
+  glassCard: string;
+  headerBg: string;
 };
 
 export default function CustomersList({
@@ -40,7 +53,9 @@ export default function CustomersList({
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold">Lista de clientes</h2>
-          <p className={`text-sm ${theme.textMuted}`}>{customers.length} en esta página</p>
+          <p className={`text-sm ${theme.textMuted}`}>
+            {customers.length} en esta página
+          </p>
         </div>
 
         {customers.length === 0 ? (
@@ -63,10 +78,10 @@ export default function CustomersList({
                       {customer.notes?.trim()
                         ? customer.notes
                         : customer.email?.trim()
-                        ? customer.email
-                        : customer.phone?.trim()
-                        ? customer.phone
-                        : "Sin descripción"}
+                          ? customer.email
+                          : customer.phone?.trim()
+                            ? customer.phone
+                            : "Sin descripción"}
                     </p>
                   </div>
 
@@ -82,7 +97,9 @@ export default function CustomersList({
 
       {selectedCustomer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className={`w-full max-w-2xl rounded-2xl border p-6 shadow-xl ${theme.card}`}>
+          <div
+            className={`w-full max-w-2xl rounded-2xl border p-6 shadow-xl ${theme.card}`}
+          >
             <div className="mb-4 flex items-start justify-between gap-4">
               <div>
                 <h3 className="text-xl font-semibold">Editar cliente</h3>

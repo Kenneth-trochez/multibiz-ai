@@ -13,11 +13,26 @@ import * as XLSX from "xlsx";
 
 type Theme = {
   pageBg: string;
+  sidebarBg: string;
+  sidebarCard: string;
   card: string;
+  cardSoft: string;
   subtle: string;
+  input: string;
+  select: string;
+  option: string;
   textMuted: string;
+  label: string;
+  hover: string;
+  active: string;
   accent: string;
+  softAccent: string;
+  buttonPrimary: string;
   buttonSecondary: string;
+  logoutButton: string;
+  danger: string;
+  glassCard: string;
+  headerBg: string;
 };
 
 type MetricCard = {
@@ -378,7 +393,7 @@ export default function BalanceClient({
             <button
               type="button"
               onClick={() => setShowRecordsModal(true)}
-              className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-medium transition ${theme.accent}`}
+              className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-medium transition ${theme.buttonPrimary}`}
             >
               <ReceiptText className="h-4 w-4" />
               Ver registros
@@ -450,9 +465,9 @@ export default function BalanceClient({
                 </div>
                 <div className={`h-3 overflow-hidden rounded-full ${theme.subtle}`}>
                   <div
-                    className={`h-full rounded-full ${theme.accent}`}
+                    className={`h-full rounded-full ${theme.softAccent}`}
                     style={{
-                      width: `${(day.totalRevenue / maxDailyRevenue) * 100}%`,
+                      width: `${maxDailyRevenue > 0 ? (day.totalRevenue / maxDailyRevenue) * 100 : 0}%`,
                     }}
                   />
                 </div>
@@ -483,9 +498,9 @@ export default function BalanceClient({
                 </div>
                 <div className={`h-3 overflow-hidden rounded-full ${theme.subtle}`}>
                   <div
-                    className={`h-full rounded-full ${theme.accent}`}
+                    className={`h-full rounded-full ${theme.softAccent}`}
                     style={{
-                      width: `${(item.value / maxStatus) * 100}%`,
+                      width: `${maxStatus > 0 ? (item.value / maxStatus) * 100 : 0}%`,
                     }}
                   />
                 </div>
@@ -518,9 +533,9 @@ export default function BalanceClient({
                   </div>
                   <div className={`h-3 overflow-hidden rounded-full ${theme.subtle}`}>
                     <div
-                      className={`h-full rounded-full ${theme.accent}`}
+                      className={`h-full rounded-full ${theme.softAccent}`}
                       style={{
-                        width: `${(service.revenue / maxServiceRevenue) * 100}%`,
+                        width: `${maxServiceRevenue > 0 ? (service.revenue / maxServiceRevenue) * 100 : 0}%`,
                       }}
                     />
                   </div>
@@ -552,9 +567,9 @@ export default function BalanceClient({
                   </div>
                   <div className={`h-3 overflow-hidden rounded-full ${theme.subtle}`}>
                     <div
-                      className={`h-full rounded-full ${theme.accent}`}
+                      className={`h-full rounded-full ${theme.softAccent}`}
                       style={{
-                        width: `${(member.revenue / maxStaffRevenue) * 100}%`,
+                        width: `${maxStaffRevenue > 0 ? (member.revenue / maxStaffRevenue) * 100 : 0}%`,
                       }}
                     />
                   </div>
@@ -586,9 +601,9 @@ export default function BalanceClient({
                   </div>
                   <div className={`h-3 overflow-hidden rounded-full ${theme.subtle}`}>
                     <div
-                      className={`h-full rounded-full ${theme.accent}`}
+                      className={`h-full rounded-full ${theme.softAccent}`}
                       style={{
-                        width: `${(product.revenue / maxProductRevenue) * 100}%`,
+                        width: `${maxProductRevenue > 0 ? (product.revenue / maxProductRevenue) * 100 : 0}%`,
                       }}
                     />
                   </div>
@@ -608,7 +623,10 @@ export default function BalanceClient({
 
           <div className="mt-5 space-y-3">
             {completedAppointments.slice(0, 4).map((apt) => (
-              <div key={`apt-${apt.id}`} className={`rounded-2xl border p-4 ${theme.subtle}`}>
+              <div
+                key={`apt-${apt.id}`}
+                className={`rounded-2xl border p-4 ${theme.cardSoft}`}
+              >
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                   <div>
                     <p className="font-semibold">
@@ -629,7 +647,10 @@ export default function BalanceClient({
             ))}
 
             {sales.slice(0, 4).map((sale) => (
-              <div key={`sale-${sale.id}`} className={`rounded-2xl border p-4 ${theme.subtle}`}>
+              <div
+                key={`sale-${sale.id}`}
+                className={`rounded-2xl border p-4 ${theme.cardSoft}`}
+              >
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                   <div>
                     <p className="font-semibold">
@@ -650,7 +671,7 @@ export default function BalanceClient({
             ))}
 
             {completedAppointments.length === 0 && sales.length === 0 && (
-              <div className={`rounded-2xl border p-6 ${theme.subtle}`}>
+              <div className={`rounded-2xl border p-6 ${theme.cardSoft}`}>
                 <p className={theme.textMuted}>Aún no hay movimientos en este período.</p>
               </div>
             )}
@@ -671,7 +692,7 @@ export default function BalanceClient({
             ].map((item) => (
               <div
                 key={item.label}
-                className={`flex items-center justify-between rounded-2xl border px-4 py-3 ${theme.subtle}`}
+                className={`flex items-center justify-between rounded-2xl border px-4 py-3 ${theme.cardSoft}`}
               >
                 <span className="text-sm">{item.label}</span>
                 <span className="text-sm font-semibold">{item.value}</span>
@@ -687,8 +708,10 @@ export default function BalanceClient({
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => setShowRecordsModal(false)}
           />
-          <div className={`relative max-h-[90vh] w-full max-w-6xl overflow-hidden rounded-3xl border shadow-xl ${theme.card}`}>
-            <div className="flex flex-col gap-4 border-b px-6 py-4 lg:flex-row lg:items-center lg:justify-between">
+          <div
+            className={`relative max-h-[90vh] w-full max-w-6xl overflow-hidden rounded-3xl border shadow-xl ${theme.glassCard}`}
+          >
+            <div className={`flex flex-col gap-4 border-b px-6 py-4 lg:flex-row lg:items-center lg:justify-between ${theme.headerBg}`}>
               <div>
                 <h3 className="text-xl font-semibold">Registros del período</h3>
                 <p className={`mt-1 text-sm ${theme.textMuted}`}>
@@ -698,21 +721,21 @@ export default function BalanceClient({
 
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <div
-                  className={`flex items-center gap-2 rounded-2xl border px-3 py-2 ${theme.subtle}`}
+                  className={`flex items-center gap-2 rounded-2xl border px-3 py-2 ${theme.input}`}
                 >
                   <Search className={`h-4 w-4 ${theme.textMuted}`} />
                   <input
                     value={recordsSearch}
                     onChange={(e) => setRecordsSearch(e.target.value)}
                     placeholder="Buscar cliente, staff, servicio, teléfono o ID..."
-                    className="w-full bg-transparent text-sm outline-none"
+                    className="w-full bg-transparent text-sm outline-none placeholder:opacity-70"
                   />
                 </div>
 
                 <button
                   type="button"
                   onClick={exportRecords}
-                  className={`inline-flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-medium transition ${theme.accent}`}
+                  className={`inline-flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-medium transition ${theme.buttonPrimary}`}
                 >
                   <Download className="h-4 w-4" />
                   Exportar a Excel
@@ -728,11 +751,11 @@ export default function BalanceClient({
               </div>
             </div>
 
-            <div className="max-h-[70vh] overflow-auto p-6 space-y-8">
+            <div className="max-h-[70vh] space-y-8 overflow-auto p-6">
               <div>
                 <h4 className="mb-3 text-lg font-semibold">Citas completadas</h4>
                 {filteredAppointments.length === 0 ? (
-                  <div className={`rounded-2xl border p-6 ${theme.subtle}`}>
+                  <div className={`rounded-2xl border p-6 ${theme.cardSoft}`}>
                     <p className={theme.textMuted}>
                       No hay citas que coincidan con la búsqueda.
                     </p>
@@ -792,7 +815,7 @@ export default function BalanceClient({
               <div>
                 <h4 className="mb-3 text-lg font-semibold">Ventas</h4>
                 {filteredSales.length === 0 ? (
-                  <div className={`rounded-2xl border p-6 ${theme.subtle}`}>
+                  <div className={`rounded-2xl border p-6 ${theme.cardSoft}`}>
                     <p className={theme.textMuted}>
                       No hay ventas que coincidan con la búsqueda.
                     </p>

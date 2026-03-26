@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentBusiness } from "@/lib/tenant/getCurrentBusiness";
+import { getThemeClasses } from "@/lib/theme/getThemeClasses";
 import SidebarShell from "./SidebarShell";
 import SidebarNav from "./SidebarNav";
 import { signOutAction } from "../actions/auth";
@@ -27,71 +28,6 @@ type NavItem = {
   icon: IconName;
   section: AppSection;
 };
-
-function getThemeClasses(theme: string) {
-  switch (theme) {
-    case "dark":
-      return {
-        pageBg: "bg-[#181818] text-white",
-        sidebarBg: "bg-[#222222] border-[#333333]",
-        sidebarCard: "bg-[#2b2b2b] border-[#3a3a3a]",
-        textMuted: "text-[#bdbdbd]",
-        hover: "hover:bg-[#343434]",
-        active: "bg-white text-black",
-        buttonSecondary:
-          "bg-[#2b2b2b] border-[#444444] text-white hover:bg-[#343434]",
-        logoutButton:
-          "bg-[#3a2020] border border-[#5a2d2d] text-white hover:bg-[#4a2525]",
-        headerBg: "bg-[#181818]/90 border-[#333333]",
-      };
-
-    case "elegant":
-      return {
-        pageBg: "bg-[#f4efe8] text-[#2b211b]",
-        sidebarBg: "bg-[#fffaf5] border-[#e6d8c8]",
-        sidebarCard: "bg-white border-[#eadfce]",
-        textMuted: "text-[#7a6858]",
-        hover: "hover:bg-[#f3e8dc]",
-        active: "bg-[#6b4f3a] text-white",
-        buttonSecondary:
-          "bg-white border-[#d8c7b7] text-[#2b211b] hover:bg-[#f3e8dc]",
-        logoutButton:
-          "bg-[#7c3f3f] border border-[#7c3f3f] text-white hover:bg-[#693434]",
-        headerBg: "bg-[#f4efe8]/90 border-[#e6d8c8]",
-      };
-
-    case "minimal":
-      return {
-        pageBg: "bg-[#f8f8f8] text-[#1f1f1f]",
-        sidebarBg: "bg-white border-[#e5e5e5]",
-        sidebarCard: "bg-[#fafafa] border-[#e5e5e5]",
-        textMuted: "text-[#6f6f6f]",
-        hover: "hover:bg-[#f1f1f1]",
-        active: "bg-[#111111] text-white",
-        buttonSecondary:
-          "bg-white border-[#d6d6d6] text-[#1f1f1f] hover:bg-[#f1f1f1]",
-        logoutButton:
-          "bg-[#111111] border border-[#111111] text-white hover:bg-[#222222]",
-        headerBg: "bg-[#f8f8f8]/90 border-[#e5e5e5]",
-      };
-
-    case "warm":
-    default:
-      return {
-        pageBg: "bg-[#f6f1e8] text-[#2f241d]",
-        sidebarBg: "bg-[#fffaf3] border-[#e7d8c7]",
-        sidebarCard: "bg-white border-[#eadfce]",
-        textMuted: "text-[#6b5b4d]",
-        hover: "hover:bg-[#f3e8dc]",
-        active: "bg-[#a56a3a] text-white",
-        buttonSecondary:
-          "bg-white border-[#d9c6b2] text-[#2f241d] hover:bg-[#f3e8dc]",
-        logoutButton:
-          "bg-[#8e4a3a] border border-[#8e4a3a] text-white hover:bg-[#7b3f31]",
-        headerBg: "bg-[#f6f1e8]/90 border-[#eadfce]",
-      };
-  }
-}
 
 function getInitials(name: string) {
   return name
@@ -219,12 +155,16 @@ export default async function DashboardLayout({
 
       <div className="space-y-3 border-t px-4 py-4">
         <Link href="/dashboard/profile">
-          <div className={`rounded-2xl border p-4 transition cursor-pointer ${theme.sidebarCard} ${theme.hover}`}>
+          <div
+            className={`cursor-pointer rounded-2xl border p-4 transition ${theme.sidebarCard} ${theme.hover}`}
+          >
             <p className="text-sm font-medium">Cuenta</p>
             <p className={`mt-1 truncate text-xs ${theme.textMuted}`}>
               {user?.email || "Usuario"}
             </p>
-            <p className={`mt-1 text-[11px] uppercase tracking-wide ${theme.textMuted}`}>
+            <p
+              className={`mt-1 text-[11px] uppercase tracking-wide ${theme.textMuted}`}
+            >
               Rol: {role}
             </p>
           </div>

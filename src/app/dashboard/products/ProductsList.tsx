@@ -19,13 +19,26 @@ type ProductRow = {
 
 type Theme = {
   pageBg: string;
+  sidebarBg: string;
+  sidebarCard: string;
   card: string;
+  cardSoft: string;
+  subtle: string;
   input: string;
+  select: string;
+  option: string;
   textMuted: string;
   label: string;
+  hover: string;
+  active: string;
+  accent: string;
+  softAccent: string;
   buttonPrimary: string;
   buttonSecondary: string;
+  logoutButton: string;
   danger: string;
+  glassCard: string;
+  headerBg: string;
 };
 
 export default function ProductsList({
@@ -85,7 +98,9 @@ export default function ProductsList({
 
       {selectedProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className={`w-full max-w-2xl rounded-2xl border p-6 shadow-xl ${theme.card}`}>
+          <div
+            className={`w-full max-w-2xl rounded-2xl border p-6 shadow-xl ${theme.card}`}
+          >
             <div className="mb-4 flex items-start justify-between gap-4">
               <div>
                 <h3 className="text-xl font-semibold">Editar producto</h3>

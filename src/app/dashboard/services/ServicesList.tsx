@@ -18,13 +18,26 @@ type Service = {
 
 type Theme = {
   pageBg: string;
+  sidebarBg: string;
+  sidebarCard: string;
   card: string;
+  cardSoft: string;
+  subtle: string;
   input: string;
+  select: string;
+  option: string;
   textMuted: string;
   label: string;
+  hover: string;
+  active: string;
+  accent: string;
+  softAccent: string;
   buttonPrimary: string;
   buttonSecondary: string;
+  logoutButton: string;
   danger: string;
+  glassCard: string;
+  headerBg: string;
 };
 
 export default function ServicesList({

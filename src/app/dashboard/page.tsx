@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { requireSectionAccess } from "@/lib/auth/requireSectionAccess";
 import { hasSectionAccess } from "@/lib/auth/permissions";
+import { getThemeClasses } from "@/lib/theme/getThemeClasses";
 import {
   Users,
   Briefcase,
@@ -31,55 +32,6 @@ type UpcomingAppointment = {
     display_name: string;
   } | null;
 };
-
-function getThemeClasses(theme: string) {
-  switch (theme) {
-    case "dark":
-      return {
-        pageBg: "bg-[#181818] text-white",
-        card: "bg-[#222222] border-[#333333]",
-        subtle: "bg-[#2a2a2a] border-[#3a3a3a]",
-        textMuted: "text-[#bdbdbd]",
-        accent: "bg-white text-black",
-        softAccent: "bg-[#2f2f2f] text-white border-[#404040]",
-        hover: "hover:bg-[#2b2b2b]",
-      };
-
-    case "elegant":
-      return {
-        pageBg: "bg-[#f4efe8] text-[#2b211b]",
-        card: "bg-[#fffaf5] border-[#e6d8c8]",
-        subtle: "bg-[#f9f2e8] border-[#eadfce]",
-        textMuted: "text-[#7a6858]",
-        accent: "bg-[#6b4f3a] text-white",
-        softAccent: "bg-[#efe4d7] text-[#5e4635] border-[#dec9b3]",
-        hover: "hover:bg-[#f3e8dc]",
-      };
-
-    case "minimal":
-      return {
-        pageBg: "bg-[#f8f8f8] text-[#1f1f1f]",
-        card: "bg-white border-[#e5e5e5]",
-        subtle: "bg-[#f3f3f3] border-[#e1e1e1]",
-        textMuted: "text-[#6f6f6f]",
-        accent: "bg-[#111111] text-white",
-        softAccent: "bg-[#f1f1f1] text-[#444444] border-[#dfdfdf]",
-        hover: "hover:bg-[#f1f1f1]",
-      };
-
-    case "warm":
-    default:
-      return {
-        pageBg: "bg-[#f6f1e8] text-[#2f241d]",
-        card: "bg-white border-[#eadfce]",
-        subtle: "bg-[#f9f2e8] border-[#eadfce]",
-        textMuted: "text-[#6b5b4d]",
-        accent: "bg-[#a56a3a] text-white",
-        softAccent: "bg-[#f1e5d7] text-[#6b4f3a] border-[#e0c8b0]",
-        hover: "hover:bg-[#f3e8dc]",
-      };
-  }
-}
 
 function getTodayRangeInTegucigalpa() {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -214,20 +166,20 @@ export default async function DashboardPage() {
       .limit(6),
   ]);
 
-  const upcomingAppointments: UpcomingAppointment[] = (upcomingAppointmentsRaw || []).map(
-    (apt: any) => ({
-      id: apt.id,
-      appointment_at: apt.appointment_at,
-      status: apt.status,
-      customer: Array.isArray(apt.customer)
-        ? apt.customer[0] || null
-        : apt.customer || null,
-      service: Array.isArray(apt.service)
-        ? apt.service[0] || null
-        : apt.service || null,
-      staff: Array.isArray(apt.staff) ? apt.staff[0] || null : apt.staff || null,
-    })
-  );
+  const upcomingAppointments: UpcomingAppointment[] = (
+    upcomingAppointmentsRaw || []
+  ).map((apt: any) => ({
+    id: apt.id,
+    appointment_at: apt.appointment_at,
+    status: apt.status,
+    customer: Array.isArray(apt.customer)
+      ? apt.customer[0] || null
+      : apt.customer || null,
+    service: Array.isArray(apt.service)
+      ? apt.service[0] || null
+      : apt.service || null,
+    staff: Array.isArray(apt.staff) ? apt.staff[0] || null : apt.staff || null,
+  }));
 
   const metrics = [
     {
@@ -293,7 +245,7 @@ export default async function DashboardPage() {
   ].filter((item) => item.visible);
 
   return (
-    <main className={`min-h-screen ${theme.pageBg}`}>
+    <main className={theme.pageBg}>
       <div className="mx-auto max-w-7xl space-y-6 p-4 md:p-6">
         <section className={`rounded-3xl border p-6 shadow-sm ${theme.card}`}>
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
@@ -301,8 +253,8 @@ export default async function DashboardPage() {
               <p className={`text-sm ${theme.textMuted}`}>Resumen general</p>
               <h1 className="mt-1 text-3xl font-bold">{business.name}</h1>
               <p className={`mt-2 max-w-2xl text-sm ${theme.textMuted}`}>
-                Aquí puedes ver el estado actual del negocio, el movimiento de citas
-                y accesos rápidos a los módulos principales.
+                Aquí puedes ver el estado actual del negocio, el movimiento de
+                citas y accesos rápidos a los módulos principales.
               </p>
             </div>
 
@@ -377,7 +329,9 @@ export default async function DashboardPage() {
                 </p>
               </div>
             ) : upcomingAppointments.length === 0 ? (
-              <div className={`rounded-2xl border border-dashed p-8 text-center ${theme.subtle}`}>
+              <div
+                className={`rounded-2xl border border-dashed p-8 text-center ${theme.subtle}`}
+              >
                 <p className="font-medium">No hay citas registradas aún.</p>
                 <p className={`mt-2 text-sm ${theme.textMuted}`}>
                   Cuando agregues citas, aparecerán aquí como resumen.
@@ -395,9 +349,13 @@ export default async function DashboardPage() {
                         <p className="font-semibold">
                           {apt.customer?.name || "Cliente no disponible"}
                         </p>
-                        <div className={`mt-1 flex flex-wrap gap-3 text-sm ${theme.textMuted}`}>
+                        <div
+                          className={`mt-1 flex flex-wrap gap-3 text-sm ${theme.textMuted}`}
+                        >
                           <span>{apt.service?.name || "Sin servicio"}</span>
-                          <span>{apt.staff?.display_name || "Sin staff asignado"}</span>
+                          <span>
+                            {apt.staff?.display_name || "Sin staff asignado"}
+                          </span>
                           <span>{formatDateTime(apt.appointment_at)}</span>
                         </div>
                       </div>
@@ -430,7 +388,9 @@ export default async function DashboardPage() {
                 </div>
               </div>
 
-              <p className="mt-5 text-4xl font-bold">{pendingAppointmentsCount || 0}</p>
+              <p className="mt-5 text-4xl font-bold">
+                {pendingAppointmentsCount || 0}
+              </p>
             </div>
 
             <div className={`rounded-3xl border p-6 shadow-sm ${theme.card}`}>
@@ -456,7 +416,9 @@ export default async function DashboardPage() {
               <h2 className="text-lg font-semibold">Estado general</h2>
               <div className="mt-4 space-y-3">
                 {hasSectionAccess(role, "services") && (
-                  <div className={`flex items-center justify-between rounded-2xl border px-4 py-3 ${theme.subtle}`}>
+                  <div
+                    className={`flex items-center justify-between rounded-2xl border px-4 py-3 ${theme.subtle}`}
+                  >
                     <div className="flex items-center gap-3">
                       <CheckCircle2 className="h-4 w-4 text-green-600" />
                       <span className="text-sm">Servicios activos</span>
@@ -468,7 +430,9 @@ export default async function DashboardPage() {
                 )}
 
                 {hasSectionAccess(role, "staff") && (
-                  <div className={`flex items-center justify-between rounded-2xl border px-4 py-3 ${theme.subtle}`}>
+                  <div
+                    className={`flex items-center justify-between rounded-2xl border px-4 py-3 ${theme.subtle}`}
+                  >
                     <div className="flex items-center gap-3">
                       <CheckCircle2 className="h-4 w-4 text-blue-600" />
                       <span className="text-sm">Staff activo</span>
@@ -479,7 +443,9 @@ export default async function DashboardPage() {
                   </div>
                 )}
 
-                <div className={`flex items-center justify-between rounded-2xl border px-4 py-3 ${theme.subtle}`}>
+                <div
+                  className={`flex items-center justify-between rounded-2xl border px-4 py-3 ${theme.subtle}`}
+                >
                   <div className="flex items-center gap-3">
                     <AlertCircle className="h-4 w-4 text-yellow-600" />
                     <span className="text-sm">Citas pendientes</span>

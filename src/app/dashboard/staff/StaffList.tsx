@@ -26,13 +26,26 @@ type StaffMember = {
 
 type Theme = {
   pageBg: string;
+  sidebarBg: string;
+  sidebarCard: string;
   card: string;
+  cardSoft: string;
+  subtle: string;
   input: string;
+  select: string;
+  option: string;
   textMuted: string;
   label: string;
+  hover: string;
+  active: string;
+  accent: string;
+  softAccent: string;
   buttonPrimary: string;
   buttonSecondary: string;
+  logoutButton: string;
   danger: string;
+  glassCard: string;
+  headerBg: string;
 };
 
 export default function StaffList({
@@ -142,11 +155,17 @@ export default function StaffList({
                 <select
                   name="role_id"
                   defaultValue={selectedStaff.role_id || ""}
-                  className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+                  className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.select}`}
                 >
-                  <option value="">Sin rol asignado</option>
+                  <option className={theme.option} value="">
+                    Sin rol asignado
+                  </option>
                   {roles.map((role) => (
-                    <option key={role.id} value={role.id}>
+                    <option
+                      key={role.id}
+                      value={role.id}
+                      className={theme.option}
+                    >
                       {role.name}
                     </option>
                   ))}

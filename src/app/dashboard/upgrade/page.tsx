@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireSectionAccess } from "@/lib/auth/requireSectionAccess";
 import { createClient } from "@/lib/supabase/server";
+import { getThemeClasses } from "@/lib/theme/getThemeClasses";
 
 type PlanRow = {
   id: string;
@@ -12,52 +13,6 @@ type PlanRow = {
   limits: Record<string, number>;
   active: boolean;
 };
-
-function getThemeClasses(theme: string) {
-  switch (theme) {
-    case "dark":
-      return {
-        pageBg: "bg-[#181818] text-white",
-        card: "bg-white/5 border-white/10 backdrop-blur-xl",
-        cardSoft: "bg-white/10 border-white/15 backdrop-blur-xl",
-        textMuted: "text-[#bdbdbd]",
-        buttonPrimary: "bg-white text-black hover:bg-[#e8e8e8]",
-        buttonSecondary:
-          "bg-white/10 border-white/20 text-white hover:bg-white/15",
-      };
-    case "elegant":
-      return {
-        pageBg: "bg-[#f4efe8] text-[#2b211b]",
-        card: "bg-white/60 border-white/50 backdrop-blur-xl",
-        cardSoft: "bg-white/70 border-white/60 backdrop-blur-xl",
-        textMuted: "text-[#7a6858]",
-        buttonPrimary: "bg-[#6b4f3a] text-white hover:bg-[#5a4331]",
-        buttonSecondary:
-          "bg-white/70 border-[#d8c7b7] text-[#2b211b] hover:bg-[#f3e8dc]",
-      };
-    case "minimal":
-      return {
-        pageBg: "bg-[#f8f8f8] text-[#1f1f1f]",
-        card: "bg-white/70 border-white/60 backdrop-blur-xl",
-        cardSoft: "bg-white/85 border-white/70 backdrop-blur-xl",
-        textMuted: "text-[#6f6f6f]",
-        buttonPrimary: "bg-[#111111] text-white hover:bg-[#222222]",
-        buttonSecondary:
-          "bg-white border-[#d6d6d6] text-[#1f1f1f] hover:bg-[#f1f1f1]",
-      };
-    case "warm":
-    default:
-      return {
-        pageBg: "bg-[#f6f1e8] text-[#2f241d]",
-        card: "bg-white/55 border-white/50 backdrop-blur-xl",
-        cardSoft: "bg-white/75 border-white/60 backdrop-blur-xl",
-        textMuted: "text-[#6b5b4d]",
-        buttonPrimary: "bg-[#a56a3a] text-white hover:bg-[#8d582e]",
-        buttonSecondary:
-          "bg-white/80 border-[#d9c6b2] text-[#2f241d] hover:bg-[#f3e8dc]",
-      };
-  }
-}
 
 function featureLabel(key: string) {
   const map: Record<string, string> = {
@@ -235,7 +190,7 @@ export default async function UpgradePage({
                       {enabledFeatures.map(([key]) => (
                         <span
                           key={key}
-                          className="rounded-full border border-white/20 px-3 py-1 text-xs"
+                          className={`rounded-full border px-3 py-1 text-xs ${theme.subtle}`}
                         >
                           {featureLabel(key)}
                         </span>
@@ -243,14 +198,14 @@ export default async function UpgradePage({
                     </div>
 
                     <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                      <div className="rounded-2xl border border-white/20 p-3">
+                      <div className={`rounded-2xl border p-3 ${theme.subtle}`}>
                         <p className={`text-xs ${theme.textMuted}`}>Máx. staff</p>
                         <p className="mt-1 text-sm font-semibold">
                           {plan.limits?.max_staff ?? "-"}
                         </p>
                       </div>
 
-                      <div className="rounded-2xl border border-white/20 p-3">
+                      <div className={`rounded-2xl border p-3 ${theme.subtle}`}>
                         <p className={`text-xs ${theme.textMuted}`}>IA mensual</p>
                         <p className="mt-1 text-sm font-semibold">
                           {plan.limits?.max_monthly_ai_calls ?? "-"}

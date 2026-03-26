@@ -73,13 +73,26 @@ type StaffOption = {
 
 type Theme = {
   pageBg: string;
+  sidebarBg: string;
+  sidebarCard: string;
   card: string;
+  cardSoft: string;
+  subtle: string;
   input: string;
+  select: string;
+  option: string;
   textMuted: string;
   label: string;
+  hover: string;
+  active: string;
+  accent: string;
+  softAccent: string;
   buttonPrimary: string;
   buttonSecondary: string;
+  logoutButton: string;
   danger: string;
+  glassCard: string;
+  headerBg: string;
 };
 
 type SaleLine = {
@@ -319,11 +332,17 @@ export default function SalesClient({
                 <select
                   name="customer_id"
                   defaultValue=""
-                  className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+                  className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.select}`}
                 >
-                  <option value="">Sin cliente</option>
+                  <option className={theme.option} value="">
+                    Sin cliente
+                  </option>
                   {customers.map((customer) => (
-                    <option key={customer.id} value={customer.id}>
+                    <option
+                      key={customer.id}
+                      value={customer.id}
+                      className={theme.option}
+                    >
                       {customer.name}
                       {customer.phone ? ` — ${customer.phone}` : ""}
                     </option>
@@ -338,11 +357,17 @@ export default function SalesClient({
                 <select
                   name="staff_id"
                   defaultValue=""
-                  className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+                  className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.select}`}
                 >
-                  <option value="">Sin asignar</option>
+                  <option className={theme.option} value="">
+                    Sin asignar
+                  </option>
                   {staff.map((member) => (
-                    <option key={member.id} value={member.id}>
+                    <option
+                      key={member.id}
+                      value={member.id}
+                      className={theme.option}
+                    >
                       {member.display_name}
                       {member.specialty ? ` — ${member.specialty}` : ""}
                     </option>
@@ -395,11 +420,17 @@ export default function SalesClient({
                               )
                             )
                           }
-                          className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+                          className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.select}`}
                         >
-                          <option value="">Seleccionar producto</option>
+                          <option className={theme.option} value="">
+                            Seleccionar producto
+                          </option>
                           {products.map((product) => (
-                            <option key={product.id} value={product.id}>
+                            <option
+                              key={product.id}
+                              value={product.id}
+                              className={theme.option}
+                            >
                               {product.name}
                               {product.sku ? ` — ${product.sku}` : ""}
                               {` — L ${Number(product.price || 0).toFixed(2)} — Stock ${product.stock}`}
@@ -456,7 +487,9 @@ export default function SalesClient({
                             )
                           }
                           className={`rounded-xl px-3 py-2 transition ${
-                            lines.length === 1 ? "opacity-40 cursor-not-allowed" : theme.danger
+                            lines.length === 1
+                              ? "cursor-not-allowed opacity-40"
+                              : theme.danger
                           }`}
                           disabled={lines.length === 1}
                         >
@@ -552,11 +585,17 @@ export default function SalesClient({
                   <select
                     name="customer_id"
                     defaultValue={selectedSale.customer?.id || ""}
-                    className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+                    className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.select}`}
                   >
-                    <option value="">Sin cliente</option>
+                    <option className={theme.option} value="">
+                      Sin cliente
+                    </option>
                     {customers.map((customer) => (
-                      <option key={customer.id} value={customer.id}>
+                      <option
+                        key={customer.id}
+                        value={customer.id}
+                        className={theme.option}
+                      >
                         {customer.name}
                         {customer.phone ? ` — ${customer.phone}` : ""}
                       </option>
@@ -571,11 +610,17 @@ export default function SalesClient({
                   <select
                     name="staff_id"
                     defaultValue={selectedSale.staff?.id || ""}
-                    className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+                    className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.select}`}
                   >
-                    <option value="">Sin asignar</option>
+                    <option className={theme.option} value="">
+                      Sin asignar
+                    </option>
                     {staff.map((member) => (
-                      <option key={member.id} value={member.id}>
+                      <option
+                        key={member.id}
+                        value={member.id}
+                        className={theme.option}
+                      >
                         {member.display_name}
                         {member.specialty ? ` — ${member.specialty}` : ""}
                       </option>
@@ -628,11 +673,17 @@ export default function SalesClient({
                                 )
                               )
                             }
-                            className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+                            className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.select}`}
                           >
-                            <option value="">Seleccionar producto</option>
+                            <option className={theme.option} value="">
+                              Seleccionar producto
+                            </option>
                             {products.map((product) => (
-                              <option key={product.id} value={product.id}>
+                              <option
+                                key={product.id}
+                                value={product.id}
+                                className={theme.option}
+                              >
                                 {product.name}
                                 {product.sku ? ` — ${product.sku}` : ""}
                                 {` — L ${Number(product.price || 0).toFixed(2)} — Stock ${product.stock}`}
@@ -690,7 +741,7 @@ export default function SalesClient({
                             }
                             className={`rounded-xl px-3 py-2 transition ${
                               editLines.length === 1
-                                ? "opacity-40 cursor-not-allowed"
+                                ? "cursor-not-allowed opacity-40"
                                 : theme.danger
                             }`}
                             disabled={editLines.length === 1}
