@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { normalizeAppRole, type AppRole } from "@/lib/auth/permissions";
 
 type BusinessRow = {
   id: string;
@@ -51,7 +52,7 @@ export async function getCurrentBusiness() {
 
   return {
     user,
-    role: membership.role,
+    role: normalizeAppRole(membership.role) as AppRole,
     business,
   };
 }

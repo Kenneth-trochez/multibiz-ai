@@ -1,5 +1,4 @@
-import { redirect } from "next/navigation";
-import { getCurrentBusiness } from "@/lib/tenant/getCurrentBusiness";
+import { requireSectionAccess } from "@/lib/auth/requireSectionAccess";
 import { updateBusinessAction } from "../../actions/business";
 
 function getThemeClasses(theme: string) {
@@ -11,10 +10,8 @@ function getThemeClasses(theme: string) {
         label: "text-[#f1f1f1]",
         input:
           "bg-white/10 border-white/20 text-white placeholder:text-white/50 backdrop-blur-md",
-        select:
-          "bg-[#2b2b2b] border-[#444444] text-white",
-        option:
-          "bg-[#2b2b2b] text-white",
+        select: "bg-[#2b2b2b] border-[#444444] text-white",
+        option: "bg-[#2b2b2b] text-white",
         buttonPrimary: "bg-white text-black hover:bg-[#e8e8e8]",
         glassCard:
           "bg-white/10 border border-white/20 text-white shadow-2xl backdrop-blur-xl",
@@ -27,10 +24,8 @@ function getThemeClasses(theme: string) {
         label: "text-[#3e3027]",
         input:
           "bg-white/70 border-white/40 text-[#2b211b] placeholder:text-[#7a6858] backdrop-blur-md",
-        select:
-          "bg-white/80 border-[#d8c7b7] text-[#2b211b]",
-        option:
-          "bg-white text-[#2b211b]",
+        select: "bg-white/80 border-[#d8c7b7] text-[#2b211b]",
+        option: "bg-white text-[#2b211b]",
         buttonPrimary: "bg-[#6b4f3a] text-white hover:bg-[#5a4331]",
         glassCard:
           "bg-white/60 border border-white/50 text-[#2b211b] shadow-2xl backdrop-blur-xl",
@@ -43,10 +38,8 @@ function getThemeClasses(theme: string) {
         label: "text-[#222222]",
         input:
           "bg-white/80 border-white/60 text-[#1f1f1f] placeholder:text-[#6f6f6f] backdrop-blur-md",
-        select:
-          "bg-white border-[#d6d6d6] text-[#1f1f1f]",
-        option:
-          "bg-white text-[#1f1f1f]",
+        select: "bg-white border-[#d6d6d6] text-[#1f1f1f]",
+        option: "bg-white text-[#1f1f1f]",
         buttonPrimary: "bg-[#111111] text-white hover:bg-[#222222]",
         glassCard:
           "bg-white/70 border border-white/60 text-[#1f1f1f] shadow-2xl backdrop-blur-xl",
@@ -60,10 +53,8 @@ function getThemeClasses(theme: string) {
         label: "text-[#3f3128]",
         input:
           "bg-white/70 border-white/40 text-[#2f241d] placeholder:text-[#6b5b4d] backdrop-blur-md",
-        select:
-          "bg-white border-[#d9c6b2] text-[#2f241d]",
-        option:
-          "bg-white text-[#2f241d]",
+        select: "bg-white border-[#d9c6b2] text-[#2f241d]",
+        option: "bg-white text-[#2f241d]",
         buttonPrimary: "bg-[#a56a3a] text-white hover:bg-[#8d582e]",
         glassCard:
           "bg-white/55 border border-white/50 text-[#2f241d] shadow-2xl backdrop-blur-xl",
@@ -72,11 +63,7 @@ function getThemeClasses(theme: string) {
 }
 
 export default async function SettingsPage() {
-  const ctx = await getCurrentBusiness();
-
-  if (!ctx?.business) {
-    redirect("/onboarding");
-  }
+  const ctx = await requireSectionAccess("settings");
 
   const { business } = ctx;
   const theme = getThemeClasses(business.theme || "warm");

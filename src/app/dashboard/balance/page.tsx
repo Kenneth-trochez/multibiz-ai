@@ -1,6 +1,5 @@
-import { redirect } from "next/navigation";
+import { requireSectionAccess } from "@/lib/auth/requireSectionAccess";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentBusiness } from "@/lib/tenant/getCurrentBusiness";
 import BalanceClient from "./BalanceClient";
 
 type CompletedAppointment = {
@@ -193,11 +192,7 @@ export default async function BalancePage({
   searchParams: Promise<{ month?: string }>;
 }) {
   const params = await searchParams;
-  const ctx = await getCurrentBusiness();
-
-  if (!ctx?.business) {
-    redirect("/onboarding");
-  }
+  const ctx = await requireSectionAccess("balance");
 
   const { business } = ctx;
   const theme = getThemeClasses(business.theme || "warm");

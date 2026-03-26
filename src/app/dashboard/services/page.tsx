@@ -1,7 +1,6 @@
 import { createServiceAction } from "../../actions/services";
-import { getCurrentBusiness } from "@/lib/tenant/getCurrentBusiness";
+import { requireSectionAccess } from "@/lib/auth/requireSectionAccess";
 import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import ServicesList from "./ServicesList";
 
@@ -75,11 +74,7 @@ export default async function ServicesPage({
   searchParams: Promise<{ error?: string; success?: string; page?: string }>;
 }) {
   const params = await searchParams;
-  const ctx = await getCurrentBusiness();
-
-  if (!ctx?.business) {
-    redirect("/onboarding");
-  }
+  const ctx = await requireSectionAccess("services");
 
   const { business } = ctx;
   const theme = getThemeClasses(business.theme || "warm");

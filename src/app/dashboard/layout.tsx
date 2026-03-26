@@ -4,6 +4,10 @@ import { getCurrentBusiness } from "@/lib/tenant/getCurrentBusiness";
 import SidebarShell from "./SidebarShell";
 import SidebarNav from "./SidebarNav";
 import { signOutAction } from "../actions/auth";
+import {
+  hasSectionAccess,
+  type AppSection,
+} from "@/lib/auth/permissions";
 
 type IconName =
   | "dashboard"
@@ -20,6 +24,7 @@ type NavItem = {
   href: string;
   label: string;
   icon: IconName;
+  section: AppSection;
 };
 
 function getThemeClasses(theme: string) {
@@ -107,7 +112,7 @@ export default async function DashboardLayout({
     redirect("/onboarding");
   }
 
-  const { business } = ctx;
+  const { business, role } = ctx;
   const theme = getThemeClasses(business.theme || "warm");
   const supabase = await createClient();
 
@@ -115,53 +120,66 @@ export default async function DashboardLayout({
     data: { user },
   } = await supabase.auth.getUser();
 
-  const navItems: NavItem[] = [
+  const allNavItems: NavItem[] = [
     {
       href: "/dashboard",
       label: "Dashboard",
       icon: "dashboard",
+      section: "dashboard",
     },
     {
       href: "/dashboard/customers",
       label: "Clientes",
       icon: "customers",
+      section: "customers",
     },
     {
       href: "/dashboard/services",
       label: "Servicios",
       icon: "services",
+      section: "services",
     },
     {
       href: "/dashboard/staff",
       label: "Staff",
       icon: "staff",
+      section: "staff",
     },
     {
       href: "/dashboard/appointments",
       label: "Citas",
       icon: "appointments",
+      section: "appointments",
     },
     {
       href: "/dashboard/products",
       label: "Productos",
       icon: "products",
+      section: "products",
     },
     {
       href: "/dashboard/sales",
       label: "Ventas",
       icon: "sales",
+      section: "sales",
     },
     {
       href: "/dashboard/balance",
       label: "Balance",
       icon: "balance",
+      section: "balance",
     },
     {
       href: "/dashboard/settings",
       label: "Configuración",
       icon: "settings",
+      section: "settings",
     },
   ];
+
+  const navItems = allNavItems
+    .filter((item) => hasSectionAccess(role, item.section))
+    .map(({ href, label, icon }) => ({ href, label, icon }));
 
   const sidebar = (
     <div className={`flex h-full flex-col ${theme.sidebarBg}`}>
@@ -203,6 +221,9 @@ export default async function DashboardLayout({
           <p className="text-sm font-medium">Cuenta</p>
           <p className={`mt-1 truncate text-xs ${theme.textMuted}`}>
             {user?.email || "Usuario"}
+          </p>
+          <p className={`mt-1 text-[11px] uppercase tracking-wide ${theme.textMuted}`}>
+            Rol: {role}
           </p>
         </div>
 

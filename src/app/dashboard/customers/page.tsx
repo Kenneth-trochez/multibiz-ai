@@ -1,7 +1,6 @@
 import { createCustomerAction } from "../../actions/customers";
-import { getCurrentBusiness } from "@/lib/tenant/getCurrentBusiness";
+import { requireSectionAccess } from "@/lib/auth/requireSectionAccess";
 import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
 import CustomersList from "./CustomersList";
 import Link from "next/link";
 
@@ -74,11 +73,7 @@ export default async function CustomersPage({
   searchParams: Promise<{ error?: string; success?: string; page?: string }>;
 }) {
   const params = await searchParams;
-  const ctx = await getCurrentBusiness();
-
-  if (!ctx?.business) {
-    redirect("/onboarding");
-  }
+  const ctx = await requireSectionAccess("customers");
 
   const { business } = ctx;
   const theme = getThemeClasses(business.theme || "warm");

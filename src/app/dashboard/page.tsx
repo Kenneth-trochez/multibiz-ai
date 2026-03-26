@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentBusiness } from "@/lib/tenant/getCurrentBusiness";
+import { requireSectionAccess } from "@/lib/auth/requireSectionAccess";
+import { hasSectionAccess } from "@/lib/auth/permissions";
 import {
   Users,
   Briefcase,
@@ -142,13 +142,9 @@ function getStatusLabel(status: UpcomingAppointment["status"]) {
 }
 
 export default async function DashboardPage() {
-  const ctx = await getCurrentBusiness();
+  const ctx = await requireSectionAccess("dashboard");
 
-  if (!ctx?.business) {
-    redirect("/onboarding");
-  }
-
-  const { business } = ctx;
+  const { business, role } = ctx;
   const theme = getThemeClasses(business.theme || "warm");
   const supabase = await createClient();
   const today = getTodayRangeInTegucigalpa();
@@ -240,6 +236,7 @@ export default async function DashboardPage() {
       subtitle: "Registrados en el negocio",
       icon: Users,
       href: "/dashboard/customers",
+      visible: hasSectionAccess(role, "customers"),
     },
     {
       title: "Servicios",
@@ -247,6 +244,7 @@ export default async function DashboardPage() {
       subtitle: `${activeServicesCount || 0} activos`,
       icon: Briefcase,
       href: "/dashboard/services",
+      visible: hasSectionAccess(role, "services"),
     },
     {
       title: "Staff",
@@ -254,6 +252,7 @@ export default async function DashboardPage() {
       subtitle: `${activeStaffCount || 0} activos`,
       icon: UserCog,
       href: "/dashboard/staff",
+      visible: hasSectionAccess(role, "staff"),
     },
     {
       title: "Citas hoy",
@@ -261,8 +260,37 @@ export default async function DashboardPage() {
       subtitle: today.label,
       icon: CalendarDays,
       href: "/dashboard/appointments",
+      visible: hasSectionAccess(role, "appointments"),
     },
-  ];
+  ].filter((item) => item.visible);
+
+  const quickLinks = [
+    {
+      href: "/dashboard/customers",
+      label: "Ir a clientes",
+      visible: hasSectionAccess(role, "customers"),
+    },
+    {
+      href: "/dashboard/services",
+      label: "Ir a servicios",
+      visible: hasSectionAccess(role, "services"),
+    },
+    {
+      href: "/dashboard/staff",
+      label: "Ir a staff",
+      visible: hasSectionAccess(role, "staff"),
+    },
+    {
+      href: "/dashboard/appointments",
+      label: "Ir a citas",
+      visible: hasSectionAccess(role, "appointments"),
+    },
+    {
+      href: "/dashboard/settings",
+      label: "Ir a configuración",
+      visible: hasSectionAccess(role, "settings"),
+    },
+  ].filter((item) => item.visible);
 
   return (
     <main className={`min-h-screen ${theme.pageBg}`}>
@@ -332,12 +360,14 @@ export default async function DashboardPage() {
                 </p>
               </div>
 
-              <Link
-                href="/dashboard/appointments"
-                className={`rounded-xl border px-4 py-2 text-sm font-medium transition ${theme.softAccent}`}
-              >
-                Ver todas
-              </Link>
+              {hasSectionAccess(role, "appointments") && (
+                <Link
+                  href="/dashboard/appointments"
+                  className={`rounded-xl border px-4 py-2 text-sm font-medium transition ${theme.softAccent}`}
+                >
+                  Ver todas
+                </Link>
+              )}
             </div>
 
             {appointmentsError ? (
@@ -366,12 +396,8 @@ export default async function DashboardPage() {
                           {apt.customer?.name || "Cliente no disponible"}
                         </p>
                         <div className={`mt-1 flex flex-wrap gap-3 text-sm ${theme.textMuted}`}>
-                          <span>
-                            {apt.service?.name || "Sin servicio"}
-                          </span>
-                          <span>
-                            {apt.staff?.display_name || "Sin staff asignado"}
-                          </span>
+                          <span>{apt.service?.name || "Sin servicio"}</span>
+                          <span>{apt.staff?.display_name || "Sin staff asignado"}</span>
                           <span>{formatDateTime(apt.appointment_at)}</span>
                         </div>
                       </div>
@@ -414,61 +440,44 @@ export default async function DashboardPage() {
               </p>
 
               <div className="mt-5 grid gap-3">
-                <Link
-                  href="/dashboard/customers"
-                  className={`rounded-2xl border px-4 py-3 text-sm font-medium transition ${theme.subtle} ${theme.hover}`}
-                >
-                  Ir a clientes
-                </Link>
-                <Link
-                  href="/dashboard/services"
-                  className={`rounded-2xl border px-4 py-3 text-sm font-medium transition ${theme.subtle} ${theme.hover}`}
-                >
-                  Ir a servicios
-                </Link>
-                <Link
-                  href="/dashboard/staff"
-                  className={`rounded-2xl border px-4 py-3 text-sm font-medium transition ${theme.subtle} ${theme.hover}`}
-                >
-                  Ir a staff
-                </Link>
-                <Link
-                  href="/dashboard/appointments"
-                  className={`rounded-2xl border px-4 py-3 text-sm font-medium transition ${theme.subtle} ${theme.hover}`}
-                >
-                  Ir a citas
-                </Link>
-                <Link
-                  href="/dashboard/settings"
-                  className={`rounded-2xl border px-4 py-3 text-sm font-medium transition ${theme.subtle} ${theme.hover}`}
-                >
-                  Ir a configuración
-                </Link>
+                {quickLinks.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`rounded-2xl border px-4 py-3 text-sm font-medium transition ${theme.subtle} ${theme.hover}`}
+                  >
+                    {item.label}
+                  </Link>
+                ))}
               </div>
             </div>
 
             <div className={`rounded-3xl border p-6 shadow-sm ${theme.card}`}>
               <h2 className="text-lg font-semibold">Estado general</h2>
               <div className="mt-4 space-y-3">
-                <div className={`flex items-center justify-between rounded-2xl border px-4 py-3 ${theme.subtle}`}>
-                  <div className="flex items-center gap-3">
-                    <CheckCircle2 className="h-4 w-4 text-green-600" />
-                    <span className="text-sm">Servicios activos</span>
+                {hasSectionAccess(role, "services") && (
+                  <div className={`flex items-center justify-between rounded-2xl border px-4 py-3 ${theme.subtle}`}>
+                    <div className="flex items-center gap-3">
+                      <CheckCircle2 className="h-4 w-4 text-green-600" />
+                      <span className="text-sm">Servicios activos</span>
+                    </div>
+                    <span className="text-sm font-semibold">
+                      {activeServicesCount || 0}
+                    </span>
                   </div>
-                  <span className="text-sm font-semibold">
-                    {activeServicesCount || 0}
-                  </span>
-                </div>
+                )}
 
-                <div className={`flex items-center justify-between rounded-2xl border px-4 py-3 ${theme.subtle}`}>
-                  <div className="flex items-center gap-3">
-                    <CheckCircle2 className="h-4 w-4 text-blue-600" />
-                    <span className="text-sm">Staff activo</span>
+                {hasSectionAccess(role, "staff") && (
+                  <div className={`flex items-center justify-between rounded-2xl border px-4 py-3 ${theme.subtle}`}>
+                    <div className="flex items-center gap-3">
+                      <CheckCircle2 className="h-4 w-4 text-blue-600" />
+                      <span className="text-sm">Staff activo</span>
+                    </div>
+                    <span className="text-sm font-semibold">
+                      {activeStaffCount || 0}
+                    </span>
                   </div>
-                  <span className="text-sm font-semibold">
-                    {activeStaffCount || 0}
-                  </span>
-                </div>
+                )}
 
                 <div className={`flex items-center justify-between rounded-2xl border px-4 py-3 ${theme.subtle}`}>
                   <div className="flex items-center gap-3">

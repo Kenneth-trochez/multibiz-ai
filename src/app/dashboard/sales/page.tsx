@@ -1,6 +1,5 @@
-import { redirect } from "next/navigation";
+import { requireSectionAccess } from "@/lib/auth/requireSectionAccess";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentBusiness } from "@/lib/tenant/getCurrentBusiness";
 import SalesClient from "./SalesClient";
 
 type SaleItemRow = {
@@ -122,11 +121,7 @@ export default async function SalesPage({
   searchParams: Promise<{ error?: string; success?: string }>;
 }) {
   const params = await searchParams;
-  const ctx = await getCurrentBusiness();
-
-  if (!ctx?.business) {
-    redirect("/onboarding");
-  }
+  const ctx = await requireSectionAccess("sales");
 
   const { business } = ctx;
   const theme = getThemeClasses(business.theme || "warm");

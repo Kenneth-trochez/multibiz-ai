@@ -1,10 +1,10 @@
 import {
   createAndInviteStaffAction,
   createStaffAction,
+  createStaffUserAction,
 } from "../../actions/staff";
-import { getCurrentBusiness } from "@/lib/tenant/getCurrentBusiness";
+import { requireSectionAccess } from "@/lib/auth/requireSectionAccess";
 import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import StaffList from "./StaffList";
 
@@ -88,11 +88,7 @@ export default async function StaffPage({
   searchParams: Promise<{ error?: string; success?: string; page?: string }>;
 }) {
   const params = await searchParams;
-  const ctx = await getCurrentBusiness();
-
-  if (!ctx?.business) {
-    redirect("/onboarding");
-  }
+  const ctx = await requireSectionAccess("staff");
 
   const { business } = ctx;
   const theme = getThemeClasses(business.theme || "warm");
@@ -205,6 +201,12 @@ export default async function StaffPage({
           </p>
         )}
 
+        {params.success === "user_created" && (
+          <p className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+            Cuenta de empleado creada correctamente.
+          </p>
+        )}
+
         <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
           <section className="space-y-4">
             <StaffList
@@ -244,14 +246,18 @@ export default async function StaffPage({
             </div>
           </section>
 
-          <section className={`h-fit rounded-2xl border p-6 shadow-sm ${theme.card}`}>
+          <section
+            className={`h-fit rounded-2xl border p-6 shadow-sm ${theme.card}`}
+          >
             <h2 className="mb-4 text-xl font-semibold">Nuevo miembro</h2>
 
             <form action={createStaffAction} className="grid gap-4">
               <input type="hidden" name="businessId" value={business.id} />
 
               <div>
-                <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
+                <label
+                  className={`mb-1 block text-sm font-medium ${theme.label}`}
+                >
                   Nombre
                 </label>
                 <input
@@ -262,7 +268,9 @@ export default async function StaffPage({
               </div>
 
               <div>
-                <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
+                <label
+                  className={`mb-1 block text-sm font-medium ${theme.label}`}
+                >
                   Correo
                 </label>
                 <input
@@ -272,13 +280,50 @@ export default async function StaffPage({
                   placeholder="ejemplo@correo.com"
                 />
                 <p className={`mt-1 text-xs ${theme.textMuted}`}>
-                  Déjalo vacío si solo quieres crear el staff sin acceso al sistema.
+                  Déjalo vacío si solo quieres crear el staff sin acceso al
+                  sistema.
                 </p>
               </div>
 
               <div>
-                <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
-                  Rol
+                <label
+                  className={`mb-1 block text-sm font-medium ${theme.label}`}
+                >
+                  Contraseña temporal
+                </label>
+                <input
+                  type="password"
+                  name="password"
+                  minLength={6}
+                  className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+                  placeholder="Solo para crear cuenta manual"
+                />
+              </div>
+
+              <div>
+                <label
+                  className={`mb-1 block text-sm font-medium ${theme.label}`}
+                >
+                  Rol de acceso al sistema
+                </label>
+                <select
+                  name="access_role"
+                  className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+                  defaultValue="staff"
+                >
+                  <option value="staff">Staff</option>
+                  <option value="manager">Manager</option>
+                </select>
+                <p className={`mt-1 text-xs ${theme.textMuted}`}>
+                  Staff: dashboard, clientes y citas. Manager: casi todo menos configuración y staff.
+                </p>
+              </div>
+
+              <div>
+                <label
+                  className={`mb-1 block text-sm font-medium ${theme.label}`}
+                >
+                  Rol interno / puesto
                 </label>
                 <select
                   name="role_id"
@@ -295,7 +340,9 @@ export default async function StaffPage({
               </div>
 
               <div>
-                <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
+                <label
+                  className={`mb-1 block text-sm font-medium ${theme.label}`}
+                >
                   Puesto / Sección
                 </label>
                 <input
@@ -326,6 +373,14 @@ export default async function StaffPage({
                   className={`rounded-xl px-4 py-2 font-medium transition ${theme.buttonPrimary}`}
                 >
                   Guardar miembro
+                </button>
+
+                <button
+                  type="submit"
+                  formAction={createStaffUserAction}
+                  className={`rounded-xl border px-4 py-2 font-medium transition ${theme.buttonSecondary}`}
+                >
+                  Crear cuenta manual
                 </button>
 
                 <button

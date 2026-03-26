@@ -1,6 +1,5 @@
-import { redirect } from "next/navigation";
+import { requireSectionAccess } from "@/lib/auth/requireSectionAccess";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentBusiness } from "@/lib/tenant/getCurrentBusiness";
 import AppointmentsClient from "./AppointmentsClient";
 
 type AppointmentRow = {
@@ -125,11 +124,7 @@ export default async function AppointmentsPage({
   searchParams: Promise<{ error?: string; success?: string }>;
 }) {
   const params = await searchParams;
-  const ctx = await getCurrentBusiness();
-
-  if (!ctx?.business) {
-    redirect("/onboarding");
-  }
+  const ctx = await requireSectionAccess("appointments");
 
   const { business } = ctx;
   const theme = getThemeClasses(business.theme || "warm");
