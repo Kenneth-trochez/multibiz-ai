@@ -540,3 +540,129 @@ export async function deleteStaffAction(formData: FormData): Promise<void> {
   revalidatePath("/dashboard/staff");
   redirect("/dashboard/staff?success=deleted");
 }
+
+export async function acceptStaffInvitationAction(formData: FormData): Promise<void> {
+  const invitationToken = String(formData.get("invitationToken") || "").trim();
+
+  if (!invitationToken) {
+    redirect("/login?error=Invitación+inválida");
+  }
+
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    redirect(
+      `/login?error=Debes+iniciar+sesión+para+aceptar+la+invitación&next=${encodeURIComponent(
+        `/auth/accept-invite?invitation=${invitationToken}`
+      )}`
+    );
+  }
+
+  const { data: invitation, error: invitationError } = await supabase
+    .from("staff_invitations")
+    .select(`
+      id,
+      business_id,
+      staff_id,
+      role_id,
+      email,
+      status,
+      expires_at,
+      accepted_at
+    `)
+    .eq("token", invitationToken)
+    .maybeSingle();
+
+  if (invitationError || !invitation) {
+    redirect("/dashboard/staff?error=La+invitación+no+existe+o+es+inválida");
+  }
+
+  if (invitation.status !== "pending") {
+    redirect("/dashboard/staff?error=La+invitación+ya+no+está+disponible");
+  }
+
+  const expiresAtMs = new Date(invitation.expires_at).getTime();
+  if (Number.isNaN(expiresAtMs) || expiresAtMs < Date.now()) {
+    await supabase
+      .from("staff_invitations")
+      .update({ status: "expired" })
+      .eq("id", invitation.id);
+
+    if (invitation.staff_id) {
+      await supabase
+        .from("staff")
+        .update({ invite_status: "expired" })
+        .eq("id", invitation.staff_id);
+    }
+
+    redirect("/dashboard/staff?error=La+invitación+ha+expirado");
+  }
+
+  const userEmail = (user.email || "").trim().toLowerCase();
+  const invitationEmail = (invitation.email || "").trim().toLowerCase();
+
+  if (!userEmail || userEmail !== invitationEmail) {
+    redirect("/dashboard/staff?error=Esta+invitación+no+corresponde+al+usuario+actual");
+  }
+
+  const { data: existingMembership, error: existingMembershipError } = await supabase
+    .from("business_members")
+    .select("business_id, user_id, role")
+    .eq("business_id", invitation.business_id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (existingMembershipError) {
+    redirect(`/dashboard/staff?error=${encodeURIComponent(existingMembershipError.message)}`);
+  }
+
+  if (!existingMembership) {
+    const { error: insertMembershipError } = await supabase
+      .from("business_members")
+      .insert({
+        business_id: invitation.business_id,
+        user_id: user.id,
+        role: "staff",
+      });
+
+    if (insertMembershipError) {
+      redirect(`/dashboard/staff?error=${encodeURIComponent(insertMembershipError.message)}`);
+    }
+  }
+
+  if (invitation.staff_id) {
+    const { error: updateStaffError } = await supabase
+      .from("staff")
+      .update({
+        profile_user_id: user.id,
+        invite_status: "accepted",
+        email: invitationEmail,
+      })
+      .eq("id", invitation.staff_id)
+      .eq("business_id", invitation.business_id);
+
+    if (updateStaffError) {
+      redirect(`/dashboard/staff?error=${encodeURIComponent(updateStaffError.message)}`);
+    }
+  }
+
+  const { error: updateInvitationError } = await supabase
+    .from("staff_invitations")
+    .update({
+      status: "accepted",
+      accepted_at: new Date().toISOString(),
+    })
+    .eq("id", invitation.id);
+
+  if (updateInvitationError) {
+    redirect(`/dashboard/staff?error=${encodeURIComponent(updateInvitationError.message)}`);
+  }
+
+  revalidatePath("/dashboard/staff");
+  redirect("/dashboard?success=invite_accepted");
+}
