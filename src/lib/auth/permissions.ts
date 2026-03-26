@@ -9,7 +9,9 @@ export type AppSection =
   | "products"
   | "sales"
   | "balance"
-  | "settings";
+  | "settings"
+  | "profile"
+  | "upgrade";
 
 const rolePermissions: Record<AppRole, AppSection[]> = {
   owner: [
@@ -22,6 +24,8 @@ const rolePermissions: Record<AppRole, AppSection[]> = {
     "sales",
     "balance",
     "settings",
+    "profile",
+    "upgrade",
   ],
   manager: [
     "dashboard",
@@ -31,11 +35,15 @@ const rolePermissions: Record<AppRole, AppSection[]> = {
     "products",
     "sales",
     "balance",
+    "profile",
+    "upgrade",
   ],
   staff: [
     "dashboard",
     "customers",
     "appointments",
+    "profile",
+    "upgrade",
   ],
 };
 

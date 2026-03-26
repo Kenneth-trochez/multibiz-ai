@@ -1,4 +1,5 @@
 import { requireSectionAccess } from "@/lib/auth/requireSectionAccess";
+import { requirePlanFeature } from "@/lib/billing/requirePlanFeature";
 import { createClient } from "@/lib/supabase/server";
 import BalanceClient from "./BalanceClient";
 
@@ -193,6 +194,7 @@ export default async function BalancePage({
 }) {
   const params = await searchParams;
   const ctx = await requireSectionAccess("balance");
+  await requirePlanFeature("balance");
 
   const { business } = ctx;
   const theme = getThemeClasses(business.theme || "warm");

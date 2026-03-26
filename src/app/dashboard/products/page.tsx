@@ -1,5 +1,6 @@
 import { createProductAction } from "../../actions/products";
 import { requireSectionAccess } from "@/lib/auth/requireSectionAccess";
+import { requirePlanFeature } from "@/lib/billing/requirePlanFeature";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import ProductsList from "./ProductsList";
@@ -76,6 +77,7 @@ export default async function ProductsPage({
 }) {
   const params = await searchParams;
   const ctx = await requireSectionAccess("products");
+  await requirePlanFeature("products");
 
   const { business } = ctx;
   const theme = getThemeClasses(business.theme || "warm");

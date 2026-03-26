@@ -1,4 +1,5 @@
 import { requireSectionAccess } from "@/lib/auth/requireSectionAccess";
+import { requirePlanFeature } from "@/lib/billing/requirePlanFeature";
 import { createClient } from "@/lib/supabase/server";
 import SalesClient from "./SalesClient";
 
@@ -122,6 +123,7 @@ export default async function SalesPage({
 }) {
   const params = await searchParams;
   const ctx = await requireSectionAccess("sales");
+  await requirePlanFeature("sales");
 
   const { business } = ctx;
   const theme = getThemeClasses(business.theme || "warm");

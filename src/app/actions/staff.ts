@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { getCurrentPlan } from "@/lib/billing/getCurrentPlan";
 
 type AccessRole = "manager" | "staff";
 
@@ -109,6 +110,25 @@ export async function createStaffUserAction(formData: FormData): Promise<void> {
 
   if (membership.role !== "owner") {
     redirect("/dashboard/staff?error=Solo+el+owner+puede+crear+cuentas+de+empleados");
+  }
+
+  // ✅ AQUÍ VA EL BLOQUE DEL LÍMITE DEL PLAN
+  const currentPlan = await getCurrentPlan();
+  const maxStaff = currentPlan?.limits?.max_staff ?? 0;
+
+  if (maxStaff > 0) {
+    const { count: staffCount, error: staffCountError } = await supabase
+      .from("staff")
+      .select("*", { count: "exact", head: true })
+      .eq("business_id", membership.business_id);
+
+    if (staffCountError) {
+      redirect("/dashboard/staff?error=No+se+pudo+validar+el+límite+de+staff");
+    }
+
+    if ((staffCount || 0) >= maxStaff) {
+      redirect("/dashboard/staff?error=Tu+plan+actual+alcanzó+el+límite+de+staff");
+    }
   }
 
   if (roleId) {

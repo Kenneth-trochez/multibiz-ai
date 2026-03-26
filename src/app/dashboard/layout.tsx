@@ -4,6 +4,7 @@ import { getCurrentBusiness } from "@/lib/tenant/getCurrentBusiness";
 import SidebarShell from "./SidebarShell";
 import SidebarNav from "./SidebarNav";
 import { signOutAction } from "../actions/auth";
+import Link from "next/link";
 import {
   hasSectionAccess,
   type AppSection,
@@ -217,15 +218,17 @@ export default async function DashboardLayout({
       </div>
 
       <div className="space-y-3 border-t px-4 py-4">
-        <div className={`rounded-2xl border p-4 ${theme.sidebarCard}`}>
-          <p className="text-sm font-medium">Cuenta</p>
-          <p className={`mt-1 truncate text-xs ${theme.textMuted}`}>
-            {user?.email || "Usuario"}
-          </p>
-          <p className={`mt-1 text-[11px] uppercase tracking-wide ${theme.textMuted}`}>
-            Rol: {role}
-          </p>
-        </div>
+        <Link href="/dashboard/profile">
+          <div className={`rounded-2xl border p-4 transition cursor-pointer ${theme.sidebarCard} ${theme.hover}`}>
+            <p className="text-sm font-medium">Cuenta</p>
+            <p className={`mt-1 truncate text-xs ${theme.textMuted}`}>
+              {user?.email || "Usuario"}
+            </p>
+            <p className={`mt-1 text-[11px] uppercase tracking-wide ${theme.textMuted}`}>
+              Rol: {role}
+            </p>
+          </div>
+        </Link>
 
         <form action={signOutAction}>
           <button
