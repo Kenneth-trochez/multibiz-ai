@@ -151,7 +151,7 @@ export default async function ProductsPage({
 
               <div>
                 <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
-                  SKU
+                  SKU Codigo interno unico
                 </label>
                 <input
                   name="sku"
