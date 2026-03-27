@@ -40,6 +40,21 @@ type Theme = {
   headerBg: string;
 };
 
+function splitDuration(totalMinutes: number) {
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return { hours, minutes };
+}
+
+function formatDuration(totalMinutes: number) {
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (hours === 0) return `${minutes} min`;
+  if (minutes === 0) return `${hours} h`;
+  return `${hours} h ${minutes} min`;
+}
+
 export default function ServicesList({
   services,
   theme,
@@ -80,7 +95,7 @@ export default function ServicesList({
                     <p className={`truncate text-sm ${theme.textMuted}`}>
                       {service.description?.trim()
                         ? service.description
-                        : `${service.duration_minutes} min • L ${Number(
+                        : `${formatDuration(service.duration_minutes)} • L ${Number(
                             service.price
                           ).toFixed(2)}`}
                     </p>
@@ -150,19 +165,40 @@ export default function ServicesList({
                 />
               </div>
 
-              <div>
-                <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
-                  Duración (min)
-                </label>
-                <input
-                  type="number"
-                  name="duration_minutes"
-                  min="1"
-                  defaultValue={selectedService.duration_minutes}
-                  className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
-                  required
-                />
-              </div>
+              {(() => {
+                const { hours, minutes } = splitDuration(
+                  selectedService.duration_minutes
+                );
+
+                return (
+                  <div>
+                    <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
+                      Duración
+                    </label>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="number"
+                        name="duration_hours"
+                        min="0"
+                        defaultValue={hours}
+                        className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+                        required
+                      />
+
+                      <input
+                        type="number"
+                        name="duration_minutes_input"
+                        min="0"
+                        max="59"
+                        defaultValue={minutes}
+                        className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+                        required
+                      />
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div>
                 <label className={`mb-1 block text-sm font-medium ${theme.label}`}>

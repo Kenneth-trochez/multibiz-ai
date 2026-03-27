@@ -4,11 +4,28 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+function parseDurationInMinutes(formData: FormData): number {
+  const hours = Number(formData.get("duration_hours") || 0);
+  const minutes = Number(formData.get("duration_minutes_input") || 0);
+
+  if (
+    !Number.isFinite(hours) ||
+    !Number.isFinite(minutes) ||
+    hours < 0 ||
+    minutes < 0 ||
+    minutes > 59
+  ) {
+    return NaN;
+  }
+
+  return hours * 60 + minutes;
+}
+
 export async function createServiceAction(formData: FormData): Promise<void> {
   const businessId = String(formData.get("businessId") || "").trim();
   const name = String(formData.get("name") || "").trim();
   const description = String(formData.get("description") || "").trim();
-  const durationMinutes = Number(formData.get("duration_minutes") || 0);
+  const durationMinutes = parseDurationInMinutes(formData);
   const price = Number(formData.get("price") || 0);
   const activeValue = String(formData.get("is_active") || "");
   const active = activeValue === "on" || activeValue === "true";
@@ -48,7 +65,7 @@ export async function updateServiceAction(formData: FormData): Promise<void> {
   const serviceId = String(formData.get("serviceId") || "").trim();
   const name = String(formData.get("name") || "").trim();
   const description = String(formData.get("description") || "").trim();
-  const durationMinutes = Number(formData.get("duration_minutes") || 0);
+  const durationMinutes = parseDurationInMinutes(formData);
   const price = Number(formData.get("price") || 0);
   const activeValue = String(formData.get("is_active") || "");
   const active = activeValue === "on" || activeValue === "true";

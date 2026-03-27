@@ -159,16 +159,35 @@ export default async function ServicesPage({
 
               <div>
                 <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
-                  Duración (min)
+                  Duración
                 </label>
-                <input
-                  type="number"
-                  name="duration_minutes"
-                  min="1"
-                  defaultValue="30"
-                  className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
-                  required
-                />
+
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="number"
+                    name="duration_hours"
+                    min="0"
+                    defaultValue="0"
+                    placeholder="Horas"
+                    className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+                    required
+                  />
+
+                  <input
+                    type="number"
+                    name="duration_minutes_input"
+                    min="0"
+                    max="59"
+                    defaultValue="30"
+                    placeholder="Minutos"
+                    className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+                    required
+                  />
+                </div>
+
+                <p className={`mt-1 text-xs ${theme.textMuted}`}>
+                  Ejemplo: 1 hora 30 minutos.
+                </p>
               </div>
 
               <div>
