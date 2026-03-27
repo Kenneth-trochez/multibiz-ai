@@ -18,6 +18,13 @@ const ALLOWED_BILLING_CYCLES = ["monthly", "yearly"] as const;
 type AllowedStatus = (typeof ALLOWED_STATUSES)[number];
 type AllowedBillingCycle = (typeof ALLOWED_BILLING_CYCLES)[number];
 
+function revalidateAdminPages() {
+  revalidatePath("/admin");
+  revalidatePath("/admin/businesses");
+  revalidatePath("/admin/users");
+  revalidatePath("/admin/memberships");
+}
+
 export async function updateBusinessSubscriptionAction(
   formData: FormData
 ): Promise<void> {
@@ -121,7 +128,51 @@ export async function updateBusinessSubscriptionAction(
     }
   }
 
-  revalidatePath("/admin");
-  revalidatePath("/admin/businesses");
+  revalidateAdminPages();
   redirect("/admin/businesses?success=subscription_updated");
+}
+
+export async function deleteBusinessAction(
+  formData: FormData
+): Promise<void> {
+  await requirePlatformAdmin();
+
+  const businessId = String(formData.get("businessId") || "").trim();
+  const confirmationName = String(formData.get("confirmationName") || "").trim();
+
+  if (!businessId || !confirmationName) {
+    redirect("/admin/businesses?error=Debes+completar+la+confirmacion+de+eliminacion");
+  }
+
+  const supabase = createAdminClient();
+
+  const { data: business, error: businessError } = await supabase
+    .from("businesses")
+    .select("id, name")
+    .eq("id", businessId)
+    .maybeSingle();
+
+  if (businessError || !business) {
+    redirect("/admin/businesses?error=No+se+pudo+encontrar+el+negocio");
+  }
+
+  if (confirmationName !== business.name) {
+    redirect(
+      "/admin/businesses?error=El+nombre+de+confirmacion+no+coincide+con+el+negocio"
+    );
+  }
+
+  const { error: deleteError } = await supabase
+    .from("businesses")
+    .delete()
+    .eq("id", businessId);
+
+  if (deleteError) {
+    redirect(
+      `/admin/businesses?error=${encodeURIComponent(deleteError.message)}`
+    );
+  }
+
+  revalidateAdminPages();
+  redirect("/admin/businesses?success=business_deleted");
 }

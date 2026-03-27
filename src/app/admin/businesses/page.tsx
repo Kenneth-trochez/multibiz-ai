@@ -1,6 +1,9 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requirePlatformAdmin } from "@/lib/auth/requirePlatformAdmin";
-import { updateBusinessSubscriptionAction } from "../actions/businesses";
+import {
+  deleteBusinessAction,
+  updateBusinessSubscriptionAction,
+} from "../actions/businesses";
 
 type SearchParams = Promise<{
   error?: string;
@@ -141,6 +144,12 @@ export default async function AdminBusinessesPage({
         </div>
       )}
 
+      {params.success === "business_deleted" && (
+        <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+          Negocio eliminado correctamente.
+        </div>
+      )}
+
       {error ? (
         <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-red-700">
           Error cargando negocios: {error.message}
@@ -229,70 +238,106 @@ export default async function AdminBusinessesPage({
                       </div>
                     </div>
 
-                    <div className="rounded-[1.5rem] border border-[#ead9c8] bg-[#fff7ee] p-4">
-                      <p className="mb-3 text-sm font-medium text-[#3f3128]">
-                        Administrar suscripción
-                      </p>
+                    <div className="space-y-4">
+                      <div className="rounded-[1.5rem] border border-[#ead9c8] bg-[#fff7ee] p-4">
+                        <p className="mb-3 text-sm font-medium text-[#3f3128]">
+                          Administrar suscripción
+                        </p>
 
-                      <form action={updateBusinessSubscriptionAction} className="space-y-3">
-                        <input type="hidden" name="businessId" value={business.id} />
+                        <form action={updateBusinessSubscriptionAction} className="space-y-3">
+                          <input type="hidden" name="businessId" value={business.id} />
 
-                        <div>
-                          <label className="mb-1 block text-xs text-[#6b5b4d]">
-                            Plan
-                          </label>
-                          <select
-                            name="planId"
-                            defaultValue={subscription?.plan_id || plans[0]?.id || ""}
-                            className="w-full rounded-xl border border-[#d9c6b2] bg-white px-3 py-2 text-sm text-[#2f241d] outline-none"
+                          <div>
+                            <label className="mb-1 block text-xs text-[#6b5b4d]">
+                              Plan
+                            </label>
+                            <select
+                              name="planId"
+                              defaultValue={subscription?.plan_id || plans[0]?.id || ""}
+                              className="w-full rounded-xl border border-[#d9c6b2] bg-white px-3 py-2 text-sm text-[#2f241d] outline-none"
+                            >
+                              {plans.map((plan) => (
+                                <option key={plan.id} value={plan.id}>
+                                  {plan.name} ({plan.code}) - USD{" "}
+                                  {Number(plan.price_monthly).toFixed(2)}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="mb-1 block text-xs text-[#6b5b4d]">
+                              Status
+                            </label>
+                            <select
+                              name="status"
+                              defaultValue={subscription?.status || "active"}
+                              className="w-full rounded-xl border border-[#d9c6b2] bg-white px-3 py-2 text-sm text-[#2f241d] outline-none"
+                            >
+                              <option value="trialing">trialing</option>
+                              <option value="active">active</option>
+                              <option value="past_due">past_due</option>
+                              <option value="canceled">canceled</option>
+                              <option value="inactive">inactive</option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="mb-1 block text-xs text-[#6b5b4d]">
+                              Billing cycle
+                            </label>
+                            <select
+                              name="billingCycle"
+                              defaultValue={subscription?.billing_cycle || "monthly"}
+                              className="w-full rounded-xl border border-[#d9c6b2] bg-white px-3 py-2 text-sm text-[#2f241d] outline-none"
+                            >
+                              <option value="monthly">monthly</option>
+                              <option value="yearly">yearly</option>
+                            </select>
+                          </div>
+
+                          <button
+                            type="submit"
+                            className="rounded-xl bg-[#a56a3a] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#8d582e]"
                           >
-                            {plans.map((plan) => (
-                              <option key={plan.id} value={plan.id}>
-                                {plan.name} ({plan.code}) - USD{" "}
-                                {Number(plan.price_monthly).toFixed(2)}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
+                            Guardar suscripción
+                          </button>
+                        </form>
+                      </div>
 
-                        <div>
-                          <label className="mb-1 block text-xs text-[#6b5b4d]">
-                            Status
-                          </label>
-                          <select
-                            name="status"
-                            defaultValue={subscription?.status || "active"}
-                            className="w-full rounded-xl border border-[#d9c6b2] bg-white px-3 py-2 text-sm text-[#2f241d] outline-none"
+                      <div className="rounded-[1.5rem] border border-red-200 bg-red-50 p-4">
+                        <p className="text-sm font-semibold text-red-700">
+                          Zona de peligro
+                        </p>
+                        <p className="mt-2 text-sm text-red-700/90">
+                          Esto eliminará el negocio y todos sus datos tenant relacionados.
+                          No borra usuarios globales.
+                        </p>
+
+                        <form action={deleteBusinessAction} className="mt-4 space-y-3">
+                          <input type="hidden" name="businessId" value={business.id} />
+
+                          <div>
+                            <label className="mb-1 block text-xs font-medium text-red-700">
+                              Escribe exactamente el nombre del negocio para confirmar
+                            </label>
+                            <input
+                              type="text"
+                              name="confirmationName"
+                              placeholder={business.name}
+                              className="w-full rounded-xl border border-red-200 bg-white px-3 py-2 text-sm text-[#2f241d] outline-none"
+                              required
+                            />
+                          </div>
+
+                          <button
+                            type="submit"
+                            className="rounded-xl border border-red-300 bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700"
                           >
-                            <option value="trialing">trialing</option>
-                            <option value="active">active</option>
-                            <option value="past_due">past_due</option>
-                            <option value="canceled">canceled</option>
-                            <option value="inactive">inactive</option>
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="mb-1 block text-xs text-[#6b5b4d]">
-                            Billing cycle
-                          </label>
-                          <select
-                            name="billingCycle"
-                            defaultValue={subscription?.billing_cycle || "monthly"}
-                            className="w-full rounded-xl border border-[#d9c6b2] bg-white px-3 py-2 text-sm text-[#2f241d] outline-none"
-                          >
-                            <option value="monthly">monthly</option>
-                            <option value="yearly">yearly</option>
-                          </select>
-                        </div>
-
-                        <button
-                          type="submit"
-                          className="rounded-xl bg-[#a56a3a] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#8d582e]"
-                        >
-                          Guardar suscripción
-                        </button>
-                      </form>
+                            Eliminar negocio
+                          </button>
+                        </form>
+                      </div>
                     </div>
                   </div>
                 </div>

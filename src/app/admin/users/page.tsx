@@ -26,11 +26,24 @@ type BusinessRow = {
   id: string;
   name: string;
   slug: string;
+  owner_user_id: string;
 };
 
 function formatDate(value: string | null) {
   if (!value) return "—";
   return new Date(value).toLocaleString("es-HN");
+}
+
+function roleBadgeClasses(role: "owner" | "manager" | "staff") {
+  if (role === "owner") {
+    return "border-green-200 bg-green-50 text-green-700";
+  }
+
+  if (role === "manager") {
+    return "border-blue-200 bg-blue-50 text-blue-700";
+  }
+
+  return "border-[#e7d8c7] bg-[#f8efe5] text-[#6b5b4d]";
 }
 
 export default async function AdminUsersPage() {
@@ -52,7 +65,10 @@ export default async function AdminUsersPage() {
         .select("id, business_id, user_id, role, created_at")
         .order("created_at", { ascending: false }),
 
-      supabase.from("businesses").select("id, name, slug"),
+      supabase
+        .from("businesses")
+        .select("id, name, slug, owner_user_id")
+        .order("created_at", { ascending: false }),
     ]);
 
   const error =
@@ -66,14 +82,14 @@ export default async function AdminUsersPage() {
   const members = (membersResult.data || []) as BusinessMemberRow[];
   const businesses = (businessesResult.data || []) as BusinessRow[];
 
-  const businessMap = new Map(businesses.map((business) => [business.id, business]));
+  const profileMap = new Map(profiles.map((profile) => [profile.id, profile]));
   const platformAdminSet = new Set(platformAdmins.map((item) => item.user_id));
 
-  const membersByUser = new Map<string, BusinessMemberRow[]>();
+  const membershipsByBusiness = new Map<string, BusinessMemberRow[]>();
   for (const member of members) {
-    const current = membersByUser.get(member.user_id) || [];
+    const current = membershipsByBusiness.get(member.business_id) || [];
     current.push(member);
-    membersByUser.set(member.user_id, current);
+    membershipsByBusiness.set(member.business_id, current);
   }
 
   const profileIds = new Set(profiles.map((profile) => profile.id));
@@ -90,7 +106,7 @@ export default async function AdminUsersPage() {
       <div className="rounded-[2rem] border border-[#e7d8c7] bg-[#fffaf3] p-6 shadow-sm">
         <h2 className="text-3xl font-bold text-[#2f241d]">Usuarios</h2>
         <p className="mt-2 text-sm text-[#6b5b4d]">
-          Vista global de perfiles, membresías y admins internos.
+          Vista agrupada por negocio para revisar usuarios, roles y accesos internos.
         </p>
       </div>
 
@@ -103,126 +119,239 @@ export default async function AdminUsersPage() {
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-[1.5rem] border border-[#e7d8c7] bg-[#fffaf3] p-5 shadow-sm">
               <p className="text-sm text-[#6b5b4d]">Perfiles</p>
-              <p className="mt-2 text-3xl font-bold text-[#2f241d]">{profiles.length}</p>
+              <p className="mt-2 text-3xl font-bold text-[#2f241d]">
+                {profiles.length}
+              </p>
             </div>
 
             <div className="rounded-[1.5rem] border border-[#e7d8c7] bg-[#fffaf3] p-5 shadow-sm">
               <p className="text-sm text-[#6b5b4d]">Platform admins</p>
-              <p className="mt-2 text-3xl font-bold text-[#2f241d]">{platformAdmins.length}</p>
+              <p className="mt-2 text-3xl font-bold text-[#2f241d]">
+                {platformAdmins.length}
+              </p>
             </div>
 
             <div className="rounded-[1.5rem] border border-[#e7d8c7] bg-[#fffaf3] p-5 shadow-sm">
-              <p className="text-sm text-[#6b5b4d]">Usuarios con negocios</p>
-              <p className="mt-2 text-3xl font-bold text-[#2f241d]">{membersByUser.size}</p>
+              <p className="text-sm text-[#6b5b4d]">Negocios</p>
+              <p className="mt-2 text-3xl font-bold text-[#2f241d]">
+                {businesses.length}
+              </p>
             </div>
 
             <div className="rounded-[1.5rem] border border-[#e7d8c7] bg-[#fffaf3] p-5 shadow-sm">
               <p className="text-sm text-[#6b5b4d]">Vinculaciones huérfanas</p>
-              <p className="mt-2 text-3xl font-bold text-[#2f241d]">{orphanMembershipUserIds.length}</p>
+              <p className="mt-2 text-3xl font-bold text-[#2f241d]">
+                {orphanMembershipUserIds.length}
+              </p>
             </div>
           </div>
 
-          {profiles.length === 0 ? (
+          {businesses.length === 0 ? (
             <div className="rounded-[1.5rem] border border-[#e7d8c7] bg-[#fffaf3] p-6 text-[#6b5b4d] shadow-sm">
-              No hay perfiles registrados.
+              No hay negocios registrados.
             </div>
           ) : (
-            <div className="space-y-4">
-              {profiles.map((profile) => {
-                const userMemberships = membersByUser.get(profile.id) || [];
-                const isPlatformAdmin = platformAdminSet.has(profile.id);
+            <div className="space-y-5">
+              {businesses.map((business) => {
+                const businessMemberships = membershipsByBusiness.get(business.id) || [];
+
+                const ownerMembers = businessMemberships.filter(
+                  (member) => member.role === "owner"
+                );
+                const managerMembers = businessMemberships.filter(
+                  (member) => member.role === "manager"
+                );
+                const staffMembers = businessMemberships.filter(
+                  (member) => member.role === "staff"
+                );
+
+                const totalUsers = businessMemberships.length;
 
                 return (
-                  <div
-                    key={profile.id}
+                  <section
+                    key={business.id}
                     className="rounded-[1.5rem] border border-[#e7d8c7] bg-[#fffaf3] p-5 shadow-sm"
                   >
-                    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-3">
-                          <h3 className="text-lg font-semibold text-[#2f241d]">
-                            {profile.full_name?.trim() || "Sin nombre"}
-                          </h3>
+                    <div className="border-b border-[#ead9c8] pb-4">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <h3 className="text-xl font-semibold text-[#2f241d]">
+                          {business.name}
+                        </h3>
 
-                          {isPlatformAdmin && (
-                            <span className="rounded-full border border-green-200 bg-green-50 px-3 py-1 text-xs text-green-700">
-                              Platform admin
-                            </span>
-                          )}
-
-                          {userMemberships.length === 0 && (
-                            <span className="rounded-full border border-yellow-200 bg-yellow-50 px-3 py-1 text-xs text-yellow-700">
-                              Sin negocios
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="mt-3 grid gap-3 text-sm text-[#6b5b4d] md:grid-cols-2">
-                          <div className="min-w-0">
-                            <p className="font-medium text-[#3f3128]">User ID:</p>
-                            <p className="break-all">{profile.id}</p>
-                          </div>
-
-                          <div className="min-w-0">
-                            <p className="font-medium text-[#3f3128]">Email:</p>
-                            <p className="break-all">{profile.email || "—"}</p>
-                          </div>
-
-                          <div>
-                            <p className="font-medium text-[#3f3128]">Creado:</p>
-                            <p>{formatDate(profile.created_at)}</p>
-                          </div>
-
-                          <div>
-                            <p className="font-medium text-[#3f3128]">Actualizado:</p>
-                            <p>{formatDate(profile.updated_at)}</p>
-                          </div>
-                        </div>
+                        <span className="rounded-full border border-[#e7d8c7] bg-[#f8efe5] px-3 py-1 text-xs text-[#6b5b4d]">
+                          {business.slug}
+                        </span>
                       </div>
 
-                      <div className="w-full rounded-[1.5rem] border border-[#ead9c8] bg-[#fff7ee] p-4">
-                        <p className="mb-3 text-sm font-medium text-[#3f3128]">
-                          Negocios vinculados ({userMemberships.length})
+                      <div className="mt-3 grid gap-2 text-sm text-[#6b5b4d] md:grid-cols-2 xl:grid-cols-4">
+                        <p>
+                          <span className="font-medium text-[#3f3128]">Business ID:</span>{" "}
+                          {business.id}
                         </p>
-
-                        {userMemberships.length === 0 ? (
-                          <p className="text-sm text-[#6b5b4d]">
-                            Este usuario no tiene memberships en negocios.
-                          </p>
-                        ) : (
-                          <div className="space-y-2">
-                            {userMemberships.map((membership) => {
-                              const business = businessMap.get(membership.business_id);
-
-                              return (
-                                <div
-                                  key={membership.id}
-                                  className="rounded-xl border border-[#ead9c8] bg-white px-3 py-2"
-                                >
-                                  <div className="flex flex-wrap items-center justify-between gap-3">
-                                    <div className="min-w-0">
-                                      <p className="text-sm font-medium text-[#2f241d]">
-                                        {business?.name || "Negocio no encontrado"}
-                                      </p>
-                                      <p className="break-all text-xs text-[#6b5b4d]">
-                                        {business?.slug || membership.business_id}
-                                      </p>
-                                    </div>
-
-                                    <span className="rounded-full border border-[#e7d8c7] bg-[#f8efe5] px-3 py-1 text-xs text-[#6b5b4d]">
-                                      {membership.role}
-                                    </span>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
+                        <p>
+                          <span className="font-medium text-[#3f3128]">Owner user ID:</span>{" "}
+                          {business.owner_user_id}
+                        </p>
+                        <p>
+                          <span className="font-medium text-[#3f3128]">Usuarios vinculados:</span>{" "}
+                          {totalUsers}
+                        </p>
+                        <p>
+                          <span className="font-medium text-[#3f3128]">Owners / Managers / Staff:</span>{" "}
+                          {ownerMembers.length} / {managerMembers.length} / {staffMembers.length}
+                        </p>
                       </div>
                     </div>
-                  </div>
+
+                    {businessMemberships.length === 0 ? (
+                      <div className="pt-4 text-sm text-[#6b5b4d]">
+                        Este negocio no tiene usuarios vinculados.
+                      </div>
+                    ) : (
+                      <div className="space-y-6 pt-5">
+                        {[
+                          { title: "Owners", items: ownerMembers },
+                          { title: "Managers", items: managerMembers },
+                          { title: "Staff", items: staffMembers },
+                        ].map((group) => (
+                          <div key={group.title}>
+                            <h4 className="mb-3 text-sm font-semibold uppercase tracking-[0.15em] text-[#8d582e]">
+                              {group.title}
+                            </h4>
+
+                            {group.items.length === 0 ? (
+                              <div className="rounded-xl border border-[#ead9c8] bg-[#fff7ee] px-4 py-3 text-sm text-[#6b5b4d]">
+                                No hay usuarios en esta categoría.
+                              </div>
+                            ) : (
+                              <div className="space-y-3">
+                                {group.items.map((membership) => {
+                                  const profile = profileMap.get(membership.user_id);
+                                  const isPlatformAdmin = platformAdminSet.has(
+                                    membership.user_id
+                                  );
+                                  const isMainOwner =
+                                    membership.user_id === business.owner_user_id &&
+                                    membership.role === "owner";
+
+                                  return (
+                                    <div
+                                      key={membership.id}
+                                      className="rounded-[1.25rem] border border-[#ead9c8] bg-[#fff7ee] p-4"
+                                    >
+                                      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                                        <div className="min-w-0 flex-1">
+                                          <div className="flex flex-wrap items-center gap-3">
+                                            <h5 className="text-base font-semibold text-[#2f241d]">
+                                              {profile?.full_name?.trim() || "Sin nombre"}
+                                            </h5>
+
+                                            <span
+                                              className={`rounded-full border px-3 py-1 text-xs ${roleBadgeClasses(
+                                                membership.role
+                                              )}`}
+                                            >
+                                              {membership.role}
+                                            </span>
+
+                                            {isMainOwner && (
+                                              <span className="rounded-full border border-green-200 bg-green-50 px-3 py-1 text-xs text-green-700">
+                                                Owner principal
+                                              </span>
+                                            )}
+
+                                            {isPlatformAdmin && (
+                                              <span className="rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-xs text-purple-700">
+                                                Platform admin
+                                              </span>
+                                            )}
+                                          </div>
+
+                                          <div className="mt-3 grid gap-3 text-sm text-[#6b5b4d] md:grid-cols-2">
+                                            <div className="min-w-0">
+                                              <p className="font-medium text-[#3f3128]">Email</p>
+                                              <p className="break-all">
+                                                {profile?.email || "—"}
+                                              </p>
+                                            </div>
+
+                                            <div className="min-w-0">
+                                              <p className="font-medium text-[#3f3128]">User ID</p>
+                                              <p className="break-all">
+                                                {membership.user_id}
+                                              </p>
+                                            </div>
+
+                                            <div>
+                                              <p className="font-medium text-[#3f3128]">Creado perfil</p>
+                                              <p>{formatDate(profile?.created_at || null)}</p>
+                                            </div>
+
+                                            <div>
+                                              <p className="font-medium text-[#3f3128]">Creado membership</p>
+                                              <p>{formatDate(membership.created_at)}</p>
+                                            </div>
+                                          </div>
+                                        </div>
+
+                                        <div className="w-full max-w-xs rounded-[1.25rem] border border-[#ead9c8] bg-white p-4">
+                                          <p className="text-sm font-medium text-[#3f3128]">
+                                            Resumen rápido
+                                          </p>
+
+                                          <div className="mt-3 space-y-2 text-sm text-[#6b5b4d]">
+                                            <p>
+                                              <span className="font-medium text-[#3f3128]">Negocio:</span>{" "}
+                                              {business.name}
+                                            </p>
+                                            <p>
+                                              <span className="font-medium text-[#3f3128]">Rol:</span>{" "}
+                                              {membership.role}
+                                            </p>
+                                            <p>
+                                              <span className="font-medium text-[#3f3128]">Membership ID:</span>
+                                            </p>
+                                            <p className="break-all text-xs">
+                                              {membership.id}
+                                            </p>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </section>
                 );
               })}
+            </div>
+          )}
+
+          {orphanMembershipUserIds.length > 0 && (
+            <div className="rounded-[1.5rem] border border-yellow-200 bg-yellow-50 p-5 shadow-sm">
+              <h3 className="text-lg font-semibold text-[#5a3d2a]">
+                Vinculaciones sin perfil
+              </h3>
+              <p className="mt-2 text-sm text-[#7a5a45]">
+                Hay memberships cuyo `user_id` no aparece en `profiles`. Esto puede
+                indicar datos incompletos o usuarios creados sin perfil sincronizado.
+              </p>
+
+              <div className="mt-4 space-y-2">
+                {orphanMembershipUserIds.map((userId) => (
+                  <div
+                    key={userId}
+                    className="rounded-xl border border-yellow-200 bg-white px-3 py-2 text-sm text-[#5a3d2a] break-all"
+                  >
+                    {userId}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </>

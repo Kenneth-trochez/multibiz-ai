@@ -37,6 +37,18 @@ function formatDate(value: string) {
   return new Date(value).toLocaleString("es-HN");
 }
 
+function roleBadgeClasses(role: "owner" | "manager" | "staff") {
+  if (role === "owner") {
+    return "border-green-200 bg-green-50 text-green-700";
+  }
+
+  if (role === "manager") {
+    return "border-blue-200 bg-blue-50 text-blue-700";
+  }
+
+  return "border-[#e7d8c7] bg-[#f8efe5] text-[#6b5b4d]";
+}
+
 export default async function AdminMembershipsPage({
   searchParams,
 }: {
@@ -71,17 +83,23 @@ export default async function AdminMembershipsPage({
   const businesses = (businessesResult.data || []) as BusinessRow[];
   const profiles = (profilesResult.data || []) as ProfileRow[];
 
-  const businessMap = new Map(businesses.map((business) => [business.id, business]));
   const profileMap = new Map(profiles.map((profile) => [profile.id, profile]));
+
+  const membershipsByBusiness = new Map<string, BusinessMemberRow[]>();
+  for (const member of members) {
+    const current = membershipsByBusiness.get(member.business_id) || [];
+    current.push(member);
+    membershipsByBusiness.set(member.business_id, current);
+  }
 
   const ownerMembershipIssues: BusinessRow[] = [];
 
   for (const business of businesses) {
-    const ownerMembership = members.find(
+    const businessMemberships = membershipsByBusiness.get(business.id) || [];
+
+    const ownerMembership = businessMemberships.find(
       (member) =>
-        member.business_id === business.id &&
-        member.user_id === business.owner_user_id &&
-        member.role === "owner"
+        member.user_id === business.owner_user_id && member.role === "owner"
     );
 
     if (!ownerMembership) {
@@ -94,7 +112,7 @@ export default async function AdminMembershipsPage({
       <div className="rounded-[2rem] border border-[#e7d8c7] bg-[#fffaf3] p-6 shadow-sm">
         <h2 className="text-3xl font-bold text-[#2f241d]">Vinculaciones</h2>
         <p className="mt-2 text-sm text-[#6b5b4d]">
-          Revisión técnica y administración manual de relaciones entre usuarios y negocios.
+          Administración de relaciones entre usuarios y negocios, agrupadas por cliente.
         </p>
       </div>
 
@@ -134,7 +152,7 @@ export default async function AdminMembershipsPage({
         </div>
       ) : (
         <>
-          <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+          <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
             <section className="rounded-[1.5rem] border border-[#e7d8c7] bg-[#fffaf3] p-5 shadow-sm">
               <h3 className="text-xl font-semibold text-[#2f241d]">
                 Crear vinculación manual
@@ -214,7 +232,7 @@ export default async function AdminMembershipsPage({
                 Inconsistencias owner
               </h3>
               <p className="mt-1 text-sm text-[#6b5b4d]">
-                Corrige negocios cuyo `owner_user_id` no coincide con una membership owner.
+                Negocios donde `owner_user_id` no tiene una membership con rol `owner`.
               </p>
 
               <div className="mt-4 space-y-3">
@@ -229,6 +247,7 @@ export default async function AdminMembershipsPage({
                       className="rounded-xl border border-yellow-200 bg-yellow-50 p-3"
                     >
                       <p className="font-medium text-[#5a3d2a]">{business.name}</p>
+                      <p className="mt-1 text-xs text-[#7a5a45]">{business.slug}</p>
                       <p className="mt-1 break-all text-xs text-[#7a5a45]">
                         owner_user_id: {business.owner_user_id}
                       </p>
@@ -249,119 +268,231 @@ export default async function AdminMembershipsPage({
             </section>
           </div>
 
-          {members.length === 0 ? (
+          {businesses.length === 0 ? (
             <div className="rounded-[1.5rem] border border-[#e7d8c7] bg-[#fffaf3] p-6 text-[#6b5b4d] shadow-sm">
-              No hay vinculaciones registradas.
+              No hay negocios registrados.
             </div>
           ) : (
-            <div className="space-y-4">
-              {members.map((membership) => {
-                const business = businessMap.get(membership.business_id);
-                const profile = profileMap.get(membership.user_id);
-                const isExpectedOwner =
-                  business?.owner_user_id === membership.user_id &&
-                  membership.role === "owner";
+            <div className="space-y-5">
+              {businesses.map((business) => {
+                const businessMemberships = membershipsByBusiness.get(business.id) || [];
+
+                const ownerMembers = businessMemberships.filter(
+                  (member) => member.role === "owner"
+                );
+                const managerMembers = businessMemberships.filter(
+                  (member) => member.role === "manager"
+                );
+                const staffMembers = businessMemberships.filter(
+                  (member) => member.role === "staff"
+                );
+
+                const hasConsistentOwner = ownerMembers.some(
+                  (member) => member.user_id === business.owner_user_id
+                );
 
                 return (
-                  <div
-                    key={membership.id}
+                  <section
+                    key={business.id}
                     className="rounded-[1.5rem] border border-[#e7d8c7] bg-[#fffaf3] p-5 shadow-sm"
                   >
-                    <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_320px]">
-                      <div className="min-w-0">
+                    <div className="flex flex-col gap-4 border-b border-[#ead9c8] pb-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div>
                         <div className="flex flex-wrap items-center gap-3">
-                          <h3 className="text-lg font-semibold text-[#2f241d]">
-                            {business?.name || "Negocio no encontrado"}
+                          <h3 className="text-xl font-semibold text-[#2f241d]">
+                            {business.name}
                           </h3>
 
                           <span className="rounded-full border border-[#e7d8c7] bg-[#f8efe5] px-3 py-1 text-xs text-[#6b5b4d]">
-                            {membership.role}
+                            {business.slug}
                           </span>
 
-                          {isExpectedOwner && (
+                          {hasConsistentOwner ? (
                             <span className="rounded-full border border-green-200 bg-green-50 px-3 py-1 text-xs text-green-700">
                               Owner consistente
+                            </span>
+                          ) : (
+                            <span className="rounded-full border border-yellow-200 bg-yellow-50 px-3 py-1 text-xs text-yellow-700">
+                              Revisar owner
                             </span>
                           )}
                         </div>
 
-                        <div className="mt-3 grid gap-3 text-sm text-[#6b5b4d] md:grid-cols-2">
-                          <div>
-                            <p className="font-medium text-[#3f3128]">Negocio</p>
-                            <p>{business?.slug || membership.business_id}</p>
-                          </div>
-
-                          <div className="min-w-0">
-                            <p className="font-medium text-[#3f3128]">Usuario</p>
-                            <p>{profile?.full_name || "Sin nombre"}</p>
-                            <p className="break-all text-xs text-[#6b5b4d]">
-                              {membership.user_id}
-                            </p>
-                          </div>
-
-                          <div className="min-w-0">
-                            <p className="font-medium text-[#3f3128]">Email</p>
-                            <p className="break-all">{profile?.email || "—"}</p>
-                          </div>
-
-                          <div>
-                            <p className="font-medium text-[#3f3128]">Creado</p>
-                            <p>{formatDate(membership.created_at)}</p>
-                          </div>
+                        <div className="mt-3 grid gap-2 text-sm text-[#6b5b4d] md:grid-cols-2">
+                          <p>
+                            <span className="font-medium text-[#3f3128]">Business ID:</span>{" "}
+                            {business.id}
+                          </p>
+                          <p>
+                            <span className="font-medium text-[#3f3128]">Owner user ID:</span>{" "}
+                            {business.owner_user_id}
+                          </p>
+                          <p>
+                            <span className="font-medium text-[#3f3128]">Total vinculaciones:</span>{" "}
+                            {businessMemberships.length}
+                          </p>
+                          <p>
+                            <span className="font-medium text-[#3f3128]">Owners / Managers / Staff:</span>{" "}
+                            {ownerMembers.length} / {managerMembers.length} / {staffMembers.length}
+                          </p>
                         </div>
                       </div>
 
-                      <div className="rounded-[1.5rem] border border-[#ead9c8] bg-[#fff7ee] p-4">
-                        <p className="mb-3 text-sm font-medium text-[#3f3128]">
-                          Administrar vinculación
-                        </p>
-
-                        <form action={updateMembershipRoleAction} className="space-y-3">
-                          <input
-                            type="hidden"
-                            name="membershipId"
-                            value={membership.id}
-                          />
-
-                          <div>
-                            <label className="mb-1 block text-xs text-[#6b5b4d]">
-                              Rol
-                            </label>
-                            <select
-                              name="role"
-                              defaultValue={membership.role}
-                              className="w-full rounded-xl border border-[#d9c6b2] bg-white px-3 py-2 text-sm text-[#2f241d] outline-none"
-                            >
-                              <option value="owner">owner</option>
-                              <option value="manager">manager</option>
-                              <option value="staff">staff</option>
-                            </select>
-                          </div>
-
+                      {!hasConsistentOwner && (
+                        <form action={syncOwnerMembershipAction}>
+                          <input type="hidden" name="businessId" value={business.id} />
                           <button
                             type="submit"
-                            className="w-full rounded-xl bg-[#a56a3a] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#8d582e]"
+                            className="rounded-xl bg-[#f0d9b5] px-4 py-2 text-sm font-medium text-[#5a3d2a] transition hover:bg-[#e8c998]"
                           >
-                            Guardar rol
+                            Sincronizar owner
                           </button>
                         </form>
-
-                        <form action={deleteMembershipAction} className="mt-3">
-                          <input
-                            type="hidden"
-                            name="membershipId"
-                            value={membership.id}
-                          />
-                          <button
-                            type="submit"
-                            className="w-full rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100"
-                          >
-                            Eliminar vinculación
-                          </button>
-                        </form>
-                      </div>
+                      )}
                     </div>
-                  </div>
+
+                    {businessMemberships.length === 0 ? (
+                      <div className="pt-4 text-sm text-[#6b5b4d]">
+                        Este negocio no tiene vinculaciones registradas.
+                      </div>
+                    ) : (
+                      <div className="space-y-6 pt-5">
+                        {[
+                          { title: "Owners", items: ownerMembers },
+                          { title: "Managers", items: managerMembers },
+                          { title: "Staff", items: staffMembers },
+                        ].map((group) => (
+                          <div key={group.title}>
+                            <h4 className="mb-3 text-sm font-semibold uppercase tracking-[0.15em] text-[#8d582e]">
+                              {group.title}
+                            </h4>
+
+                            {group.items.length === 0 ? (
+                              <div className="rounded-xl border border-[#ead9c8] bg-[#fff7ee] px-4 py-3 text-sm text-[#6b5b4d]">
+                                No hay usuarios en esta categoría.
+                              </div>
+                            ) : (
+                              <div className="space-y-3">
+                                {group.items.map((membership) => {
+                                  const profile = profileMap.get(membership.user_id);
+                                  const isExpectedOwner =
+                                    membership.user_id === business.owner_user_id &&
+                                    membership.role === "owner";
+
+                                  return (
+                                    <div
+                                      key={membership.id}
+                                      className="grid gap-4 rounded-[1.25rem] border border-[#ead9c8] bg-[#fff7ee] p-4 2xl:grid-cols-[minmax(0,1fr)_320px]"
+                                    >
+                                      <div className="min-w-0">
+                                        <div className="flex flex-wrap items-center gap-3">
+                                          <h5 className="text-base font-semibold text-[#2f241d]">
+                                            {profile?.full_name?.trim() || "Sin nombre"}
+                                          </h5>
+
+                                          <span
+                                            className={`rounded-full border px-3 py-1 text-xs ${roleBadgeClasses(
+                                              membership.role
+                                            )}`}
+                                          >
+                                            {membership.role}
+                                          </span>
+
+                                          {isExpectedOwner && (
+                                            <span className="rounded-full border border-green-200 bg-green-50 px-3 py-1 text-xs text-green-700">
+                                              Owner principal
+                                            </span>
+                                          )}
+                                        </div>
+
+                                        <div className="mt-3 grid gap-3 text-sm text-[#6b5b4d] md:grid-cols-2">
+                                          <div className="min-w-0">
+                                            <p className="font-medium text-[#3f3128]">Email</p>
+                                            <p className="break-all">{profile?.email || "—"}</p>
+                                          </div>
+
+                                          <div className="min-w-0">
+                                            <p className="font-medium text-[#3f3128]">User ID</p>
+                                            <p className="break-all">{membership.user_id}</p>
+                                          </div>
+
+                                          <div>
+                                            <p className="font-medium text-[#3f3128]">Creado</p>
+                                            <p>{formatDate(membership.created_at)}</p>
+                                          </div>
+
+                                          <div>
+                                            <p className="font-medium text-[#3f3128]">Membership ID</p>
+                                            <p className="break-all">{membership.id}</p>
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      <div className="rounded-[1.25rem] border border-[#ead9c8] bg-white p-4">
+                                        <p className="mb-3 text-sm font-medium text-[#3f3128]">
+                                          Administrar vinculación
+                                        </p>
+
+                                        <form
+                                          action={updateMembershipRoleAction}
+                                          className="space-y-3"
+                                        >
+                                          <input
+                                            type="hidden"
+                                            name="membershipId"
+                                            value={membership.id}
+                                          />
+
+                                          <div>
+                                            <label className="mb-1 block text-xs text-[#6b5b4d]">
+                                              Rol
+                                            </label>
+                                            <select
+                                              name="role"
+                                              defaultValue={membership.role}
+                                              className="w-full rounded-xl border border-[#d9c6b2] bg-white px-3 py-2 text-sm text-[#2f241d] outline-none"
+                                            >
+                                              <option value="owner">owner</option>
+                                              <option value="manager">manager</option>
+                                              <option value="staff">staff</option>
+                                            </select>
+                                          </div>
+
+                                          <button
+                                            type="submit"
+                                            className="w-full rounded-xl bg-[#a56a3a] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#8d582e]"
+                                          >
+                                            Guardar rol
+                                          </button>
+                                        </form>
+
+                                        <form
+                                          action={deleteMembershipAction}
+                                          className="mt-3"
+                                        >
+                                          <input
+                                            type="hidden"
+                                            name="membershipId"
+                                            value={membership.id}
+                                          />
+                                          <button
+                                            type="submit"
+                                            className="w-full rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100"
+                                          >
+                                            Eliminar vinculación
+                                          </button>
+                                        </form>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </section>
                 );
               })}
             </div>
