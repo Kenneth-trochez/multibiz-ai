@@ -22,9 +22,9 @@ export default async function AdminHomePage() {
   ]);
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-[2rem] border border-[#e7d8c7] bg-[#fffaf3] p-6 shadow-sm">
-        <h2 className="text-3xl font-bold text-[#2f241d]">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="rounded-[2rem] border border-[#e7d8c7] bg-[#fffaf3] p-5 shadow-sm sm:p-6">
+        <h2 className="text-2xl font-bold text-[#2f241d] sm:text-3xl">
           Resumen global del SaaS
         </h2>
         <p className="mt-2 text-sm text-[#6b5b4d]">
@@ -32,37 +32,37 @@ export default async function AdminHomePage() {
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-[1.5rem] border border-[#e7d8c7] bg-[#fffaf3] p-5 shadow-sm">
+      <div className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="rounded-[1.5rem] border border-[#e7d8c7] bg-[#fffaf3] p-4 shadow-sm sm:p-5">
           <p className="text-sm text-[#6b5b4d]">Negocios</p>
-          <p className="mt-2 text-3xl font-bold text-[#2f241d]">
+          <p className="mt-2 text-2xl font-bold text-[#2f241d] sm:text-3xl">
             {businessesCount || 0}
           </p>
         </div>
 
-        <div className="rounded-[1.5rem] border border-[#e7d8c7] bg-[#fffaf3] p-5 shadow-sm">
+        <div className="rounded-[1.5rem] border border-[#e7d8c7] bg-[#fffaf3] p-4 shadow-sm sm:p-5">
           <p className="text-sm text-[#6b5b4d]">Vinculaciones</p>
-          <p className="mt-2 text-3xl font-bold text-[#2f241d]">
+          <p className="mt-2 text-2xl font-bold text-[#2f241d] sm:text-3xl">
             {membersCount || 0}
           </p>
         </div>
 
-        <div className="rounded-[1.5rem] border border-[#e7d8c7] bg-[#fffaf3] p-5 shadow-sm">
+        <div className="rounded-[1.5rem] border border-[#e7d8c7] bg-[#fffaf3] p-4 shadow-sm sm:p-5">
           <p className="text-sm text-[#6b5b4d]">Usuarios</p>
-          <p className="mt-2 text-3xl font-bold text-[#2f241d]">
+          <p className="mt-2 text-2xl font-bold text-[#2f241d] sm:text-3xl">
             {usersCount || 0}
           </p>
         </div>
 
-        <div className="rounded-[1.5rem] border border-[#e7d8c7] bg-[#fffaf3] p-5 shadow-sm">
+        <div className="rounded-[1.5rem] border border-[#e7d8c7] bg-[#fffaf3] p-4 shadow-sm sm:p-5">
           <p className="text-sm text-[#6b5b4d]">Suscripciones</p>
-          <p className="mt-2 text-3xl font-bold text-[#2f241d]">
+          <p className="mt-2 text-2xl font-bold text-[#2f241d] sm:text-3xl">
             {subscriptionsCount || 0}
           </p>
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
         <Link
           href="/admin/businesses"
           className="rounded-[1.5rem] border border-[#e7d8c7] bg-[#fffaf3] p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
@@ -70,7 +70,7 @@ export default async function AdminHomePage() {
           <p className="text-sm uppercase tracking-[0.18em] text-[#8d582e]">
             Negocios
           </p>
-          <h3 className="mt-2 text-xl font-semibold text-[#2f241d]">
+          <h3 className="mt-2 text-lg font-semibold text-[#2f241d] sm:text-xl">
             Administrar negocios
           </h3>
           <p className="mt-2 text-sm text-[#6b5b4d]">
@@ -85,7 +85,7 @@ export default async function AdminHomePage() {
           <p className="text-sm uppercase tracking-[0.18em] text-[#8d582e]">
             Usuarios
           </p>
-          <h3 className="mt-2 text-xl font-semibold text-[#2f241d]">
+          <h3 className="mt-2 text-lg font-semibold text-[#2f241d] sm:text-xl">
             Revisar usuarios
           </h3>
           <p className="mt-2 text-sm text-[#6b5b4d]">
@@ -95,12 +95,12 @@ export default async function AdminHomePage() {
 
         <Link
           href="/admin/memberships"
-          className="rounded-[1.5rem] border border-[#e7d8c7] bg-[#fffaf3] p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+          className="rounded-[1.5rem] border border-[#e7d8c7] bg-[#fffaf3] p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md md:col-span-2 xl:col-span-1"
         >
           <p className="text-sm uppercase tracking-[0.18em] text-[#8d582e]">
             Vinculaciones
           </p>
-          <h3 className="mt-2 text-xl font-semibold text-[#2f241d]">
+          <h3 className="mt-2 text-lg font-semibold text-[#2f241d] sm:text-xl">
             Corregir relaciones
           </h3>
           <p className="mt-2 text-sm text-[#6b5b4d]">

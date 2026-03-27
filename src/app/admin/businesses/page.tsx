@@ -124,9 +124,9 @@ export default async function AdminBusinessesPage({
   );
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-[2rem] border border-[#e7d8c7] bg-[#fffaf3] p-6 shadow-sm">
-        <h2 className="text-3xl font-bold text-[#2f241d]">Negocios</h2>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="rounded-[2rem] border border-[#e7d8c7] bg-[#fffaf3] p-5 shadow-sm sm:p-6">
+        <h2 className="text-2xl font-bold text-[#2f241d] sm:text-3xl">Negocios</h2>
         <p className="mt-2 text-sm text-[#6b5b4d]">
           Administra negocios y su suscripción real del SaaS.
         </p>
@@ -169,12 +169,12 @@ export default async function AdminBusinessesPage({
             return (
               <div
                 key={business.id}
-                className="rounded-[1.5rem] border border-[#e7d8c7] bg-[#fffaf3] p-5 shadow-sm"
+                className="rounded-[1.5rem] border border-[#e7d8c7] bg-[#fffaf3] p-4 shadow-sm sm:p-5"
               >
-                <div className="flex flex-col gap-5 2xl:flex-row 2xl:items-start 2xl:justify-between">
+                <div className="flex flex-col gap-4 xl:gap-5 2xl:flex-row 2xl:items-start 2xl:justify-between">
                   <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-3">
-                      <h3 className="text-lg font-semibold text-[#2f241d]">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                      <h3 className="text-base font-semibold text-[#2f241d] sm:text-lg">
                         {business.name}
                       </h3>
 
@@ -193,10 +193,10 @@ export default async function AdminBusinessesPage({
                       )}
                     </div>
 
-                    <div className="mt-3 grid gap-2 text-sm text-[#6b5b4d] md:grid-cols-2">
-                      <p><span className="font-medium text-[#3f3128]">Business ID:</span> {business.id}</p>
-                      <p><span className="font-medium text-[#3f3128]">Slug:</span> {business.slug}</p>
-                      <p><span className="font-medium text-[#3f3128]">Owner user ID:</span> {business.owner_user_id}</p>
+                    <div className="mt-3 grid gap-2 text-sm text-[#6b5b4d] sm:grid-cols-2">
+                      <p className="break-all"><span className="font-medium text-[#3f3128]">Business ID:</span> {business.id}</p>
+                      <p className="break-all"><span className="font-medium text-[#3f3128]">Slug:</span> {business.slug}</p>
+                      <p className="break-all"><span className="font-medium text-[#3f3128]">Owner user ID:</span> {business.owner_user_id}</p>
                       <p><span className="font-medium text-[#3f3128]">Icono:</span> {business.default_icon}</p>
                       <p><span className="font-medium text-[#3f3128]">Teléfono:</span> {business.phone || "—"}</p>
                       <p><span className="font-medium text-[#3f3128]">Dirección:</span> {business.address || "—"}</p>
@@ -209,7 +209,7 @@ export default async function AdminBusinessesPage({
                     </div>
                   </div>
 
-                  <div className="grid w-full gap-4 xl:grid-cols-[260px_minmax(320px,420px)] 2xl:w-auto">
+                  <div className="grid w-full gap-4 xl:grid-cols-2 2xl:w-auto 2xl:grid-cols-[260px_minmax(320px,420px)]">
                     <div className="rounded-[1.5rem] border border-[#ead9c8] bg-[#fff7ee] p-4">
                       <p className="text-sm font-medium text-[#3f3128]">
                         Branding rápido
@@ -298,7 +298,7 @@ export default async function AdminBusinessesPage({
 
                           <button
                             type="submit"
-                            className="rounded-xl bg-[#a56a3a] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#8d582e]"
+                            className="w-full rounded-xl bg-[#a56a3a] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#8d582e] sm:w-auto"
                           >
                             Guardar suscripción
                           </button>
@@ -332,7 +332,7 @@ export default async function AdminBusinessesPage({
 
                           <button
                             type="submit"
-                            className="rounded-xl border border-red-300 bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700"
+                            className="w-full rounded-xl border border-red-300 bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 sm:w-auto"
                           >
                             Eliminar negocio
                           </button>

@@ -35,14 +35,8 @@ function formatDate(value: string | null) {
 }
 
 function roleBadgeClasses(role: "owner" | "manager" | "staff") {
-  if (role === "owner") {
-    return "border-green-200 bg-green-50 text-green-700";
-  }
-
-  if (role === "manager") {
-    return "border-blue-200 bg-blue-50 text-blue-700";
-  }
-
+  if (role === "owner") return "border-green-200 bg-green-50 text-green-700";
+  if (role === "manager") return "border-blue-200 bg-blue-50 text-blue-700";
   return "border-[#e7d8c7] bg-[#f8efe5] text-[#6b5b4d]";
 }
 
@@ -57,14 +51,11 @@ export default async function AdminUsersPage() {
         .from("profiles")
         .select("id, email, full_name, avatar_url, created_at, updated_at")
         .order("created_at", { ascending: false }),
-
       supabase.from("platform_admins").select("user_id"),
-
       supabase
         .from("business_members")
         .select("id, business_id, user_id, role, created_at")
         .order("created_at", { ascending: false }),
-
       supabase
         .from("businesses")
         .select("id, name, slug, owner_user_id")
@@ -95,16 +86,14 @@ export default async function AdminUsersPage() {
   const profileIds = new Set(profiles.map((profile) => profile.id));
   const orphanMembershipUserIds = [
     ...new Set(
-      members
-        .map((member) => member.user_id)
-        .filter((userId) => !profileIds.has(userId))
+      members.map((member) => member.user_id).filter((userId) => !profileIds.has(userId))
     ),
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-[2rem] border border-[#e7d8c7] bg-[#fffaf3] p-6 shadow-sm">
-        <h2 className="text-3xl font-bold text-[#2f241d]">Usuarios</h2>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="rounded-[2rem] border border-[#e7d8c7] bg-[#fffaf3] p-5 shadow-sm sm:p-6">
+        <h2 className="text-2xl font-bold text-[#2f241d] sm:text-3xl">Usuarios</h2>
         <p className="mt-2 text-sm text-[#6b5b4d]">
           Vista agrupada por negocio para revisar usuarios, roles y accesos internos.
         </p>
@@ -116,31 +105,31 @@ export default async function AdminUsersPage() {
         </div>
       ) : (
         <>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-[1.5rem] border border-[#e7d8c7] bg-[#fffaf3] p-5 shadow-sm">
+          <div className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-[1.5rem] border border-[#e7d8c7] bg-[#fffaf3] p-4 shadow-sm sm:p-5">
               <p className="text-sm text-[#6b5b4d]">Perfiles</p>
-              <p className="mt-2 text-3xl font-bold text-[#2f241d]">
+              <p className="mt-2 text-2xl font-bold text-[#2f241d] sm:text-3xl">
                 {profiles.length}
               </p>
             </div>
 
-            <div className="rounded-[1.5rem] border border-[#e7d8c7] bg-[#fffaf3] p-5 shadow-sm">
+            <div className="rounded-[1.5rem] border border-[#e7d8c7] bg-[#fffaf3] p-4 shadow-sm sm:p-5">
               <p className="text-sm text-[#6b5b4d]">Platform admins</p>
-              <p className="mt-2 text-3xl font-bold text-[#2f241d]">
+              <p className="mt-2 text-2xl font-bold text-[#2f241d] sm:text-3xl">
                 {platformAdmins.length}
               </p>
             </div>
 
-            <div className="rounded-[1.5rem] border border-[#e7d8c7] bg-[#fffaf3] p-5 shadow-sm">
+            <div className="rounded-[1.5rem] border border-[#e7d8c7] bg-[#fffaf3] p-4 shadow-sm sm:p-5">
               <p className="text-sm text-[#6b5b4d]">Negocios</p>
-              <p className="mt-2 text-3xl font-bold text-[#2f241d]">
+              <p className="mt-2 text-2xl font-bold text-[#2f241d] sm:text-3xl">
                 {businesses.length}
               </p>
             </div>
 
-            <div className="rounded-[1.5rem] border border-[#e7d8c7] bg-[#fffaf3] p-5 shadow-sm">
+            <div className="rounded-[1.5rem] border border-[#e7d8c7] bg-[#fffaf3] p-4 shadow-sm sm:p-5">
               <p className="text-sm text-[#6b5b4d]">Vinculaciones huérfanas</p>
-              <p className="mt-2 text-3xl font-bold text-[#2f241d]">
+              <p className="mt-2 text-2xl font-bold text-[#2f241d] sm:text-3xl">
                 {orphanMembershipUserIds.length}
               </p>
             </div>
@@ -151,30 +140,21 @@ export default async function AdminUsersPage() {
               No hay negocios registrados.
             </div>
           ) : (
-            <div className="space-y-5">
+            <div className="space-y-4 sm:space-y-5">
               {businesses.map((business) => {
                 const businessMemberships = membershipsByBusiness.get(business.id) || [];
-
-                const ownerMembers = businessMemberships.filter(
-                  (member) => member.role === "owner"
-                );
-                const managerMembers = businessMemberships.filter(
-                  (member) => member.role === "manager"
-                );
-                const staffMembers = businessMemberships.filter(
-                  (member) => member.role === "staff"
-                );
-
-                const totalUsers = businessMemberships.length;
+                const ownerMembers = businessMemberships.filter((member) => member.role === "owner");
+                const managerMembers = businessMemberships.filter((member) => member.role === "manager");
+                const staffMembers = businessMemberships.filter((member) => member.role === "staff");
 
                 return (
                   <section
                     key={business.id}
-                    className="rounded-[1.5rem] border border-[#e7d8c7] bg-[#fffaf3] p-5 shadow-sm"
+                    className="rounded-[1.5rem] border border-[#e7d8c7] bg-[#fffaf3] p-4 shadow-sm sm:p-5"
                   >
                     <div className="border-b border-[#ead9c8] pb-4">
-                      <div className="flex flex-wrap items-center gap-3">
-                        <h3 className="text-xl font-semibold text-[#2f241d]">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                        <h3 className="text-lg font-semibold text-[#2f241d] sm:text-xl">
                           {business.name}
                         </h3>
 
@@ -183,22 +163,18 @@ export default async function AdminUsersPage() {
                         </span>
                       </div>
 
-                      <div className="mt-3 grid gap-2 text-sm text-[#6b5b4d] md:grid-cols-2 xl:grid-cols-4">
-                        <p>
-                          <span className="font-medium text-[#3f3128]">Business ID:</span>{" "}
-                          {business.id}
+                      <div className="mt-3 grid gap-2 text-sm text-[#6b5b4d] sm:grid-cols-2 xl:grid-cols-4">
+                        <p className="break-all">
+                          <span className="font-medium text-[#3f3128]">Business ID:</span> {business.id}
+                        </p>
+                        <p className="break-all">
+                          <span className="font-medium text-[#3f3128]">Owner user ID:</span> {business.owner_user_id}
                         </p>
                         <p>
-                          <span className="font-medium text-[#3f3128]">Owner user ID:</span>{" "}
-                          {business.owner_user_id}
+                          <span className="font-medium text-[#3f3128]">Usuarios vinculados:</span> {businessMemberships.length}
                         </p>
                         <p>
-                          <span className="font-medium text-[#3f3128]">Usuarios vinculados:</span>{" "}
-                          {totalUsers}
-                        </p>
-                        <p>
-                          <span className="font-medium text-[#3f3128]">Owners / Managers / Staff:</span>{" "}
-                          {ownerMembers.length} / {managerMembers.length} / {staffMembers.length}
+                          <span className="font-medium text-[#3f3128]">Owners / Managers / Staff:</span> {ownerMembers.length} / {managerMembers.length} / {staffMembers.length}
                         </p>
                       </div>
                     </div>
@@ -208,7 +184,7 @@ export default async function AdminUsersPage() {
                         Este negocio no tiene usuarios vinculados.
                       </div>
                     ) : (
-                      <div className="space-y-6 pt-5">
+                      <div className="space-y-5 pt-5">
                         {[
                           { title: "Owners", items: ownerMembers },
                           { title: "Managers", items: managerMembers },
@@ -227,9 +203,7 @@ export default async function AdminUsersPage() {
                               <div className="space-y-3">
                                 {group.items.map((membership) => {
                                   const profile = profileMap.get(membership.user_id);
-                                  const isPlatformAdmin = platformAdminSet.has(
-                                    membership.user_id
-                                  );
+                                  const isPlatformAdmin = platformAdminSet.has(membership.user_id);
                                   const isMainOwner =
                                     membership.user_id === business.owner_user_id &&
                                     membership.role === "owner";
@@ -241,7 +215,7 @@ export default async function AdminUsersPage() {
                                     >
                                       <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                                         <div className="min-w-0 flex-1">
-                                          <div className="flex flex-wrap items-center gap-3">
+                                          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                                             <h5 className="text-base font-semibold text-[#2f241d]">
                                               {profile?.full_name?.trim() || "Sin nombre"}
                                             </h5>
@@ -267,19 +241,15 @@ export default async function AdminUsersPage() {
                                             )}
                                           </div>
 
-                                          <div className="mt-3 grid gap-3 text-sm text-[#6b5b4d] md:grid-cols-2">
+                                          <div className="mt-3 grid gap-3 text-sm text-[#6b5b4d] sm:grid-cols-2">
                                             <div className="min-w-0">
                                               <p className="font-medium text-[#3f3128]">Email</p>
-                                              <p className="break-all">
-                                                {profile?.email || "—"}
-                                              </p>
+                                              <p className="break-all">{profile?.email || "—"}</p>
                                             </div>
 
                                             <div className="min-w-0">
                                               <p className="font-medium text-[#3f3128]">User ID</p>
-                                              <p className="break-all">
-                                                {membership.user_id}
-                                              </p>
+                                              <p className="break-all">{membership.user_id}</p>
                                             </div>
 
                                             <div>
@@ -294,7 +264,7 @@ export default async function AdminUsersPage() {
                                           </div>
                                         </div>
 
-                                        <div className="w-full max-w-xs rounded-[1.25rem] border border-[#ead9c8] bg-white p-4">
+                                        <div className="w-full rounded-[1.25rem] border border-[#ead9c8] bg-white p-4 xl:max-w-xs">
                                           <p className="text-sm font-medium text-[#3f3128]">
                                             Resumen rápido
                                           </p>
@@ -311,9 +281,7 @@ export default async function AdminUsersPage() {
                                             <p>
                                               <span className="font-medium text-[#3f3128]">Membership ID:</span>
                                             </p>
-                                            <p className="break-all text-xs">
-                                              {membership.id}
-                                            </p>
+                                            <p className="break-all text-xs">{membership.id}</p>
                                           </div>
                                         </div>
                                       </div>
@@ -338,15 +306,14 @@ export default async function AdminUsersPage() {
                 Vinculaciones sin perfil
               </h3>
               <p className="mt-2 text-sm text-[#7a5a45]">
-                Hay memberships cuyo `user_id` no aparece en `profiles`. Esto puede
-                indicar datos incompletos o usuarios creados sin perfil sincronizado.
+                Hay memberships cuyo `user_id` no aparece en `profiles`.
               </p>
 
               <div className="mt-4 space-y-2">
                 {orphanMembershipUserIds.map((userId) => (
                   <div
                     key={userId}
-                    className="rounded-xl border border-yellow-200 bg-white px-3 py-2 text-sm text-[#5a3d2a] break-all"
+                    className="rounded-xl border border-yellow-200 bg-white px-3 py-2 text-sm break-all text-[#5a3d2a]"
                   >
                     {userId}
                   </div>
