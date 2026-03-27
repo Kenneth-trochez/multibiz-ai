@@ -61,26 +61,7 @@ export async function loginAction(formData: FormData): Promise<void> {
     redirect(`/login?error=${encodeURIComponent(error.message)}`);
   }
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login?error=No+se+pudo+obtener+el+usuario");
-  }
-
-  const { data: membership } = await supabase
-    .from("business_members")
-    .select("id")
-    .eq("user_id", user.id)
-    .limit(1)
-    .maybeSingle();
-
-  if (!membership) {
-    redirect("/onboarding");
-  }
-
-  redirect("/dashboard");
+  redirect("/choose-access");
 }
 
 export async function createBusinessAction(formData: FormData): Promise<void> {
