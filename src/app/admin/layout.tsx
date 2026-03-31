@@ -54,6 +54,13 @@ export default async function AdminLayout({
             </Link>
 
             <Link
+              href="/admin/subscriptions"
+              className="rounded-xl px-3 py-2 text-center text-sm font-medium text-[#3f3128] transition hover:bg-[#f3e5d8] lg:text-left"
+            >
+              Logs suscripción
+            </Link>
+
+            <Link
               href="/choose-access"
               className="col-span-2 rounded-xl px-3 py-2 text-center text-sm font-medium text-[#3f3128] transition hover:bg-[#f3e5d8] sm:col-span-3 lg:col-span-1 lg:text-left"
             >

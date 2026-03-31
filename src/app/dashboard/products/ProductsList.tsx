@@ -6,8 +6,15 @@ import {
   updateProductAction,
 } from "../../actions/products";
 
+type CategoryRow = {
+  id: string;
+  name: string;
+};
+
 type ProductRow = {
   id: string;
+  category_id: string | null;
+  category_name: string | null;
   name: string;
   description: string | null;
   sku: string | null;
@@ -43,9 +50,11 @@ type Theme = {
 
 export default function ProductsList({
   products,
+  categories,
   theme,
 }: {
   products: ProductRow[];
+  categories: CategoryRow[];
   theme: Theme;
 }) {
   const [selectedProduct, setSelectedProduct] = useState<ProductRow | null>(null);
@@ -75,10 +84,17 @@ export default function ProductsList({
               >
                 <div className="flex items-center justify-between gap-4">
                   <div className="min-w-0">
-                    <p className="truncate text-base font-semibold">{product.name}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="truncate text-base font-semibold">{product.name}</p>
+                      <span className={`rounded-full border px-2 py-1 text-[11px] ${theme.cardSoft}`}>
+                        {product.category_name || "Sin categoría"}
+                      </span>
+                    </div>
+
                     <p className={`truncate text-sm ${theme.textMuted}`}>
                       {product.sku?.trim() ? `SKU: ${product.sku}` : "Sin SKU"}
                     </p>
+
                     <p className={`mt-1 truncate text-xs ${theme.textMuted}`}>
                       Stock: {product.stock} · L {Number(product.price || 0).toFixed(2)}
                     </p>
@@ -131,6 +147,28 @@ export default function ProductsList({
                   className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
                   required
                 />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
+                  Categoría
+                </label>
+                <select
+                  name="categoryId"
+                  defaultValue={selectedProduct.category_id || ""}
+                  className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.select}`}
+                >
+                  <option value="">Sin categoría</option>
+                  {categories.map((category) => (
+                    <option
+                      key={category.id}
+                      value={category.id}
+                      className={theme.option}
+                    >
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>

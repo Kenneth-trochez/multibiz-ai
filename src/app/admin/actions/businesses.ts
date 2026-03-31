@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requirePlatformAdmin } from "@/lib/auth/requirePlatformAdmin";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 
 const ALLOWED_STATUSES = [
   "trialing",
@@ -23,6 +24,16 @@ function revalidateAdminPages() {
   revalidatePath("/admin/businesses");
   revalidatePath("/admin/users");
   revalidatePath("/admin/memberships");
+  revalidatePath("/admin/subscriptions");
+}
+
+async function getActorUserId() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  return user?.id ?? null;
 }
 
 export async function updateBusinessSubscriptionAction(
@@ -48,10 +59,13 @@ export async function updateBusinessSubscriptionAction(
   }
 
   const supabase = createAdminClient();
+  const actorUserId = await getActorUserId();
 
   const { data: activeSubscription, error: findError } = await supabase
     .from("business_subscriptions")
-    .select("id, business_id, status")
+    .select(
+      "id, business_id, plan_id, status, billing_cycle, provider, provider_subscription_id"
+    )
     .eq("business_id", businessId)
     .in("status", ["trialing", "active", "past_due"])
     .maybeSingle();
@@ -63,6 +77,10 @@ export async function updateBusinessSubscriptionAction(
   }
 
   if (activeSubscription) {
+    const oldPlanId = activeSubscription.plan_id;
+    const oldStatus = activeSubscription.status;
+    const oldBillingCycle = activeSubscription.billing_cycle;
+
     const { error: updateError } = await supabase
       .from("business_subscriptions")
       .update({
@@ -77,6 +95,35 @@ export async function updateBusinessSubscriptionAction(
         `/admin/businesses?error=${encodeURIComponent(updateError.message)}`
       );
     }
+
+    const eventType =
+      oldPlanId !== planId
+        ? "plan_changed"
+        : oldStatus !== status
+        ? "status_changed"
+        : oldBillingCycle !== billingCycle
+        ? "billing_cycle_changed"
+        : "subscription_updated";
+
+    await supabase.from("subscription_audit_logs").insert({
+      business_id: businessId,
+      subscription_id: activeSubscription.id,
+      actor_user_id: actorUserId,
+      event_type: eventType,
+      old_plan_id: oldPlanId,
+      new_plan_id: planId,
+      old_status: oldStatus,
+      new_status: status,
+      old_billing_cycle: oldBillingCycle,
+      new_billing_cycle: billingCycle,
+      provider: activeSubscription.provider || "internal",
+      provider_reference: activeSubscription.provider_subscription_id || null,
+      notes: "Cambio manual desde panel admin",
+      metadata: {
+        source: "admin_businesses",
+        mode: "update_existing_subscription",
+      },
+    });
   } else {
     const now = new Date();
     const periodEnd = new Date(now);
@@ -117,15 +164,39 @@ export async function updateBusinessSubscriptionAction(
       payload.trial_ends_at = trialEndsAt.toISOString();
     }
 
-    const { error: insertError } = await supabase
+    const { data: insertedSubscription, error: insertError } = await supabase
       .from("business_subscriptions")
-      .insert(payload);
+      .insert(payload)
+      .select("id")
+      .single();
 
-    if (insertError) {
+    if (insertError || !insertedSubscription) {
       redirect(
-        `/admin/businesses?error=${encodeURIComponent(insertError.message)}`
+        `/admin/businesses?error=${encodeURIComponent(
+          insertError?.message || "No se pudo crear la suscripción"
+        )}`
       );
     }
+
+    await supabase.from("subscription_audit_logs").insert({
+      business_id: businessId,
+      subscription_id: insertedSubscription.id,
+      actor_user_id: actorUserId,
+      event_type: "subscription_created",
+      old_plan_id: null,
+      new_plan_id: planId,
+      old_status: null,
+      new_status: status,
+      old_billing_cycle: null,
+      new_billing_cycle: billingCycle,
+      provider: "internal",
+      provider_reference: null,
+      notes: "Suscripción creada manualmente desde panel admin",
+      metadata: {
+        source: "admin_businesses",
+        mode: "create_subscription",
+      },
+    });
   }
 
   revalidateAdminPages();
@@ -145,6 +216,7 @@ export async function deleteBusinessAction(
   }
 
   const supabase = createAdminClient();
+  const actorUserId = await getActorUserId();
 
   const { data: business, error: businessError } = await supabase
     .from("businesses")
@@ -161,6 +233,26 @@ export async function deleteBusinessAction(
       "/admin/businesses?error=El+nombre+de+confirmacion+no+coincide+con+el+negocio"
     );
   }
+
+  await supabase.from("subscription_audit_logs").insert({
+    business_id: business.id,
+    subscription_id: null,
+    actor_user_id: actorUserId,
+    event_type: "business_deleted",
+    old_plan_id: null,
+    new_plan_id: null,
+    old_status: null,
+    new_status: null,
+    old_billing_cycle: null,
+    new_billing_cycle: null,
+    provider: "internal",
+    provider_reference: null,
+    notes: `Negocio eliminado manualmente desde panel admin: ${business.name}`,
+    metadata: {
+      source: "admin_businesses",
+      confirmation_name: confirmationName,
+    },
+  });
 
   const { error: deleteError } = await supabase
     .from("businesses")

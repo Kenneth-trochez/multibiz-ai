@@ -216,6 +216,27 @@ export async function createBusinessAction(formData: FormData): Promise<void> {
     },
   ]);
 
+  const defaultProductCategories = [
+    "Cuidado",
+    "Alimentos",
+    "Accesorios",
+    "Limpieza",
+    "Otros",
+  ];
+
+  const { error: categoriesError } = await supabase
+    .from("product_categories")
+    .insert(
+      defaultProductCategories.map((name) => ({
+        business_id: business.id,
+        name,
+      }))
+    );
+
+  if (categoriesError) {
+    redirect(`/onboarding?error=${encodeURIComponent(categoriesError.message)}`);
+  }
+
   if (rolesError) {
     redirect(`/onboarding?error=${encodeURIComponent(rolesError.message)}`);
   }

@@ -169,7 +169,7 @@ export default async function DashboardLayout({
             </p>
           </div>
         </Link>
-
+        <br />
         <form action={signOutAction}>
           <button
             type="submit"

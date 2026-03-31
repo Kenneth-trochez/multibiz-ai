@@ -26,6 +26,17 @@ type SaleItemRow = {
     id: string;
     name: string;
     sku: string | null;
+    category_id: string | null;
+    product_categories:
+      | {
+          id: string;
+          name: string;
+        }
+      | {
+          id: string;
+          name: string;
+        }[]
+      | null;
   } | null;
 };
 
@@ -57,6 +68,13 @@ type ProductOption = {
   price: number;
   stock: number;
   active: boolean;
+  category_id: string | null;
+  category_name: string | null;
+};
+
+type ProductCategoryOption = {
+  id: string;
+  name: string;
 };
 
 type CustomerOption = {
@@ -97,6 +115,7 @@ type Theme = {
 
 type SaleLine = {
   id: string;
+  category_id: string;
   product_id: string;
   quantity: number;
 };
@@ -116,6 +135,7 @@ function formatSaleDate(dateStr: string) {
 function makeLine(): SaleLine {
   return {
     id: crypto.randomUUID(),
+    category_id: "",
     product_id: "",
     quantity: 1,
   };
@@ -124,11 +144,16 @@ function makeLine(): SaleLine {
 function buildLinesFromSale(sale: SaleRow): SaleLine[] {
   if (!sale.items.length) return [makeLine()];
 
-  return sale.items.map((item) => ({
-    id: crypto.randomUUID(),
-    product_id: item.product_id,
-    quantity: Number(item.quantity || 1),
-  }));
+  return sale.items.map((item) => {
+    const productCategory = item.product?.category_id || "";
+
+    return {
+      id: crypto.randomUUID(),
+      category_id: productCategory,
+      product_id: item.product_id,
+      quantity: Number(item.quantity || 1),
+    };
+  });
 }
 
 function getPreview(lines: SaleLine[], discount: string, products: ProductOption[]) {
@@ -166,6 +191,7 @@ export default function SalesClient({
   businessId,
   sales,
   products,
+  categories,
   customers,
   staff,
   theme,
@@ -173,6 +199,7 @@ export default function SalesClient({
   businessId: string;
   sales: SaleRow[];
   products: ProductOption[];
+  categories: ProductCategoryOption[];
   customers: CustomerOption[];
   staff: StaffOption[];
   theme: Theme;
@@ -281,10 +308,17 @@ export default function SalesClient({
                       {sale.items.length > 0 && (
                         <div className={`mt-2 text-xs ${theme.textMuted}`}>
                           {sale.items
-                            .map(
-                              (item) =>
-                                `${item.product?.name || "Producto"} x${item.quantity}`
-                            )
+                            .map((item) => {
+                              const categoryName = Array.isArray(
+                                item.product?.product_categories
+                              )
+                                ? item.product?.product_categories[0]?.name
+                                : item.product?.product_categories?.name;
+
+                              return `${item.product?.name || "Producto"} x${
+                                item.quantity
+                              }${categoryName ? ` (${categoryName})` : ""}`;
+                            })
                             .join(" · ")}
                         </div>
                       )}
@@ -394,6 +428,12 @@ export default function SalesClient({
 
               <div className="space-y-3">
                 {lines.map((line, index) => {
+                  const filteredProducts = line.category_id
+                    ? products.filter(
+                        (product) => product.category_id === line.category_id
+                      )
+                    : products;
+
                   const selectedProduct = products.find(
                     (product) => product.id === line.product_id
                   );
@@ -401,13 +441,51 @@ export default function SalesClient({
                   return (
                     <div
                       key={line.id}
-                      className="grid gap-3 rounded-2xl border p-3 md:grid-cols-[1fr_120px_auto]"
+                      className="grid gap-3 rounded-2xl border p-4 md:grid-cols-2"
                     >
-                      <div>
+                      <div className="md:col-span-1">
                         <label
                           className={`mb-1 block text-xs font-medium ${theme.textMuted}`}
                         >
-                          Producto #{index + 1}
+                          Categoría #{index + 1}
+                        </label>
+                        <select
+                          value={line.category_id}
+                          onChange={(e) =>
+                            setLines((prev) =>
+                              prev.map((item) =>
+                                item.id === line.id
+                                  ? {
+                                      ...item,
+                                      category_id: e.target.value,
+                                      product_id: "",
+                                    }
+                                  : item
+                              )
+                            )
+                          }
+                          className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.select}`}
+                        >
+                          <option className={theme.option} value="">
+                            Todas
+                          </option>
+                          {categories.map((category) => (
+                            <option
+                              key={category.id}
+                              value={category.id}
+                              className={theme.option}
+                            >
+                              {category.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="md:col-span-1">
+                        <label
+                          className={`mb-1 block text-xs font-medium ${theme.textMuted}`}
+                        >
+                          Producto
                         </label>
                         <select
                           value={line.product_id}
@@ -425,28 +503,34 @@ export default function SalesClient({
                           <option className={theme.option} value="">
                             Seleccionar producto
                           </option>
-                          {products.map((product) => (
+                          {filteredProducts.map((product) => (
                             <option
                               key={product.id}
                               value={product.id}
                               className={theme.option}
                             >
                               {product.name}
+                              {product.category_name
+                                ? ` — ${product.category_name}`
+                                : ""}
                               {product.sku ? ` — ${product.sku}` : ""}
-                              {` — L ${Number(product.price || 0).toFixed(2)} — Stock ${product.stock}`}
+                              {` — L ${Number(product.price || 0).toFixed(
+                                2
+                              )} — Stock ${product.stock}`}
                             </option>
                           ))}
                         </select>
 
                         {selectedProduct && (
-                          <p className={`mt-1 text-xs ${theme.textMuted}`}>
+                          <p className={`mt-2 text-xs ${theme.textMuted}`}>
+                            Categoría: {selectedProduct.category_name || "Sin categoría"} ·
                             Precio: L {Number(selectedProduct.price || 0).toFixed(2)} ·
                             Stock: {selectedProduct.stock}
                           </p>
                         )}
                       </div>
 
-                      <div>
+                      <div className="md:col-span-1">
                         <label
                           className={`mb-1 block text-xs font-medium ${theme.textMuted}`}
                         >
@@ -476,7 +560,7 @@ export default function SalesClient({
                         />
                       </div>
 
-                      <div className="flex items-end">
+                      <div className="md:col-span-1 flex items-end">
                         <button
                           type="button"
                           onClick={() =>
@@ -486,14 +570,17 @@ export default function SalesClient({
                                 : prev.filter((item) => item.id !== line.id)
                             )
                           }
-                          className={`rounded-xl px-3 py-2 transition ${
+                          className={`w-full rounded-xl px-3 py-2 transition ${
                             lines.length === 1
                               ? "cursor-not-allowed opacity-40"
                               : theme.danger
                           }`}
                           disabled={lines.length === 1}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <span className="inline-flex items-center justify-center gap-2">
+                            <Trash2 className="h-4 w-4" />
+                            Quitar línea
+                          </span>
                         </button>
                       </div>
                     </div>
@@ -647,6 +734,12 @@ export default function SalesClient({
 
                 <div className="space-y-3">
                   {editLines.map((line, index) => {
+                    const filteredProducts = line.category_id
+                      ? products.filter(
+                          (product) => product.category_id === line.category_id
+                        )
+                      : products;
+
                     const selectedProduct = products.find(
                       (product) => product.id === line.product_id
                     );
@@ -654,13 +747,51 @@ export default function SalesClient({
                     return (
                       <div
                         key={line.id}
-                        className="grid gap-3 rounded-2xl border p-3 md:grid-cols-[1fr_120px_auto]"
+                        className="grid gap-3 rounded-2xl border p-4 md:grid-cols-2"
                       >
-                        <div>
+                        <div className="md:col-span-1">
                           <label
                             className={`mb-1 block text-xs font-medium ${theme.textMuted}`}
                           >
-                            Producto #{index + 1}
+                            Categoría #{index + 1}
+                          </label>
+                          <select
+                            value={line.category_id}
+                            onChange={(e) =>
+                              setEditLines((prev) =>
+                                prev.map((item) =>
+                                  item.id === line.id
+                                    ? {
+                                        ...item,
+                                        category_id: e.target.value,
+                                        product_id: "",
+                                      }
+                                    : item
+                                )
+                              )
+                            }
+                            className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.select}`}
+                          >
+                            <option className={theme.option} value="">
+                              Todas
+                            </option>
+                            {categories.map((category) => (
+                              <option
+                                key={category.id}
+                                value={category.id}
+                                className={theme.option}
+                              >
+                                {category.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="md:col-span-1">
+                          <label
+                            className={`mb-1 block text-xs font-medium ${theme.textMuted}`}
+                          >
+                            Producto
                           </label>
                           <select
                             value={line.product_id}
@@ -678,28 +809,34 @@ export default function SalesClient({
                             <option className={theme.option} value="">
                               Seleccionar producto
                             </option>
-                            {products.map((product) => (
+                            {filteredProducts.map((product) => (
                               <option
                                 key={product.id}
                                 value={product.id}
                                 className={theme.option}
                               >
                                 {product.name}
+                                {product.category_name
+                                  ? ` — ${product.category_name}`
+                                  : ""}
                                 {product.sku ? ` — ${product.sku}` : ""}
-                                {` — L ${Number(product.price || 0).toFixed(2)} — Stock ${product.stock}`}
+                                {` — L ${Number(product.price || 0).toFixed(
+                                  2
+                                )} — Stock ${product.stock}`}
                               </option>
                             ))}
                           </select>
 
                           {selectedProduct && (
-                            <p className={`mt-1 text-xs ${theme.textMuted}`}>
+                            <p className={`mt-2 text-xs ${theme.textMuted}`}>
+                              Categoría: {selectedProduct.category_name || "Sin categoría"} ·
                               Precio: L {Number(selectedProduct.price || 0).toFixed(2)} ·
                               Stock actual: {selectedProduct.stock}
                             </p>
                           )}
                         </div>
 
-                        <div>
+                        <div className="md:col-span-1">
                           <label
                             className={`mb-1 block text-xs font-medium ${theme.textMuted}`}
                           >
@@ -729,7 +866,7 @@ export default function SalesClient({
                           />
                         </div>
 
-                        <div className="flex items-end">
+                        <div className="md:col-span-1 flex items-end">
                           <button
                             type="button"
                             onClick={() =>
@@ -739,14 +876,17 @@ export default function SalesClient({
                                   : prev.filter((item) => item.id !== line.id)
                               )
                             }
-                            className={`rounded-xl px-3 py-2 transition ${
+                            className={`w-full rounded-xl px-3 py-2 transition ${
                               editLines.length === 1
                                 ? "cursor-not-allowed opacity-40"
                                 : theme.danger
                             }`}
                             disabled={editLines.length === 1}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <span className="inline-flex items-center justify-center gap-2">
+                              <Trash2 className="h-4 w-4" />
+                              Quitar línea
+                            </span>
                           </button>
                         </div>
                       </div>

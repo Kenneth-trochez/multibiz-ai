@@ -15,6 +15,17 @@ type SaleItemRow = {
     id: string;
     name: string;
     sku: string | null;
+    category_id: string | null;
+    product_categories:
+      | {
+          id: string;
+          name: string;
+        }
+      | {
+          id: string;
+          name: string;
+        }[]
+      | null;
   } | null;
 };
 
@@ -46,6 +57,13 @@ type ProductOption = {
   price: number;
   stock: number;
   active: boolean;
+  category_id: string | null;
+  category_name: string | null;
+};
+
+type ProductCategoryOption = {
+  id: string;
+  name: string;
 };
 
 type CustomerOption = {
@@ -76,6 +94,7 @@ export default async function SalesPage({
   const [
     { data: sales, error: salesError },
     { data: products, error: productsError },
+    { data: categories, error: categoriesError },
     { data: customers, error: customersError },
     { data: staff, error: staffError },
   ] = await Promise.all([
@@ -97,9 +116,24 @@ export default async function SalesPage({
 
     supabase
       .from("products")
-      .select("id, name, sku, price, stock, active")
+      .select(`
+        id,
+        name,
+        sku,
+        price,
+        stock,
+        active,
+        category_id,
+        product_categories(id,name)
+      `)
       .eq("business_id", business.id)
       .eq("active", true)
+      .order("name", { ascending: true }),
+
+    supabase
+      .from("product_categories")
+      .select("id, name")
+      .eq("business_id", business.id)
       .order("name", { ascending: true }),
 
     supabase
@@ -116,7 +150,7 @@ export default async function SalesPage({
       .order("display_name", { ascending: true }),
   ]);
 
-  if (salesError || productsError || customersError || staffError) {
+  if (salesError || productsError || categoriesError || customersError || staffError) {
     return (
       <main className={`min-h-screen p-6 ${theme.pageBg}`}>
         <div className={`rounded-2xl border p-6 ${theme.card}`}>
@@ -141,7 +175,13 @@ export default async function SalesPage({
         quantity,
         unit_price,
         line_total,
-        product:products(id,name,sku)
+        product:products(
+          id,
+          name,
+          sku,
+          category_id,
+          product_categories(id,name)
+        )
       `)
       .in("sale_id", saleIds);
 
@@ -156,6 +196,10 @@ export default async function SalesPage({
     }
 
     for (const item of saleItems || []) {
+      const normalizedProduct = Array.isArray(item.product)
+        ? item.product[0] || null
+        : item.product || null;
+
       const normalizedItem: SaleItemRow = {
         id: item.id,
         sale_id: item.sale_id,
@@ -163,9 +207,7 @@ export default async function SalesPage({
         quantity: Number(item.quantity || 0),
         unit_price: Number(item.unit_price || 0),
         line_total: Number(item.line_total || 0),
-        product: Array.isArray(item.product)
-          ? item.product[0] || null
-          : item.product || null,
+        product: normalizedProduct,
       };
 
       itemsCountMap.set(item.sale_id, (itemsCountMap.get(item.sale_id) || 0) + 1);
@@ -189,6 +231,19 @@ export default async function SalesPage({
     staff: Array.isArray(sale.staff) ? sale.staff[0] || null : sale.staff || null,
     items_count: itemsCountMap.get(sale.id) || 0,
     items: itemsBySaleMap.get(sale.id) || [],
+  }));
+
+  const normalizedProducts: ProductOption[] = (products || []).map((product: any) => ({
+    id: product.id,
+    name: product.name,
+    sku: product.sku,
+    price: Number(product.price || 0),
+    stock: Number(product.stock || 0),
+    active: Boolean(product.active),
+    category_id: product.category_id || null,
+    category_name: Array.isArray(product.product_categories)
+      ? product.product_categories[0]?.name || null
+      : product.product_categories?.name || null,
   }));
 
   return (
@@ -222,7 +277,8 @@ export default async function SalesPage({
       <SalesClient
         businessId={business.id}
         sales={normalizedSales}
-        products={(products || []) as ProductOption[]}
+        products={normalizedProducts}
+        categories={(categories || []) as ProductCategoryOption[]}
         customers={(customers || []) as CustomerOption[]}
         staff={(staff || []) as StaffOption[]}
         theme={theme}

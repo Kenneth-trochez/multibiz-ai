@@ -5,9 +5,18 @@ import { createClient } from "@/lib/supabase/server";
 import { getThemeClasses } from "@/lib/theme/getThemeClasses";
 import Link from "next/link";
 import ProductsList from "./ProductsList";
+import CategoriesManager from "./CategoriesManager";
+import CategoriesFilter from "./CategoriesFilter";
+
+type CategoryRow = {
+  id: string;
+  name: string;
+};
 
 type ProductRow = {
   id: string;
+  category_id: string | null;
+  category_name: string | null;
   name: string;
   description: string | null;
   sku: string | null;
@@ -20,7 +29,12 @@ type ProductRow = {
 export default async function ProductsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; success?: string; page?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    success?: string;
+    page?: string;
+    category?: string;
+  }>;
 }) {
   const params = await searchParams;
   const ctx = await requireSectionAccess("products");
@@ -31,27 +45,68 @@ export default async function ProductsPage({
   const supabase = await createClient();
 
   const currentPage = Math.max(1, Number(params.page || "1") || 1);
+  const selectedCategory = String(params.category || "").trim();
   const pageSize = 10;
   const from = (currentPage - 1) * pageSize;
   const to = from + pageSize - 1;
 
-  const { count, error: countError } = await supabase
+  const { data: categories, error: categoriesError } = await supabase
+    .from("product_categories")
+    .select("id, name")
+    .eq("business_id", business.id)
+    .order("name", { ascending: true });
+
+  let countQuery = supabase
     .from("products")
     .select("*", { count: "exact", head: true })
     .eq("business_id", business.id);
 
-  const { data: products, error } = await supabase
+  let productsQuery = supabase
     .from("products")
-    .select("id, name, description, sku, price, stock, active, created_at")
+    .select(
+      `
+      id,
+      category_id,
+      name,
+      description,
+      sku,
+      price,
+      stock,
+      active,
+      created_at,
+      product_categories(name)
+    `
+    )
     .eq("business_id", business.id)
-    .order("created_at", { ascending: false })
-    .range(from, to);
+    .order("created_at", { ascending: false });
 
-  if (error || countError) {
+  if (selectedCategory) {
+    countQuery = countQuery.eq("category_id", selectedCategory);
+    productsQuery = productsQuery.eq("category_id", selectedCategory);
+  }
+
+  const { count, error: countError } = await countQuery;
+  const { data: rawProducts, error } = await productsQuery.range(from, to);
+
+  const products: ProductRow[] = (rawProducts || []).map((product: any) => ({
+    id: product.id,
+    category_id: product.category_id,
+    category_name: product.product_categories?.name || null,
+    name: product.name,
+    description: product.description,
+    sku: product.sku,
+    price: product.price,
+    stock: product.stock,
+    active: product.active,
+    created_at: product.created_at,
+  }));
+
+  if (error || countError || categoriesError) {
     return (
       <main className={`min-h-screen p-6 ${theme.pageBg}`}>
         <div className={`rounded-2xl border p-6 ${theme.card}`}>
-          Error cargando productos: {error?.message || countError?.message}
+          Error cargando productos:{" "}
+          {error?.message || countError?.message || categoriesError?.message}
         </div>
       </main>
     );
@@ -59,6 +114,9 @@ export default async function ProductsPage({
 
   const totalProducts = count || 0;
   const totalPages = Math.max(1, Math.ceil(totalProducts / pageSize));
+  const categoryQuery = selectedCategory
+    ? `&category=${encodeURIComponent(selectedCategory)}`
+    : "";
 
   return (
     <main className={`min-h-screen p-6 ${theme.pageBg}`}>
@@ -94,10 +152,41 @@ export default async function ProductsPage({
           </p>
         )}
 
+        {params.success === "category_created" && (
+          <p className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+            Categoría creada correctamente.
+          </p>
+        )}
+
+        {params.success === "category_updated" && (
+          <p className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+            Categoría actualizada correctamente.
+          </p>
+        )}
+
+        {params.success === "category_deleted" && (
+          <p className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+            Categoría eliminada correctamente.
+          </p>
+        )}
+
+        <CategoriesManager
+          businessId={business.id}
+          categories={(categories || []) as CategoryRow[]}
+          theme={theme}
+        />
+
+        <CategoriesFilter
+          categories={(categories || []) as CategoryRow[]}
+          selectedCategory={selectedCategory}
+          theme={theme}
+        />
+
         <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
           <section className="space-y-4">
             <ProductsList
-              products={(products || []) as ProductRow[]}
+              products={products}
+              categories={(categories || []) as CategoryRow[]}
               theme={theme}
             />
 
@@ -108,7 +197,7 @@ export default async function ProductsPage({
 
               <div className="flex items-center gap-2">
                 <Link
-                  href={`/dashboard/products?page=${currentPage - 1}`}
+                  href={`/dashboard/products?page=${currentPage - 1}${categoryQuery}`}
                   className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
                     currentPage <= 1
                       ? "pointer-events-none opacity-50"
@@ -119,7 +208,7 @@ export default async function ProductsPage({
                 </Link>
 
                 <Link
-                  href={`/dashboard/products?page=${currentPage + 1}`}
+                  href={`/dashboard/products?page=${currentPage + 1}${categoryQuery}`}
                   className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
                     currentPage >= totalPages
                       ? "pointer-events-none opacity-50"
@@ -151,7 +240,28 @@ export default async function ProductsPage({
 
               <div>
                 <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
-                  SKU Codigo interno unico
+                  Categoría
+                </label>
+                <select
+                  name="categoryId"
+                  className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.select}`}
+                >
+                  <option value="">Sin categoría</option>
+                  {(categories || []).map((category: CategoryRow) => (
+                    <option
+                      key={category.id}
+                      value={category.id}
+                      className={theme.option}
+                    >
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
+                  SKU Código interno único
                 </label>
                 <input
                   name="sku"
