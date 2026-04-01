@@ -8,6 +8,7 @@ import {
   Receipt,
   DollarSign,
   Pencil,
+  Percent,
 } from "lucide-react";
 import {
   createSaleAction,
@@ -45,6 +46,10 @@ type SaleRow = {
   sale_at: string;
   subtotal: number;
   discount: number;
+  discount_type: "fixed" | "percent";
+  discount_value: number;
+  tax_percent: number;
+  tax_amount: number;
   total: number;
   notes: string | null;
   customer: {
@@ -120,6 +125,8 @@ type SaleLine = {
   quantity: number;
 };
 
+type DiscountType = "fixed" | "percent";
+
 function formatSaleDate(dateStr: string) {
   return new Intl.DateTimeFormat("es-HN", {
     timeZone: "America/Tegucigalpa",
@@ -156,8 +163,18 @@ function buildLinesFromSale(sale: SaleRow): SaleLine[] {
   });
 }
 
-function getPreview(lines: SaleLine[], discount: string, products: ProductOption[]) {
-  const numericDiscount = Number(discount || 0);
+function getPreview(params: {
+  lines: SaleLine[];
+  discountType: DiscountType;
+  discountValue: string;
+  taxPercent: string;
+  products: ProductOption[];
+}) {
+  const { lines, discountType, discountValue, taxPercent, products } = params;
+
+  const numericDiscountValue = Number(discountValue || 0);
+  const numericTaxPercent = Number(taxPercent || 0);
+
   let subtotal = 0;
 
   for (const line of lines) {
@@ -166,13 +183,37 @@ function getPreview(lines: SaleLine[], discount: string, products: ProductOption
     subtotal += Number(product.price || 0) * Number(line.quantity || 0);
   }
 
-  const safeDiscount =
-    Number.isNaN(numericDiscount) || numericDiscount < 0 ? 0 : numericDiscount;
+  const safeDiscountValue =
+    Number.isNaN(numericDiscountValue) || numericDiscountValue < 0
+      ? 0
+      : numericDiscountValue;
+
+  const safeTaxPercent =
+    Number.isNaN(numericTaxPercent) || numericTaxPercent < 0
+      ? 0
+      : numericTaxPercent;
+
+  let discountAmount =
+    discountType === "percent"
+      ? subtotal * (safeDiscountValue / 100)
+      : safeDiscountValue;
+
+  if (discountAmount > subtotal) {
+    discountAmount = subtotal;
+  }
+
+  const taxableBase = subtotal - discountAmount;
+  const taxAmount = taxableBase * (safeTaxPercent / 100);
+  const total = taxableBase + taxAmount;
 
   return {
     subtotal,
-    discount: safeDiscount,
-    total: Math.max(0, subtotal - safeDiscount),
+    discountValue: safeDiscountValue,
+    discountAmount,
+    taxPercent: safeTaxPercent,
+    taxAmount,
+    taxableBase,
+    total,
   };
 }
 
@@ -205,20 +246,38 @@ export default function SalesClient({
   theme: Theme;
 }) {
   const [lines, setLines] = useState<SaleLine[]>([makeLine()]);
-  const [discount, setDiscount] = useState("0");
+  const [discountType, setDiscountType] = useState<DiscountType>("fixed");
+  const [discountValue, setDiscountValue] = useState("0");
+  const [taxPercent, setTaxPercent] = useState("15");
 
   const [selectedSale, setSelectedSale] = useState<SaleRow | null>(null);
   const [editLines, setEditLines] = useState<SaleLine[]>([makeLine()]);
-  const [editDiscount, setEditDiscount] = useState("0");
+  const [editDiscountType, setEditDiscountType] = useState<DiscountType>("fixed");
+  const [editDiscountValue, setEditDiscountValue] = useState("0");
+  const [editTaxPercent, setEditTaxPercent] = useState("15");
 
   const preview = useMemo(
-    () => getPreview(lines, discount, products),
-    [lines, discount, products]
+    () =>
+      getPreview({
+        lines,
+        discountType,
+        discountValue,
+        taxPercent,
+        products,
+      }),
+    [lines, discountType, discountValue, taxPercent, products]
   );
 
   const editPreview = useMemo(
-    () => getPreview(editLines, editDiscount, products),
-    [editLines, editDiscount, products]
+    () =>
+      getPreview({
+        lines: editLines,
+        discountType: editDiscountType,
+        discountValue: editDiscountValue,
+        taxPercent: editTaxPercent,
+        products,
+      }),
+    [editLines, editDiscountType, editDiscountValue, editTaxPercent, products]
   );
 
   const itemsJson = buildItemsJson(lines);
@@ -227,7 +286,9 @@ export default function SalesClient({
   const openEdit = (sale: SaleRow) => {
     setSelectedSale(sale);
     setEditLines(buildLinesFromSale(sale));
-    setEditDiscount(String(Number(sale.discount || 0)));
+    setEditDiscountType(sale.discount_type || "fixed");
+    setEditDiscountValue(String(Number(sale.discount_value || 0)));
+    setEditTaxPercent(String(Number(sale.tax_percent || 0)));
   };
 
   return (
@@ -241,7 +302,7 @@ export default function SalesClient({
         </div>
       </div>
 
-      <div className="mb-6 grid gap-4 md:grid-cols-3">
+      <div className="mb-6 grid gap-4 md:grid-cols-4">
         <div className={`rounded-2xl border p-5 shadow-sm ${theme.card}`}>
           <div className="mb-3 flex items-center justify-between">
             <p className={`text-sm ${theme.textMuted}`}>Subtotal actual</p>
@@ -252,10 +313,18 @@ export default function SalesClient({
 
         <div className={`rounded-2xl border p-5 shadow-sm ${theme.card}`}>
           <div className="mb-3 flex items-center justify-between">
-            <p className={`text-sm ${theme.textMuted}`}>Descuento</p>
+            <p className={`text-sm ${theme.textMuted}`}>Descuento aplicado</p>
             <DollarSign className="h-5 w-5" />
           </div>
-          <p className="text-3xl font-bold">L {preview.discount.toFixed(2)}</p>
+          <p className="text-3xl font-bold">L {preview.discountAmount.toFixed(2)}</p>
+        </div>
+
+        <div className={`rounded-2xl border p-5 shadow-sm ${theme.card}`}>
+          <div className="mb-3 flex items-center justify-between">
+            <p className={`text-sm ${theme.textMuted}`}>ISV calculado</p>
+            <Percent className="h-5 w-5" />
+          </div>
+          <p className="text-3xl font-bold">L {preview.taxAmount.toFixed(2)}</p>
         </div>
 
         <div className={`rounded-2xl border p-5 shadow-sm ${theme.card}`}>
@@ -302,7 +371,14 @@ export default function SalesClient({
                       <p className={`mt-1 text-xs ${theme.textMuted}`}>
                         Items: {sale.items_count} · Subtotal: L{" "}
                         {sale.subtotal.toFixed(2)} · Descuento: L{" "}
-                        {sale.discount.toFixed(2)}
+                        {sale.discount.toFixed(2)} · ISV: L{" "}
+                        {sale.tax_amount.toFixed(2)}
+                      </p>
+                      <p className={`mt-1 text-xs ${theme.textMuted}`}>
+                        Tipo descuento:{" "}
+                        {sale.discount_type === "percent" ? "%" : "L"} · Valor:{" "}
+                        {sale.discount_value.toFixed(2)} · ISV%:{" "}
+                        {sale.tax_percent.toFixed(2)}
                       </p>
 
                       {sale.items.length > 0 && (
@@ -589,19 +665,55 @@ export default function SalesClient({
               </div>
             </div>
 
-            <div>
-              <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
-                Descuento
-              </label>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                name="discount"
-                value={discount}
-                onChange={(e) => setDiscount(e.target.value)}
-                className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
-              />
+            <div className="grid gap-4 md:grid-cols-3">
+              <div>
+                <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
+                  Tipo de descuento
+                </label>
+                <select
+                  name="discount_type"
+                  value={discountType}
+                  onChange={(e) => setDiscountType(e.target.value as DiscountType)}
+                  className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.select}`}
+                >
+                  <option value="fixed" className={theme.option}>
+                    Monto fijo (L)
+                  </option>
+                  <option value="percent" className={theme.option}>
+                    Porcentaje (%)
+                  </option>
+                </select>
+              </div>
+
+              <div>
+                <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
+                  Valor descuento
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  name="discount_value"
+                  value={discountValue}
+                  onChange={(e) => setDiscountValue(e.target.value)}
+                  className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+                />
+              </div>
+
+              <div>
+                <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
+                  ISV %
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  name="tax_percent"
+                  value={taxPercent}
+                  onChange={(e) => setTaxPercent(e.target.value)}
+                  className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+                />
+              </div>
             </div>
 
             <div>
@@ -620,7 +732,14 @@ export default function SalesClient({
               <p className="text-sm font-medium">Resumen de venta</p>
               <div className={`mt-2 space-y-1 text-sm ${theme.textMuted}`}>
                 <p>Subtotal: L {preview.subtotal.toFixed(2)}</p>
-                <p>Descuento: L {preview.discount.toFixed(2)}</p>
+                <p>
+                  Descuento aplicado: L {preview.discountAmount.toFixed(2)} (
+                  {discountType === "percent" ? `${preview.discountValue.toFixed(2)}%` : `L ${preview.discountValue.toFixed(2)}`})
+                </p>
+                <p>Base gravable: L {preview.taxableBase.toFixed(2)}</p>
+                <p>
+                  ISV: L {preview.taxAmount.toFixed(2)} ({preview.taxPercent.toFixed(2)}%)
+                </p>
                 <p className="font-semibold">Total: L {preview.total.toFixed(2)}</p>
               </div>
             </div>
@@ -646,7 +765,7 @@ export default function SalesClient({
               <div>
                 <h3 className="text-lg font-bold">Editar venta</h3>
                 <p className={`mt-1 text-sm ${theme.textMuted}`}>
-                  Modifica productos, descuento y datos de la venta.
+                  Modifica productos, descuento, ISV y datos de la venta.
                 </p>
               </div>
 
@@ -895,19 +1014,57 @@ export default function SalesClient({
                 </div>
               </div>
 
-              <div>
-                <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
-                  Descuento
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  name="discount"
-                  value={editDiscount}
-                  onChange={(e) => setEditDiscount(e.target.value)}
-                  className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
-                />
+              <div className="grid gap-4 md:grid-cols-3">
+                <div>
+                  <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
+                    Tipo de descuento
+                  </label>
+                  <select
+                    name="discount_type"
+                    value={editDiscountType}
+                    onChange={(e) =>
+                      setEditDiscountType(e.target.value as DiscountType)
+                    }
+                    className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.select}`}
+                  >
+                    <option value="fixed" className={theme.option}>
+                      Monto fijo (L)
+                    </option>
+                    <option value="percent" className={theme.option}>
+                      Porcentaje (%)
+                    </option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
+                    Valor descuento
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    name="discount_value"
+                    value={editDiscountValue}
+                    onChange={(e) => setEditDiscountValue(e.target.value)}
+                    className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+                  />
+                </div>
+
+                <div>
+                  <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
+                    ISV %
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    name="tax_percent"
+                    value={editTaxPercent}
+                    onChange={(e) => setEditTaxPercent(e.target.value)}
+                    className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+                  />
+                </div>
               </div>
 
               <div>
@@ -927,7 +1084,16 @@ export default function SalesClient({
                 <p className="text-sm font-medium">Resumen actualizado</p>
                 <div className={`mt-2 space-y-1 text-sm ${theme.textMuted}`}>
                   <p>Subtotal: L {editPreview.subtotal.toFixed(2)}</p>
-                  <p>Descuento: L {editPreview.discount.toFixed(2)}</p>
+                  <p>
+                    Descuento aplicado: L {editPreview.discountAmount.toFixed(2)} (
+                    {editDiscountType === "percent"
+                      ? `${editPreview.discountValue.toFixed(2)}%`
+                      : `L ${editPreview.discountValue.toFixed(2)}`})
+                  </p>
+                  <p>Base gravable: L {editPreview.taxableBase.toFixed(2)}</p>
+                  <p>
+                    ISV: L {editPreview.taxAmount.toFixed(2)} ({editPreview.taxPercent.toFixed(2)}%)
+                  </p>
                   <p className="font-semibold">Total: L {editPreview.total.toFixed(2)}</p>
                 </div>
               </div>

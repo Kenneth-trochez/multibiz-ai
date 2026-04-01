@@ -34,6 +34,10 @@ type SaleRow = {
   sale_at: string;
   subtotal: number;
   discount: number;
+  discount_type: "fixed" | "percent";
+  discount_value: number;
+  tax_percent: number;
+  tax_amount: number;
   total: number;
   notes: string | null;
   customer: {
@@ -105,6 +109,10 @@ export default async function SalesPage({
         sale_at,
         subtotal,
         discount,
+        discount_type,
+        discount_value,
+        tax_percent,
+        tax_amount,
         total,
         notes,
         customer:customers(id,name,phone),
@@ -223,6 +231,10 @@ export default async function SalesPage({
     sale_at: sale.sale_at,
     subtotal: Number(sale.subtotal || 0),
     discount: Number(sale.discount || 0),
+    discount_type: sale.discount_type === "percent" ? "percent" : "fixed",
+    discount_value: Number(sale.discount_value || 0),
+    tax_percent: Number(sale.tax_percent || 0),
+    tax_amount: Number(sale.tax_amount || 0),
     total: Number(sale.total || 0),
     notes: sale.notes,
     customer: Array.isArray(sale.customer)

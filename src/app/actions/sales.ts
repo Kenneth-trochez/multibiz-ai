@@ -26,6 +26,8 @@ type ExistingSaleItemRow = {
   line_total: number | null;
 };
 
+type DiscountType = "fixed" | "percent";
+
 function parseSaleItems(itemsJson: string): SaleItemInput[] {
   let parsedItems: SaleItemInput[] = [];
 
@@ -71,6 +73,53 @@ function getQtyMap(items: { product_id: string; quantity: number }[]) {
   return map;
 }
 
+function parseDiscountType(raw: string): DiscountType {
+  return raw === "percent" ? "percent" : "fixed";
+}
+
+function calculateAmounts(params: {
+  subtotal: number;
+  discountType: DiscountType;
+  discountValue: number;
+  taxPercent: number;
+}) {
+  const { subtotal, discountType, discountValue, taxPercent } = params;
+
+  let discountAmount = 0;
+
+  if (discountType === "percent") {
+    if (discountValue < 0 || discountValue > 100) {
+      redirect("/dashboard/sales?error=El+descuento+por+porcentaje+debe+estar+entre+0+y+100");
+    }
+
+    discountAmount = subtotal * (discountValue / 100);
+  } else {
+    if (discountValue < 0) {
+      redirect("/dashboard/sales?error=El+descuento+fijo+no+puede+ser+negativo");
+    }
+
+    discountAmount = discountValue;
+  }
+
+  if (discountAmount > subtotal) {
+    redirect("/dashboard/sales?error=El+descuento+no+puede+ser+mayor+al+subtotal");
+  }
+
+  if (taxPercent < 0) {
+    redirect("/dashboard/sales?error=El+ISV+no+puede+ser+negativo");
+  }
+
+  const taxableBase = subtotal - discountAmount;
+  const taxAmount = taxableBase * (taxPercent / 100);
+  const total = taxableBase + taxAmount;
+
+  return {
+    discountAmount,
+    taxAmount,
+    total,
+  };
+}
+
 async function loadProductsByIds(params: {
   supabase: Awaited<ReturnType<typeof createClient>>;
   businessId: string;
@@ -104,7 +153,11 @@ export async function createSaleAction(formData: FormData): Promise<void> {
   const businessId = String(formData.get("businessId") || "").trim();
   const customerId = String(formData.get("customer_id") || "").trim();
   const staffId = String(formData.get("staff_id") || "").trim();
-  const discountRaw = String(formData.get("discount") || "0").trim();
+  const discountType = parseDiscountType(
+    String(formData.get("discount_type") || "fixed").trim()
+  );
+  const discountValueRaw = String(formData.get("discount_value") || "0").trim();
+  const taxPercentRaw = String(formData.get("tax_percent") || "15").trim();
   const notes = String(formData.get("notes") || "").trim();
   const itemsJson = String(formData.get("items_json") || "[]").trim();
 
@@ -112,10 +165,15 @@ export async function createSaleAction(formData: FormData): Promise<void> {
     redirect("/dashboard/sales?error=Negocio+invalido");
   }
 
-  const discount = Number(discountRaw || 0);
+  const discountValue = Number(discountValueRaw || 0);
+  const taxPercent = Number(taxPercentRaw || 0);
 
-  if (Number.isNaN(discount) || discount < 0) {
+  if (Number.isNaN(discountValue) || discountValue < 0) {
     redirect("/dashboard/sales?error=Descuento+invalido");
+  }
+
+  if (Number.isNaN(taxPercent) || taxPercent < 0) {
+    redirect("/dashboard/sales?error=ISV+invalido");
   }
 
   const newItems = parseSaleItems(itemsJson);
@@ -171,11 +229,12 @@ export async function createSaleAction(formData: FormData): Promise<void> {
     };
   });
 
-  if (discount > subtotal) {
-    redirect("/dashboard/sales?error=El+descuento+no+puede+ser+mayor+al+subtotal");
-  }
-
-  const total = subtotal - discount;
+  const { discountAmount, taxAmount, total } = calculateAmounts({
+    subtotal,
+    discountType,
+    discountValue,
+    taxPercent,
+  });
 
   const previousStocks = new Map<string, number>();
   for (const productId of productIds) {
@@ -223,7 +282,11 @@ export async function createSaleAction(formData: FormData): Promise<void> {
       customer_id: customerId || null,
       staff_id: staffId || null,
       subtotal,
-      discount,
+      discount: discountAmount,
+      discount_type: discountType,
+      discount_value: discountValue,
+      tax_percent: taxPercent,
+      tax_amount: taxAmount,
       total,
       notes: notes || null,
     })
@@ -289,7 +352,11 @@ export async function updateSaleAction(formData: FormData): Promise<void> {
   const businessId = String(formData.get("businessId") || "").trim();
   const customerId = String(formData.get("customer_id") || "").trim();
   const staffId = String(formData.get("staff_id") || "").trim();
-  const discountRaw = String(formData.get("discount") || "0").trim();
+  const discountType = parseDiscountType(
+    String(formData.get("discount_type") || "fixed").trim()
+  );
+  const discountValueRaw = String(formData.get("discount_value") || "0").trim();
+  const taxPercentRaw = String(formData.get("tax_percent") || "15").trim();
   const notes = String(formData.get("notes") || "").trim();
   const itemsJson = String(formData.get("items_json") || "[]").trim();
 
@@ -297,10 +364,15 @@ export async function updateSaleAction(formData: FormData): Promise<void> {
     redirect("/dashboard/sales?error=Venta+invalida");
   }
 
-  const discount = Number(discountRaw || 0);
+  const discountValue = Number(discountValueRaw || 0);
+  const taxPercent = Number(taxPercentRaw || 0);
 
-  if (Number.isNaN(discount) || discount < 0) {
+  if (Number.isNaN(discountValue) || discountValue < 0) {
     redirect("/dashboard/sales?error=Descuento+invalido");
+  }
+
+  if (Number.isNaN(taxPercent) || taxPercent < 0) {
+    redirect("/dashboard/sales?error=ISV+invalido");
   }
 
   const newItems = parseSaleItems(itemsJson);
@@ -399,11 +471,12 @@ export async function updateSaleAction(formData: FormData): Promise<void> {
     };
   });
 
-  if (discount > subtotal) {
-    redirect("/dashboard/sales?error=El+descuento+no+puede+ser+mayor+al+subtotal");
-  }
-
-  const total = subtotal - discount;
+  const { discountAmount, taxAmount, total } = calculateAmounts({
+    subtotal,
+    discountType,
+    discountValue,
+    taxPercent,
+  });
 
   const previousStocks = new Map<string, number>();
   const targetStocks = new Map<string, number>();
@@ -453,7 +526,11 @@ export async function updateSaleAction(formData: FormData): Promise<void> {
       customer_id: customerId || null,
       staff_id: staffId || null,
       subtotal,
-      discount,
+      discount: discountAmount,
+      discount_type: discountType,
+      discount_value: discountValue,
+      tax_percent: taxPercent,
+      tax_amount: taxAmount,
       total,
       notes: notes || null,
       updated_at: new Date().toISOString(),
