@@ -11,6 +11,7 @@ type Customer = {
   name: string;
   phone: string | null;
   email: string | null;
+  address: string | null;
   notes: string | null;
   created_at: string;
 };
@@ -75,13 +76,15 @@ export default function CustomersList({
                   <div className="min-w-0">
                     <p className="truncate text-base font-semibold">{customer.name}</p>
                     <p className={`truncate text-sm ${theme.textMuted}`}>
-                      {customer.notes?.trim()
-                        ? customer.notes
-                        : customer.email?.trim()
-                          ? customer.email
-                          : customer.phone?.trim()
-                            ? customer.phone
-                            : "Sin descripción"}
+                      {customer.address?.trim()
+                        ? customer.address
+                        : customer.notes?.trim()
+                          ? customer.notes
+                          : customer.email?.trim()
+                            ? customer.email
+                            : customer.phone?.trim()
+                              ? customer.phone
+                              : "Sin descripción"}
                     </p>
                   </div>
 
@@ -152,6 +155,18 @@ export default function CustomersList({
                   name="email"
                   defaultValue={selectedCustomer.email || ""}
                   className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+                />
+              </div>
+
+              <div>
+                <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
+                  Dirección
+                </label>
+                <input
+                  name="address"
+                  defaultValue={selectedCustomer.address || ""}
+                  className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+                  placeholder="Opcional"
                 />
               </div>
 

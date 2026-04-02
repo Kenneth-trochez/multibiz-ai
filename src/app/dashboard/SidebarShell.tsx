@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 
 type SidebarShellProps = {
   children: React.ReactNode;
@@ -21,6 +22,7 @@ export default function SidebarShell({
   buttonClassName = "",
   title = "Dashboard",
 }: SidebarShellProps) {
+  const pathname = usePathname();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isDesktopCollapsed, setIsDesktopCollapsed] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -42,6 +44,10 @@ export default function SidebarShell({
     );
   }, [isDesktopCollapsed, mounted]);
 
+  useEffect(() => {
+    setIsMobileOpen(false);
+  }, [pathname]);
+
   return (
     <div className="min-h-screen">
       {isMobileOpen && (
@@ -61,7 +67,7 @@ export default function SidebarShell({
         ].join(" ")}
       >
         <div className="h-full overflow-y-auto">
-          <div className="lg:hidden flex justify-end p-3">
+          <div className="flex justify-end p-3 lg:hidden">
             <button
               type="button"
               onClick={() => setIsMobileOpen(false)}

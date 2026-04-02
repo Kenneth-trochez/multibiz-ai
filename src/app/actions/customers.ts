@@ -9,6 +9,7 @@ export async function createCustomerAction(formData: FormData): Promise<void> {
   const name = String(formData.get("name") || "").trim();
   const phone = String(formData.get("phone") || "").trim();
   const email = String(formData.get("email") || "").trim();
+  const address = String(formData.get("address") || "").trim();
   const notes = String(formData.get("notes") || "").trim();
 
   if (!businessId || !name) {
@@ -22,6 +23,7 @@ export async function createCustomerAction(formData: FormData): Promise<void> {
     name,
     phone: phone || null,
     email: email || null,
+    address: address || null,
     notes: notes || null,
   });
 
@@ -40,6 +42,7 @@ export async function updateCustomerAction(formData: FormData): Promise<void> {
   const name = String(formData.get("name") || "").trim();
   const phone = String(formData.get("phone") || "").trim();
   const email = String(formData.get("email") || "").trim();
+  const address = String(formData.get("address") || "").trim();
   const notes = String(formData.get("notes") || "").trim();
 
   if (!customerId || !name) {
@@ -54,6 +57,7 @@ export async function updateCustomerAction(formData: FormData): Promise<void> {
       name,
       phone: phone || null,
       email: email || null,
+      address: address || null,
       notes: notes || null,
     })
     .eq("id", customerId);

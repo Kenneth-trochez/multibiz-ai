@@ -292,7 +292,7 @@ export default function SalesClient({
   };
 
   return (
-    <div className="mx-auto max-w-7xl p-6 lg:p-8">
+    <div className="mx-auto max-w-7xl p-4 lg:p-8">
       <div className="mb-8 flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold lg:text-3xl">Ventas</h1>
@@ -487,7 +487,7 @@ export default function SalesClient({
             </div>
 
             <div>
-              <div className="mb-2 flex items-center justify-between">
+              <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <label className={`text-sm font-medium ${theme.label}`}>
                   Productos
                 </label>
@@ -495,7 +495,7 @@ export default function SalesClient({
                 <button
                   type="button"
                   onClick={() => setLines((prev) => [...prev, makeLine()])}
-                  className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition ${theme.buttonSecondary}`}
+                  className={`inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm transition ${theme.buttonSecondary}`}
                 >
                   <Plus className="h-4 w-4" />
                   Agregar línea
@@ -734,7 +734,10 @@ export default function SalesClient({
                 <p>Subtotal: L {preview.subtotal.toFixed(2)}</p>
                 <p>
                   Descuento aplicado: L {preview.discountAmount.toFixed(2)} (
-                  {discountType === "percent" ? `${preview.discountValue.toFixed(2)}%` : `L ${preview.discountValue.toFixed(2)}`})
+                  {discountType === "percent"
+                    ? `${preview.discountValue.toFixed(2)}%`
+                    : `L ${preview.discountValue.toFixed(2)}`}
+                  )
                 </p>
                 <p>Base gravable: L {preview.taxableBase.toFixed(2)}</p>
                 <p>
@@ -755,369 +758,378 @@ export default function SalesClient({
       </div>
 
       {selectedSale && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 p-3 sm:p-4">
           <div
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => setSelectedSale(null)}
           />
-          <div className={`relative w-full max-w-3xl rounded-2xl border p-6 shadow-xl ${theme.card}`}>
-            <div className="mb-5 flex items-start justify-between gap-4">
-              <div>
-                <h3 className="text-lg font-bold">Editar venta</h3>
-                <p className={`mt-1 text-sm ${theme.textMuted}`}>
-                  Modifica productos, descuento, ISV y datos de la venta.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setSelectedSale(null)}
-                className={`rounded-xl border px-4 py-2 text-sm transition ${theme.buttonSecondary}`}
-              >
-                Cerrar
-              </button>
-            </div>
-
-            <form action={updateSaleAction} className="space-y-4">
-              <input type="hidden" name="saleId" value={selectedSale.id} />
-              <input type="hidden" name="businessId" value={businessId} />
-              <input type="hidden" name="items_json" value={editItemsJson} />
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
-                    Cliente
-                  </label>
-                  <select
-                    name="customer_id"
-                    defaultValue={selectedSale.customer?.id || ""}
-                    className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.select}`}
-                  >
-                    <option className={theme.option} value="">
-                      Sin cliente
-                    </option>
-                    {customers.map((customer) => (
-                      <option
-                        key={customer.id}
-                        value={customer.id}
-                        className={theme.option}
-                      >
-                        {customer.name}
-                        {customer.phone ? ` — ${customer.phone}` : ""}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
-                    Staff
-                  </label>
-                  <select
-                    name="staff_id"
-                    defaultValue={selectedSale.staff?.id || ""}
-                    className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.select}`}
-                  >
-                    <option className={theme.option} value="">
-                      Sin asignar
-                    </option>
-                    {staff.map((member) => (
-                      <option
-                        key={member.id}
-                        value={member.id}
-                        className={theme.option}
-                      >
-                        {member.display_name}
-                        {member.specialty ? ` — ${member.specialty}` : ""}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <label className={`text-sm font-medium ${theme.label}`}>
-                    Productos
-                  </label>
-
-                  <button
-                    type="button"
-                    onClick={() => setEditLines((prev) => [...prev, makeLine()])}
-                    className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition ${theme.buttonSecondary}`}
-                  >
-                    <Plus className="h-4 w-4" />
-                    Agregar línea
-                  </button>
-                </div>
-
-                <div className="space-y-3">
-                  {editLines.map((line, index) => {
-                    const filteredProducts = line.category_id
-                      ? products.filter(
-                          (product) => product.category_id === line.category_id
-                        )
-                      : products;
-
-                    const selectedProduct = products.find(
-                      (product) => product.id === line.product_id
-                    );
-
-                    return (
-                      <div
-                        key={line.id}
-                        className="grid gap-3 rounded-2xl border p-4 md:grid-cols-2"
-                      >
-                        <div className="md:col-span-1">
-                          <label
-                            className={`mb-1 block text-xs font-medium ${theme.textMuted}`}
-                          >
-                            Categoría #{index + 1}
-                          </label>
-                          <select
-                            value={line.category_id}
-                            onChange={(e) =>
-                              setEditLines((prev) =>
-                                prev.map((item) =>
-                                  item.id === line.id
-                                    ? {
-                                        ...item,
-                                        category_id: e.target.value,
-                                        product_id: "",
-                                      }
-                                    : item
-                                )
-                              )
-                            }
-                            className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.select}`}
-                          >
-                            <option className={theme.option} value="">
-                              Todas
-                            </option>
-                            {categories.map((category) => (
-                              <option
-                                key={category.id}
-                                value={category.id}
-                                className={theme.option}
-                              >
-                                {category.name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div className="md:col-span-1">
-                          <label
-                            className={`mb-1 block text-xs font-medium ${theme.textMuted}`}
-                          >
-                            Producto
-                          </label>
-                          <select
-                            value={line.product_id}
-                            onChange={(e) =>
-                              setEditLines((prev) =>
-                                prev.map((item) =>
-                                  item.id === line.id
-                                    ? { ...item, product_id: e.target.value }
-                                    : item
-                                )
-                              )
-                            }
-                            className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.select}`}
-                          >
-                            <option className={theme.option} value="">
-                              Seleccionar producto
-                            </option>
-                            {filteredProducts.map((product) => (
-                              <option
-                                key={product.id}
-                                value={product.id}
-                                className={theme.option}
-                              >
-                                {product.name}
-                                {product.category_name
-                                  ? ` — ${product.category_name}`
-                                  : ""}
-                                {product.sku ? ` — ${product.sku}` : ""}
-                                {` — L ${Number(product.price || 0).toFixed(
-                                  2
-                                )} — Stock ${product.stock}`}
-                              </option>
-                            ))}
-                          </select>
-
-                          {selectedProduct && (
-                            <p className={`mt-2 text-xs ${theme.textMuted}`}>
-                              Categoría: {selectedProduct.category_name || "Sin categoría"} ·
-                              Precio: L {Number(selectedProduct.price || 0).toFixed(2)} ·
-                              Stock actual: {selectedProduct.stock}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="md:col-span-1">
-                          <label
-                            className={`mb-1 block text-xs font-medium ${theme.textMuted}`}
-                          >
-                            Cantidad
-                          </label>
-                          <input
-                            type="number"
-                            min="1"
-                            step="1"
-                            value={line.quantity}
-                            onChange={(e) =>
-                              setEditLines((prev) =>
-                                prev.map((item) =>
-                                  item.id === line.id
-                                    ? {
-                                        ...item,
-                                        quantity: Math.max(
-                                          1,
-                                          Number(e.target.value || 1)
-                                        ),
-                                      }
-                                    : item
-                                )
-                              )
-                            }
-                            className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
-                          />
-                        </div>
-
-                        <div className="md:col-span-1 flex items-end">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setEditLines((prev) =>
-                                prev.length === 1
-                                  ? prev
-                                  : prev.filter((item) => item.id !== line.id)
-                              )
-                            }
-                            className={`w-full rounded-xl px-3 py-2 transition ${
-                              editLines.length === 1
-                                ? "cursor-not-allowed opacity-40"
-                                : theme.danger
-                            }`}
-                            disabled={editLines.length === 1}
-                          >
-                            <span className="inline-flex items-center justify-center gap-2">
-                              <Trash2 className="h-4 w-4" />
-                              Quitar línea
-                            </span>
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-3">
-                <div>
-                  <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
-                    Tipo de descuento
-                  </label>
-                  <select
-                    name="discount_type"
-                    value={editDiscountType}
-                    onChange={(e) =>
-                      setEditDiscountType(e.target.value as DiscountType)
-                    }
-                    className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.select}`}
-                  >
-                    <option value="fixed" className={theme.option}>
-                      Monto fijo (L)
-                    </option>
-                    <option value="percent" className={theme.option}>
-                      Porcentaje (%)
-                    </option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
-                    Valor descuento
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    name="discount_value"
-                    value={editDiscountValue}
-                    onChange={(e) => setEditDiscountValue(e.target.value)}
-                    className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
-                  />
-                </div>
-
-                <div>
-                  <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
-                    ISV %
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    name="tax_percent"
-                    value={editTaxPercent}
-                    onChange={(e) => setEditTaxPercent(e.target.value)}
-                    className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
-                  Notas
-                </label>
-                <textarea
-                  name="notes"
-                  rows={3}
-                  defaultValue={selectedSale.notes || ""}
-                  className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
-                  placeholder="Opcional"
-                />
-              </div>
-
-              <div className="rounded-2xl border p-4">
-                <p className="text-sm font-medium">Resumen actualizado</p>
-                <div className={`mt-2 space-y-1 text-sm ${theme.textMuted}`}>
-                  <p>Subtotal: L {editPreview.subtotal.toFixed(2)}</p>
-                  <p>
-                    Descuento aplicado: L {editPreview.discountAmount.toFixed(2)} (
-                    {editDiscountType === "percent"
-                      ? `${editPreview.discountValue.toFixed(2)}%`
-                      : `L ${editPreview.discountValue.toFixed(2)}`})
+          <div className="relative flex min-h-full items-start justify-center sm:items-center">
+            <div
+              className={`mt-4 w-full max-w-3xl overflow-hidden rounded-2xl border shadow-xl ${theme.card} max-h-[92vh]`}
+            >
+              <div className="flex items-start justify-between gap-3 border-b px-4 py-4 sm:px-6">
+                <div className="min-w-0">
+                  <h3 className="text-lg font-bold">Editar venta</h3>
+                  <p className={`mt-1 text-sm ${theme.textMuted}`}>
+                    Modifica productos, descuento, ISV y datos de la venta.
                   </p>
-                  <p>Base gravable: L {editPreview.taxableBase.toFixed(2)}</p>
-                  <p>
-                    ISV: L {editPreview.taxAmount.toFixed(2)} ({editPreview.taxPercent.toFixed(2)}%)
-                  </p>
-                  <p className="font-semibold">Total: L {editPreview.total.toFixed(2)}</p>
                 </div>
-              </div>
 
-              <div className="flex flex-wrap gap-3">
                 <button
-                  type="submit"
-                  className={`rounded-xl px-4 py-2 font-medium transition ${theme.buttonPrimary}`}
+                  type="button"
+                  onClick={() => setSelectedSale(null)}
+                  className={`shrink-0 rounded-xl border px-3 py-2 text-sm transition ${theme.buttonSecondary}`}
                 >
-                  Guardar cambios
+                  Cerrar
                 </button>
               </div>
-            </form>
 
-            <form action={deleteSaleAction} className="mt-4">
-              <input type="hidden" name="saleId" value={selectedSale.id} />
-              <input type="hidden" name="businessId" value={businessId} />
-              <button
-                type="submit"
-                className={`rounded-xl px-4 py-2 text-sm font-medium transition ${theme.danger}`}
-              >
-                Eliminar venta
-              </button>
-            </form>
+              <div className="overflow-y-auto px-4 py-4 sm:px-6 sm:py-5 max-h-[calc(92vh-73px)]">
+                <form action={updateSaleAction} className="space-y-4">
+                  <input type="hidden" name="saleId" value={selectedSale.id} />
+                  <input type="hidden" name="businessId" value={businessId} />
+                  <input type="hidden" name="items_json" value={editItemsJson} />
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
+                        Cliente
+                      </label>
+                      <select
+                        name="customer_id"
+                        defaultValue={selectedSale.customer?.id || ""}
+                        className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.select}`}
+                      >
+                        <option className={theme.option} value="">
+                          Sin cliente
+                        </option>
+                        {customers.map((customer) => (
+                          <option
+                            key={customer.id}
+                            value={customer.id}
+                            className={theme.option}
+                          >
+                            {customer.name}
+                            {customer.phone ? ` — ${customer.phone}` : ""}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
+                        Staff
+                      </label>
+                      <select
+                        name="staff_id"
+                        defaultValue={selectedSale.staff?.id || ""}
+                        className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.select}`}
+                      >
+                        <option className={theme.option} value="">
+                          Sin asignar
+                        </option>
+                        {staff.map((member) => (
+                          <option
+                            key={member.id}
+                            value={member.id}
+                            className={theme.option}
+                          >
+                            {member.display_name}
+                            {member.specialty ? ` — ${member.specialty}` : ""}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <label className={`text-sm font-medium ${theme.label}`}>
+                        Productos
+                      </label>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setEditLines((prev) => [...prev, makeLine()])
+                        }
+                        className={`inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm transition ${theme.buttonSecondary}`}
+                      >
+                        <Plus className="h-4 w-4" />
+                        Agregar línea
+                      </button>
+                    </div>
+
+                    <div className="space-y-3">
+                      {editLines.map((line, index) => {
+                        const filteredProducts = line.category_id
+                          ? products.filter(
+                              (product) => product.category_id === line.category_id
+                            )
+                          : products;
+
+                        const selectedProduct = products.find(
+                          (product) => product.id === line.product_id
+                        );
+
+                        return (
+                          <div
+                            key={line.id}
+                            className="grid gap-3 rounded-2xl border p-4 md:grid-cols-2"
+                          >
+                            <div className="md:col-span-1">
+                              <label
+                                className={`mb-1 block text-xs font-medium ${theme.textMuted}`}
+                              >
+                                Categoría #{index + 1}
+                              </label>
+                              <select
+                                value={line.category_id}
+                                onChange={(e) =>
+                                  setEditLines((prev) =>
+                                    prev.map((item) =>
+                                      item.id === line.id
+                                        ? {
+                                            ...item,
+                                            category_id: e.target.value,
+                                            product_id: "",
+                                          }
+                                        : item
+                                    )
+                                  )
+                                }
+                                className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.select}`}
+                              >
+                                <option className={theme.option} value="">
+                                  Todas
+                                </option>
+                                {categories.map((category) => (
+                                  <option
+                                    key={category.id}
+                                    value={category.id}
+                                    className={theme.option}
+                                  >
+                                    {category.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <div className="md:col-span-1">
+                              <label
+                                className={`mb-1 block text-xs font-medium ${theme.textMuted}`}
+                              >
+                                Producto
+                              </label>
+                              <select
+                                value={line.product_id}
+                                onChange={(e) =>
+                                  setEditLines((prev) =>
+                                    prev.map((item) =>
+                                      item.id === line.id
+                                        ? { ...item, product_id: e.target.value }
+                                        : item
+                                    )
+                                  )
+                                }
+                                className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.select}`}
+                              >
+                                <option className={theme.option} value="">
+                                  Seleccionar producto
+                                </option>
+                                {filteredProducts.map((product) => (
+                                  <option
+                                    key={product.id}
+                                    value={product.id}
+                                    className={theme.option}
+                                  >
+                                    {product.name}
+                                    {product.category_name
+                                      ? ` — ${product.category_name}`
+                                      : ""}
+                                    {product.sku ? ` — ${product.sku}` : ""}
+                                    {` — L ${Number(product.price || 0).toFixed(
+                                      2
+                                    )} — Stock ${product.stock}`}
+                                  </option>
+                                ))}
+                              </select>
+
+                              {selectedProduct && (
+                                <p className={`mt-2 text-xs ${theme.textMuted}`}>
+                                  Categoría: {selectedProduct.category_name || "Sin categoría"} ·
+                                  Precio: L {Number(selectedProduct.price || 0).toFixed(2)} ·
+                                  Stock actual: {selectedProduct.stock}
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="md:col-span-1">
+                              <label
+                                className={`mb-1 block text-xs font-medium ${theme.textMuted}`}
+                              >
+                                Cantidad
+                              </label>
+                              <input
+                                type="number"
+                                min="1"
+                                step="1"
+                                value={line.quantity}
+                                onChange={(e) =>
+                                  setEditLines((prev) =>
+                                    prev.map((item) =>
+                                      item.id === line.id
+                                        ? {
+                                            ...item,
+                                            quantity: Math.max(
+                                              1,
+                                              Number(e.target.value || 1)
+                                            ),
+                                          }
+                                        : item
+                                    )
+                                  )
+                                }
+                                className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+                              />
+                            </div>
+
+                            <div className="md:col-span-1 flex items-end">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setEditLines((prev) =>
+                                    prev.length === 1
+                                      ? prev
+                                      : prev.filter((item) => item.id !== line.id)
+                                  )
+                                }
+                                className={`w-full rounded-xl px-3 py-2 transition ${
+                                  editLines.length === 1
+                                    ? "cursor-not-allowed opacity-40"
+                                    : theme.danger
+                                }`}
+                                disabled={editLines.length === 1}
+                              >
+                                <span className="inline-flex items-center justify-center gap-2">
+                                  <Trash2 className="h-4 w-4" />
+                                  Quitar línea
+                                </span>
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div>
+                      <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
+                        Tipo de descuento
+                      </label>
+                      <select
+                        name="discount_type"
+                        value={editDiscountType}
+                        onChange={(e) =>
+                          setEditDiscountType(e.target.value as DiscountType)
+                        }
+                        className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.select}`}
+                      >
+                        <option value="fixed" className={theme.option}>
+                          Monto fijo (L)
+                        </option>
+                        <option value="percent" className={theme.option}>
+                          Porcentaje (%)
+                        </option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
+                        Valor descuento
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        name="discount_value"
+                        value={editDiscountValue}
+                        onChange={(e) => setEditDiscountValue(e.target.value)}
+                        className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+                      />
+                    </div>
+
+                    <div>
+                      <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
+                        ISV %
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        name="tax_percent"
+                        value={editTaxPercent}
+                        onChange={(e) => setEditTaxPercent(e.target.value)}
+                        className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
+                      Notas
+                    </label>
+                    <textarea
+                      name="notes"
+                      rows={3}
+                      defaultValue={selectedSale.notes || ""}
+                      className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+                      placeholder="Opcional"
+                    />
+                  </div>
+
+                  <div className="rounded-2xl border p-4">
+                    <p className="text-sm font-medium">Resumen actualizado</p>
+                    <div className={`mt-2 space-y-1 text-sm ${theme.textMuted}`}>
+                      <p>Subtotal: L {editPreview.subtotal.toFixed(2)}</p>
+                      <p>
+                        Descuento aplicado: L {editPreview.discountAmount.toFixed(2)} (
+                        {editDiscountType === "percent"
+                          ? `${editPreview.discountValue.toFixed(2)}%`
+                          : `L ${editPreview.discountValue.toFixed(2)}`}
+                        )
+                      </p>
+                      <p>Base gravable: L {editPreview.taxableBase.toFixed(2)}</p>
+                      <p>
+                        ISV: L {editPreview.taxAmount.toFixed(2)} ({editPreview.taxPercent.toFixed(2)}%)
+                      </p>
+                      <p className="font-semibold">Total: L {editPreview.total.toFixed(2)}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                    <button
+                      type="submit"
+                      className={`rounded-xl px-4 py-2 font-medium transition ${theme.buttonPrimary}`}
+                    >
+                      Guardar cambios
+                    </button>
+                  </div>
+                </form>
+
+                <form action={deleteSaleAction} className="mt-4">
+                  <input type="hidden" name="saleId" value={selectedSale.id} />
+                  <input type="hidden" name="businessId" value={businessId} />
+                  <button
+                    type="submit"
+                    className={`w-full rounded-xl px-4 py-2 text-sm font-medium transition sm:w-auto ${theme.danger}`}
+                  >
+                    Eliminar venta
+                  </button>
+                </form>
+              </div>
+            </div>
           </div>
         </div>
       )}

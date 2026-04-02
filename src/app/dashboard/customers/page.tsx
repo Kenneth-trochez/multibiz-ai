@@ -10,6 +10,7 @@ type Customer = {
   name: string;
   phone: string | null;
   email: string | null;
+  address: string | null;
   notes: string | null;
   created_at: string;
 };
@@ -38,7 +39,7 @@ export default async function CustomersPage({
 
   const { data: customers, error } = await supabase
     .from("customers")
-    .select("id, name, phone, email, notes, created_at")
+    .select("id, name, phone, email, address, notes, created_at")
     .eq("business_id", business.id)
     .order("created_at", { ascending: false })
     .range(from, to);
@@ -163,6 +164,17 @@ export default async function CustomersPage({
                   type="email"
                   name="email"
                   className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+                />
+              </div>
+
+              <div>
+                <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
+                  Dirección
+                </label>
+                <input
+                  name="address"
+                  className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+                  placeholder="Opcional"
                 />
               </div>
 
