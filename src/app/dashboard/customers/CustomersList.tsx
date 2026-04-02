@@ -5,6 +5,7 @@ import {
   deleteCustomerAction,
   updateCustomerAction,
 } from "../../actions/customers";
+import CustomerContactFields from "./CustomerContactFields";
 
 type Customer = {
   id: string;
@@ -99,108 +100,100 @@ export default function CustomersList({
       </section>
 
       {selectedCustomer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="fixed inset-0 z-50 p-3 sm:p-4">
           <div
-            className={`w-full max-w-2xl rounded-2xl border p-6 shadow-xl ${theme.card}`}
-          >
-            <div className="mb-4 flex items-start justify-between gap-4">
-              <div>
-                <h3 className="text-xl font-semibold">Editar cliente</h3>
-                <p className={`mt-1 text-sm ${theme.textMuted}`}>
-                  Modifica la información del cliente o elimínalo.
-                </p>
-              </div>
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setSelectedCustomer(null)}
+          />
 
-              <button
-                type="button"
-                onClick={() => setSelectedCustomer(null)}
-                className={`rounded-xl px-3 py-2 text-sm transition ${theme.buttonSecondary}`}
-              >
-                Cerrar
-              </button>
-            </div>
+          <div className="relative flex min-h-full items-start justify-center sm:items-center">
+            <div
+              className={`mt-4 w-full max-w-2xl overflow-hidden rounded-2xl border shadow-xl ${theme.card} max-h-[92vh]`}
+            >
+              <div className="flex items-start justify-between gap-3 border-b px-4 py-4 sm:px-6">
+                <div className="min-w-0">
+                  <h3 className="text-xl font-semibold">Editar cliente</h3>
+                  <p className={`mt-1 text-sm ${theme.textMuted}`}>
+                    Modifica la información del cliente o elimínalo.
+                  </p>
+                </div>
 
-            <form action={updateCustomerAction} className="grid gap-4 md:grid-cols-2">
-              <input type="hidden" name="customerId" value={selectedCustomer.id} />
-
-              <div>
-                <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
-                  Nombre
-                </label>
-                <input
-                  name="name"
-                  defaultValue={selectedCustomer.name}
-                  className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
-                  required
-                />
-              </div>
-
-              <div>
-                <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
-                  Teléfono
-                </label>
-                <input
-                  name="phone"
-                  defaultValue={selectedCustomer.phone || ""}
-                  className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
-                />
-              </div>
-
-              <div>
-                <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
-                  Correo
-                </label>
-                <input
-                  type="email"
-                  name="email"
-                  defaultValue={selectedCustomer.email || ""}
-                  className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
-                />
-              </div>
-
-              <div>
-                <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
-                  Dirección
-                </label>
-                <input
-                  name="address"
-                  defaultValue={selectedCustomer.address || ""}
-                  className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
-                  placeholder="Opcional"
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
-                  Notas
-                </label>
-                <textarea
-                  name="notes"
-                  rows={4}
-                  defaultValue={selectedCustomer.notes || ""}
-                  className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
-                />
-              </div>
-
-              <div className="flex flex-wrap gap-3 md:col-span-2">
                 <button
-                  type="submit"
-                  className={`rounded-xl px-4 py-2 font-medium transition ${theme.buttonPrimary}`}
+                  type="button"
+                  onClick={() => setSelectedCustomer(null)}
+                  className={`shrink-0 rounded-xl px-3 py-2 text-sm transition ${theme.buttonSecondary}`}
                 >
-                  Guardar cambios
+                  Cerrar
                 </button>
               </div>
-            </form>
 
-            <form action={deleteCustomerAction} className="mt-4">
-              <input type="hidden" name="customerId" value={selectedCustomer.id} />
-              <button
-                type="submit"
-                className={`rounded-xl px-4 py-2 text-sm font-medium transition ${theme.danger}`}
-              >
-                Eliminar
-              </button>
-            </form>
+              <div className="overflow-y-auto px-4 py-4 sm:px-6 sm:py-5 max-h-[calc(92vh-81px)]">
+                <form action={updateCustomerAction} className="grid gap-4 md:grid-cols-2">
+                  <input type="hidden" name="customerId" value={selectedCustomer.id} />
+
+                  <div>
+                    <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
+                      Nombre
+                    </label>
+                    <input
+                      name="name"
+                      defaultValue={selectedCustomer.name}
+                      className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+                      required
+                    />
+                  </div>
+
+                  <CustomerContactFields
+                    theme={theme}
+                    initialPhone={selectedCustomer.phone || ""}
+                    initialEmail={selectedCustomer.email || ""}
+                  />
+
+                  <div>
+                    <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
+                      Dirección
+                    </label>
+                    <input
+                      name="address"
+                      defaultValue={selectedCustomer.address || ""}
+                      className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+                      placeholder="Opcional"
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
+                      Notas
+                    </label>
+                    <textarea
+                      name="notes"
+                      rows={4}
+                      defaultValue={selectedCustomer.notes || ""}
+                      className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+                    />
+                  </div>
+
+                  <div className="flex flex-wrap gap-3 md:col-span-2">
+                    <button
+                      type="submit"
+                      className={`rounded-xl px-4 py-2 font-medium transition ${theme.buttonPrimary}`}
+                    >
+                      Guardar cambios
+                    </button>
+                  </div>
+                </form>
+
+                <form action={deleteCustomerAction} className="mt-4">
+                  <input type="hidden" name="customerId" value={selectedCustomer.id} />
+                  <button
+                    type="submit"
+                    className={`w-full rounded-xl px-4 py-2 text-sm font-medium transition sm:w-auto ${theme.danger}`}
+                  >
+                    Eliminar
+                  </button>
+                </form>
+              </div>
+            </div>
           </div>
         </div>
       )}

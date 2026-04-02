@@ -3,6 +3,7 @@ import { requireSectionAccess } from "@/lib/auth/requireSectionAccess";
 import { createClient } from "@/lib/supabase/server";
 import { getThemeClasses } from "@/lib/theme/getThemeClasses";
 import CustomersList from "./CustomersList";
+import CustomerContactFields from "./CustomerContactFields";
 import Link from "next/link";
 
 type Customer = {
@@ -146,26 +147,7 @@ export default async function CustomersPage({
                 />
               </div>
 
-              <div>
-                <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
-                  Teléfono
-                </label>
-                <input
-                  name="phone"
-                  className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
-                />
-              </div>
-
-              <div>
-                <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
-                  Correo
-                </label>
-                <input
-                  type="email"
-                  name="email"
-                  className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
-                />
-              </div>
+              <CustomerContactFields theme={theme} />
 
               <div>
                 <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
