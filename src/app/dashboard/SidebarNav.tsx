@@ -12,6 +12,7 @@ import {
   BarChart3,
   Package,
   ShoppingCart,
+  BellRing,
 } from "lucide-react";
 
 type IconName =
@@ -23,6 +24,7 @@ type IconName =
   | "products"
   | "sales"
   | "balance"
+  | "insights"
   | "settings";
 
 type NavItem = {
@@ -49,6 +51,8 @@ function getIcon(icon: IconName) {
       return ShoppingCart;
     case "balance":
       return BarChart3;
+    case "insights":
+      return BellRing;
     case "settings":
       return SettingsIcon;
     default:

@@ -48,6 +48,10 @@ function featureLabel(key: string) {
     balance: "Balance",
     exports: "Exportaciones",
     ai_booking: "IA para agendamiento",
+    alerts_basic: "Alertas básicas",
+    alerts_advanced: "Alertas avanzadas",
+    ai_assistant: "Asistente interno con IA",
+    ai_summary: "Resumen inteligente con IA",
   };
 
   return map[key] || key;

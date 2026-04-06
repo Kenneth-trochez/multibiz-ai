@@ -20,6 +20,7 @@ type IconName =
   | "products"
   | "sales"
   | "balance"
+  | "insights"
   | "settings";
 
 type NavItem = {
@@ -105,6 +106,12 @@ export default async function DashboardLayout({
       label: "Balance",
       icon: "balance",
       section: "balance",
+    },
+    {
+      href: "/dashboard/insights",
+      label: "Alertas",
+      icon: "insights",
+      section: "dashboard",
     },
     {
       href: "/dashboard/settings",
