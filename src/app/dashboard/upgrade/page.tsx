@@ -56,10 +56,34 @@ function getPlanCardClasses(code: string) {
   }
 }
 
+function getCyclePrice(priceMonthly: number, cycle: "monthly" | "quarterly" | "yearly") {
+  switch (cycle) {
+    case "quarterly":
+      return Number(priceMonthly || 0) * 3;
+    case "yearly":
+      return Number(priceMonthly || 0) * 12;
+    case "monthly":
+    default:
+      return Number(priceMonthly || 0);
+  }
+}
+
+function cycleLabel(cycle: "monthly" | "quarterly" | "yearly") {
+  switch (cycle) {
+    case "quarterly":
+      return "Trimestral";
+    case "yearly":
+      return "Anual";
+    case "monthly":
+    default:
+      return "Mensual";
+  }
+}
+
 export default async function UpgradePage({
   searchParams,
 }: {
-  searchParams: Promise<{ feature?: string; error?: string }>;
+  searchParams: Promise<{ feature?: string; error?: string; cycle?: string }>;
 }) {
   const params = await searchParams;
   const ctx = await requireSectionAccess("upgrade");
@@ -68,12 +92,18 @@ export default async function UpgradePage({
   const { business } = ctx;
   const theme = getThemeClasses(business.theme || "warm");
 
+  const selectedCycle =
+    params.cycle === "quarterly" || params.cycle === "yearly"
+      ? params.cycle
+      : "monthly";
+
   const [{ data: subscriptionRow }, { data: plans }] = await Promise.all([
     supabase
       .from("business_subscriptions")
       .select(`
         id,
         status,
+        billing_cycle,
         plan:subscription_plans(
           id,
           code,
@@ -130,19 +160,41 @@ export default async function UpgradePage({
         </section>
 
         <section className={`rounded-[28px] border p-6 ${theme.cardSoft}`}>
-          <div className="flex flex-col gap-2">
-            <p className={`text-xs uppercase tracking-wide ${theme.textMuted}`}>
-              Plan actual
-            </p>
-            <div className="flex items-center gap-3">
-              <h2 className="text-2xl font-bold">{currentPlan?.name || "Basic"}</h2>
-              <span
-                className={`rounded-full px-3 py-1 text-xs font-medium ${
-                  getPlanCardClasses(currentPlanCode).badge
-                }`}
-              >
-                {currentPlanCode.toUpperCase()}
-              </span>
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-col gap-2">
+              <p className={`text-xs uppercase tracking-wide ${theme.textMuted}`}>
+                Plan actual
+              </p>
+              <div className="flex items-center gap-3">
+                <h2 className="text-2xl font-bold">{currentPlan?.name || "Basic"}</h2>
+                <span
+                  className={`rounded-full px-3 py-1 text-xs font-medium ${
+                    getPlanCardClasses(currentPlanCode).badge
+                  }`}
+                >
+                  {currentPlanCode.toUpperCase()}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {(["monthly", "quarterly", "yearly"] as const).map((cycle) => {
+                const active = selectedCycle === cycle;
+                return (
+                  <Link
+                    key={cycle}
+                    href={`/dashboard/upgrade?${new URLSearchParams({
+                      ...(feature ? { feature } : {}),
+                      cycle,
+                    }).toString()}`}
+                    className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${
+                      active ? theme.buttonPrimary : theme.buttonSecondary
+                    }`}
+                  >
+                    {cycleLabel(cycle)}
+                  </Link>
+                );
+              })}
             </div>
           </div>
         </section>
@@ -154,6 +206,7 @@ export default async function UpgradePage({
             const enabledFeatures = Object.entries(plan.features || {}).filter(
               ([, value]) => !!value
             );
+            const cyclePrice = getCyclePrice(plan.price_monthly, selectedCycle);
 
             return (
               <div
@@ -177,9 +230,11 @@ export default async function UpgradePage({
                   </div>
 
                   <div className="text-left md:text-right">
-                    <p className={`text-xs ${theme.textMuted}`}>Mensual</p>
+                    <p className={`text-xs ${theme.textMuted}`}>
+                      {cycleLabel(selectedCycle)}
+                    </p>
                     <p className="text-2xl font-bold">
-                      ${Number(plan.price_monthly || 0).toFixed(2)}
+                      ${cyclePrice.toFixed(2)}
                     </p>
                   </div>
                 </div>
@@ -229,7 +284,7 @@ export default async function UpgradePage({
                       </button>
                     ) : (
                       <Link
-                        href="/dashboard/profile"
+                        href={`/dashboard/profile?cycle=${selectedCycle}`}
                         className={`rounded-2xl px-5 py-3 text-sm font-semibold transition ${theme.buttonPrimary}`}
                       >
                         Mejorar plan

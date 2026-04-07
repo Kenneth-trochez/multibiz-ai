@@ -41,7 +41,7 @@ type BusinessSubscriptionRow = {
   business_id: string;
   plan_id: string;
   status: "trialing" | "active" | "past_due" | "canceled" | "inactive";
-  billing_cycle: "monthly" | "yearly";
+  billing_cycle: "monthly" | "quarterly" | "yearly";
   current_period_start: string;
   current_period_end: string | null;
   trial_ends_at: string | null;
@@ -292,6 +292,7 @@ export default async function AdminBusinessesPage({
                               className="w-full rounded-xl border border-[#d9c6b2] bg-white px-3 py-2 text-sm text-[#2f241d] outline-none"
                             >
                               <option value="monthly">monthly</option>
+                              <option value="quarterly">quarterly</option>
                               <option value="yearly">yearly</option>
                             </select>
                           </div>

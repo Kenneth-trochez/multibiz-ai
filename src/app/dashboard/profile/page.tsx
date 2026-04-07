@@ -57,10 +57,34 @@ function featureLabel(key: string) {
   return map[key] || key;
 }
 
+function getCyclePrice(priceMonthly: number, cycle: "monthly" | "quarterly" | "yearly") {
+  switch (cycle) {
+    case "quarterly":
+      return Number(priceMonthly || 0) * 3;
+    case "yearly":
+      return Number(priceMonthly || 0) * 12;
+    case "monthly":
+    default:
+      return Number(priceMonthly || 0);
+  }
+}
+
+function cycleLabel(cycle: string | null | undefined) {
+  switch (cycle) {
+    case "quarterly":
+      return "Trimestral";
+    case "yearly":
+      return "Anual";
+    case "monthly":
+    default:
+      return "Mensual";
+  }
+}
+
 export default async function ProfilePage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; success?: string }>;
+  searchParams: Promise<{ error?: string; success?: string; cycle?: string }>;
 }) {
   const params = await searchParams;
   const ctx = await requireSectionAccess("dashboard");
@@ -68,6 +92,11 @@ export default async function ProfilePage({
 
   const { business, user, role } = ctx;
   const theme = getThemeClasses(business.theme || "warm");
+
+  const selectedCycle =
+    params.cycle === "quarterly" || params.cycle === "yearly"
+      ? params.cycle
+      : "monthly";
 
   const [{ data: subscriptionRow }, { data: plans }] = await Promise.all([
     supabase
@@ -106,6 +135,7 @@ export default async function ProfilePage({
     : null;
 
   const currentPlanCode = currentPlan?.code || "basic";
+  const currentBillingCycle = subscriptionRow?.billing_cycle || "monthly";
 
   return (
     <main className={`min-h-screen ${theme.pageBg}`}>
@@ -209,7 +239,21 @@ export default async function ProfilePage({
 
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
                 <div className={`rounded-2xl border p-4 ${theme.subtle}`}>
-                  <p className={`text-xs ${theme.textMuted}`}>Precio mensual</p>
+                  <p className={`text-xs ${theme.textMuted}`}>Facturación actual</p>
+                  <p className="mt-1 text-lg font-semibold">
+                    {cycleLabel(currentBillingCycle)}
+                  </p>
+                </div>
+
+                <div className={`rounded-2xl border p-4 ${theme.subtle}`}>
+                  <p className={`text-xs ${theme.textMuted}`}>Precio del ciclo actual</p>
+                  <p className="mt-1 text-lg font-semibold">
+                    ${getCyclePrice(Number(currentPlan?.price_monthly || 0), currentBillingCycle as "monthly" | "quarterly" | "yearly").toFixed(2)}
+                  </p>
+                </div>
+
+                <div className={`rounded-2xl border p-4 ${theme.subtle}`}>
+                  <p className={`text-xs ${theme.textMuted}`}>Precio mensual base</p>
                   <p className="mt-1 text-lg font-semibold">
                     ${Number(currentPlan?.price_monthly || 0).toFixed(2)}
                   </p>
@@ -233,13 +277,33 @@ export default async function ProfilePage({
               </p>
             </div>
 
+            <div className="mb-6 flex flex-wrap gap-2">
+              {(["monthly", "quarterly", "yearly"] as const).map((cycle) => {
+                const active = selectedCycle === cycle;
+                return (
+                  <Link
+                    key={cycle}
+                    href={`/dashboard/profile?cycle=${cycle}`}
+                    className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${
+                      active ? theme.buttonPrimary : theme.buttonSecondary
+                    }`}
+                  >
+                    {cycleLabel(cycle)}
+                  </Link>
+                );
+              })}
+            </div>
+
             <div className="grid gap-5">
               {((plans || []) as PlanRow[]).map((plan) => {
                 const features = Object.entries(plan.features || {}).filter(
                   ([, enabled]) => !!enabled
                 );
-                const isCurrent = plan.code === currentPlanCode;
+                const isCurrent =
+                  plan.code === currentPlanCode &&
+                  currentBillingCycle === selectedCycle;
                 const styles = getPlanCardClasses(plan.code);
+                const cyclePrice = getCyclePrice(plan.price_monthly, selectedCycle);
 
                 return (
                   <div
@@ -263,9 +327,11 @@ export default async function ProfilePage({
                       </div>
 
                       <div className="text-left md:text-right">
-                        <p className={`text-xs ${theme.textMuted}`}>Mensual</p>
+                        <p className={`text-xs ${theme.textMuted}`}>
+                          {cycleLabel(selectedCycle)}
+                        </p>
                         <p className="text-2xl font-bold">
-                          ${Number(plan.price_monthly || 0).toFixed(2)}
+                          ${cyclePrice.toFixed(2)}
                         </p>
                       </div>
                     </div>
@@ -315,6 +381,11 @@ export default async function ProfilePage({
                         ) : (
                           <form action={startPlanCheckoutAction}>
                             <input type="hidden" name="planCode" value={plan.code} />
+                            <input
+                              type="hidden"
+                              name="billingCycle"
+                              value={selectedCycle}
+                            />
                             <button
                               type="submit"
                               className={`rounded-2xl px-5 py-3 text-sm font-semibold transition ${theme.buttonPrimary}`}

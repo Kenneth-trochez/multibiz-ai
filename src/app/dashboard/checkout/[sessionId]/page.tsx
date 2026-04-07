@@ -4,17 +4,39 @@ import { requireSectionAccess } from "@/lib/auth/requireSectionAccess";
 import { createClient } from "@/lib/supabase/server";
 import { getThemeClasses } from "@/lib/theme/getThemeClasses";
 
+function cycleLabel(cycle: string | null | undefined) {
+  switch (cycle) {
+    case "quarterly":
+      return "Trimestral";
+    case "yearly":
+      return "Anual";
+    case "monthly":
+    default:
+      return "Mensual";
+  }
+}
+
 export default async function CheckoutSessionPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ sessionId: string }>;
+  searchParams: Promise<{ billing_cycle?: string }>;
 }) {
   const resolvedParams = await params;
+  const resolvedSearchParams = await searchParams;
+
   const ctx = await requireSectionAccess("profile");
   const supabase = await createClient();
 
   const { business } = ctx;
   const theme = getThemeClasses(business.theme || "warm");
+
+  const billingCycle =
+    resolvedSearchParams.billing_cycle === "quarterly" ||
+    resolvedSearchParams.billing_cycle === "yearly"
+      ? resolvedSearchParams.billing_cycle
+      : "monthly";
 
   const { data: session, error } = await supabase
     .from("subscription_checkout_sessions")
@@ -81,7 +103,33 @@ export default async function CheckoutSessionPage({
                 {session.currency} {Number(session.amount || 0).toFixed(2)}
               </p>
               <p className={`mt-2 text-sm ${theme.textMuted}`}>
+                Ciclo: {cycleLabel(billingCycle)}
+              </p>
+              <p className={`mt-1 text-sm ${theme.textMuted}`}>
                 Estado: {session.status}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-3 sm:grid-cols-3">
+            <div className={`rounded-2xl border p-4 ${theme.cardSoft}`}>
+              <p className={`text-xs ${theme.textMuted}`}>Proveedor</p>
+              <p className="mt-1 text-sm font-semibold uppercase">
+                {session.provider || "internal"}
+              </p>
+            </div>
+
+            <div className={`rounded-2xl border p-4 ${theme.cardSoft}`}>
+              <p className={`text-xs ${theme.textMuted}`}>Moneda</p>
+              <p className="mt-1 text-sm font-semibold uppercase">
+                {session.currency || "USD"}
+              </p>
+            </div>
+
+            <div className={`rounded-2xl border p-4 ${theme.cardSoft}`}>
+              <p className={`text-xs ${theme.textMuted}`}>Monto del ciclo</p>
+              <p className="mt-1 text-sm font-semibold">
+                ${Number(session.amount || 0).toFixed(2)}
               </p>
             </div>
           </div>

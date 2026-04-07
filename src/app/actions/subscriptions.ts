@@ -31,12 +31,17 @@ async function getCurrentMembership() {
 
 export async function changePlanAction(formData: FormData): Promise<void> {
   const planCode = String(formData.get("planCode") || "").trim();
+  const billingCycle = String(formData.get("billingCycle") || "monthly").trim();
 
   if (!planCode) {
     redirect("/dashboard/profile?error=Plan+inválido");
   }
 
-  const { supabase, membership } = await getCurrentMembership();
+  if (!["monthly", "quarterly", "yearly"].includes(billingCycle)) {
+    redirect("/dashboard/profile?error=Ciclo+de+facturación+inválido");
+  }
+
+  const { supabase, membership, user } = await getCurrentMembership();
 
   if (membership.role !== "owner") {
     redirect("/dashboard/profile?error=Solo+el+owner+puede+cambiar+el+plan");
@@ -56,7 +61,7 @@ export async function changePlanAction(formData: FormData): Promise<void> {
   const { data: currentSubscription, error: currentSubscriptionError } =
     await supabase
       .from("business_subscriptions")
-      .select("id, business_id")
+      .select("id, business_id, plan_id, status, billing_cycle")
       .eq("business_id", membership.business_id)
       .in("status", ["active", "trialing", "past_due"])
       .maybeSingle();
@@ -69,30 +74,48 @@ export async function changePlanAction(formData: FormData): Promise<void> {
     );
   }
 
+  const nowIso = new Date().toISOString();
+
   if (!currentSubscription) {
-    const { error: insertError } = await supabase
+    const { data: insertedSubscription, error: insertError } = await supabase
       .from("business_subscriptions")
       .insert({
         business_id: membership.business_id,
         plan_id: planRow.id,
         status: "active",
-        billing_cycle: "monthly",
-        started_at: new Date().toISOString(),
-        current_period_start: new Date().toISOString(),
-      });
+        billing_cycle: billingCycle,
+        started_at: nowIso,
+        current_period_start: nowIso,
+      })
+      .select("id")
+      .single();
 
-    if (insertError) {
+    if (insertError || !insertedSubscription) {
       redirect(
-        `/dashboard/profile?error=${encodeURIComponent(insertError.message)}`
+        `/dashboard/profile?error=${encodeURIComponent(
+          insertError?.message || "No se pudo crear la suscripción"
+        )}`
       );
     }
+
+    await supabase.from("subscription_audit_logs").insert({
+      business_id: membership.business_id,
+      subscription_id: insertedSubscription.id,
+      actor_user_id: user.id,
+      event_type: "subscription_created",
+      new_plan_id: planRow.id,
+      new_status: "active",
+      new_billing_cycle: billingCycle,
+      notes: `Suscripción creada con ciclo ${billingCycle}`,
+    });
   } else {
     const { error: updateError } = await supabase
       .from("business_subscriptions")
       .update({
         plan_id: planRow.id,
         status: "active",
-        current_period_start: new Date().toISOString(),
+        billing_cycle: billingCycle,
+        current_period_start: nowIso,
       })
       .eq("id", currentSubscription.id);
 
@@ -101,6 +124,20 @@ export async function changePlanAction(formData: FormData): Promise<void> {
         `/dashboard/profile?error=${encodeURIComponent(updateError.message)}`
       );
     }
+
+    await supabase.from("subscription_audit_logs").insert({
+      business_id: membership.business_id,
+      subscription_id: currentSubscription.id,
+      actor_user_id: user.id,
+      event_type: "plan_changed",
+      old_plan_id: currentSubscription.plan_id,
+      new_plan_id: planRow.id,
+      old_status: currentSubscription.status,
+      new_status: "active",
+      old_billing_cycle: currentSubscription.billing_cycle,
+      new_billing_cycle: billingCycle,
+      notes: `Plan/ciclo actualizado a ${planCode} (${billingCycle})`,
+    });
   }
 
   revalidatePath("/dashboard/profile");
@@ -109,6 +146,6 @@ export async function changePlanAction(formData: FormData): Promise<void> {
   revalidatePath("/dashboard/sales");
   revalidatePath("/dashboard/balance");
   revalidatePath("/dashboard/staff");
-
+  revalidatePath("/dashboard/upgrade");
   redirect("/dashboard/profile?success=plan_updated");
 }

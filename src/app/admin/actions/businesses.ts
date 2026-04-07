@@ -14,7 +14,7 @@ const ALLOWED_STATUSES = [
   "inactive",
 ] as const;
 
-const ALLOWED_BILLING_CYCLES = ["monthly", "yearly"] as const;
+const ALLOWED_BILLING_CYCLES = ["monthly", "quarterly", "yearly"] as const;
 
 type AllowedStatus = (typeof ALLOWED_STATUSES)[number];
 type AllowedBillingCycle = (typeof ALLOWED_BILLING_CYCLES)[number];
@@ -130,6 +130,8 @@ export async function updateBusinessSubscriptionAction(
 
     if (billingCycle === "yearly") {
       periodEnd.setFullYear(periodEnd.getFullYear() + 1);
+    } else if (billingCycle === "quarterly") {
+      periodEnd.setMonth(periodEnd.getMonth() + 3);
     } else {
       periodEnd.setMonth(periodEnd.getMonth() + 1);
     }

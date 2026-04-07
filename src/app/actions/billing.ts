@@ -29,11 +29,30 @@ async function getCurrentMembership() {
   return { supabase, user, membership };
 }
 
+function getAmountByCycle(priceMonthly: number, billingCycle: string) {
+  const monthly = Number(priceMonthly || 0);
+
+  switch (billingCycle) {
+    case "quarterly":
+      return monthly * 3;
+    case "yearly":
+      return monthly * 12;
+    case "monthly":
+    default:
+      return monthly;
+  }
+}
+
 export async function startPlanCheckoutAction(formData: FormData): Promise<void> {
   const planCode = String(formData.get("planCode") || "").trim();
+  const billingCycle = String(formData.get("billingCycle") || "monthly").trim();
 
   if (!planCode) {
     redirect("/dashboard/profile?error=Plan+inválido");
+  }
+
+  if (!["monthly", "quarterly", "yearly"].includes(billingCycle)) {
+    redirect("/dashboard/profile?error=Ciclo+de+facturación+inválido");
   }
 
   const { supabase, user, membership } = await getCurrentMembership();
@@ -57,6 +76,7 @@ export async function startPlanCheckoutAction(formData: FormData): Promise<void>
     .from("business_subscriptions")
     .select(`
       id,
+      billing_cycle,
       plan:subscription_plans(
         id,
         code
@@ -72,9 +92,17 @@ export async function startPlanCheckoutAction(formData: FormData): Promise<void>
       : currentSubscription.plan
     : null;
 
-  if (currentPlan?.code === targetPlan.code) {
-    redirect("/dashboard/profile?error=Ese+ya+es+tu+plan+actual");
+  if (
+    currentPlan?.code === targetPlan.code &&
+    currentSubscription?.billing_cycle === billingCycle
+  ) {
+    redirect("/dashboard/profile?error=Ese+ya+es+tu+plan+y+ciclo+actual");
   }
+
+  const checkoutAmount = getAmountByCycle(
+    Number(targetPlan.price_monthly || 0),
+    billingCycle
+  );
 
   const { data: pendingSession } = await supabase
     .from("subscription_checkout_sessions")
@@ -94,7 +122,7 @@ export async function startPlanCheckoutAction(formData: FormData): Promise<void>
         target_plan_id: targetPlan.id,
         provider: "internal",
         status: "pending",
-        amount: Number(targetPlan.price_monthly || 0),
+        amount: checkoutAmount,
         currency: "USD",
         created_by_user_id: user.id,
       })
@@ -113,5 +141,9 @@ export async function startPlanCheckoutAction(formData: FormData): Promise<void>
   }
 
   revalidatePath("/dashboard/profile");
-  redirect(`/dashboard/checkout/${checkoutSessionId}`);
+  redirect(
+    `/dashboard/checkout/${checkoutSessionId}?billing_cycle=${encodeURIComponent(
+      billingCycle
+    )}`
+  );
 }
