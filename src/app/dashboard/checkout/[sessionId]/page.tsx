@@ -17,8 +17,6 @@ function cycleLabel(cycle: string | null | undefined) {
   }
 }
 
-<h1>hola mundo como esta</h1>
-
 function cycleDescription(cycle: string | null | undefined) {
   switch (cycle) {
     case "quarterly":
