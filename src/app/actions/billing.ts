@@ -124,6 +124,7 @@ export async function startPlanCheckoutAction(formData: FormData): Promise<void>
         status: "pending",
         amount: checkoutAmount,
         currency: "USD",
+        billing_cycle: billingCycle,
         created_by_user_id: user.id,
       })
       .select("id")
@@ -138,12 +139,104 @@ export async function startPlanCheckoutAction(formData: FormData): Promise<void>
     }
 
     checkoutSessionId = insertedSession.id;
+  } else {
+    const { error: updatePendingError } = await supabase
+      .from("subscription_checkout_sessions")
+      .update({
+        amount: checkoutAmount,
+        billing_cycle: billingCycle,
+      })
+      .eq("id", checkoutSessionId);
+
+    if (updatePendingError) {
+      redirect(
+        `/dashboard/profile?error=${encodeURIComponent(
+          updatePendingError.message || "No se pudo actualizar la sesión de checkout"
+        )}`
+      );
+    }
   }
 
   revalidatePath("/dashboard/profile");
-  redirect(
-    `/dashboard/checkout/${checkoutSessionId}?billing_cycle=${encodeURIComponent(
-      billingCycle
-    )}`
+  revalidatePath(`/dashboard/checkout/${checkoutSessionId}`);
+  redirect(`/dashboard/checkout/${checkoutSessionId}`);
+}
+
+export async function updateCheckoutSessionCycleAction(
+  formData: FormData
+): Promise<void> {
+  const sessionId = String(formData.get("sessionId") || "").trim();
+  const billingCycle = String(formData.get("billingCycle") || "monthly").trim();
+
+  if (!sessionId) {
+    redirect("/dashboard/profile?error=Sesión+de+checkout+inválida");
+  }
+
+  if (!["monthly", "quarterly", "yearly"].includes(billingCycle)) {
+    redirect("/dashboard/profile?error=Ciclo+de+facturación+inválido");
+  }
+
+  const { supabase, membership } = await getCurrentMembership();
+
+  if (membership.role !== "owner") {
+    redirect("/dashboard/profile?error=Solo+el+owner+puede+modificar+el+checkout");
+  }
+
+  const { data: session, error: sessionError } = await supabase
+    .from("subscription_checkout_sessions")
+    .select(`
+      id,
+      business_id,
+      status,
+      target_plan_id,
+      plan:subscription_plans(
+        id,
+        price_monthly
+      )
+    `)
+    .eq("id", sessionId)
+    .eq("business_id", membership.business_id)
+    .maybeSingle();
+
+  if (sessionError || !session) {
+    redirect("/dashboard/profile?error=No+se+encontró+la+sesión+de+checkout");
+  }
+
+  if (session.status !== "pending") {
+    redirect("/dashboard/profile?error=La+sesión+ya+no+está+pendiente");
+  }
+
+  const targetPlan = session.plan
+    ? Array.isArray(session.plan)
+      ? session.plan[0]
+      : session.plan
+    : null;
+
+  if (!targetPlan) {
+    redirect("/dashboard/profile?error=No+se+pudo+leer+el+plan+de+la+sesión");
+  }
+
+  const updatedAmount = getAmountByCycle(
+    Number(targetPlan.price_monthly || 0),
+    billingCycle
   );
+
+  const { error: updateError } = await supabase
+    .from("subscription_checkout_sessions")
+    .update({
+      amount: updatedAmount,
+      billing_cycle: billingCycle,
+    })
+    .eq("id", session.id);
+
+  if (updateError) {
+    redirect(
+      `/dashboard/profile?error=${encodeURIComponent(
+        updateError.message || "No se pudo actualizar el checkout"
+      )}`
+    );
+  }
+
+  revalidatePath(`/dashboard/checkout/${session.id}`);
+  redirect(`/dashboard/checkout/${session.id}`);
 }

@@ -248,7 +248,10 @@ export default async function ProfilePage({
                 <div className={`rounded-2xl border p-4 ${theme.subtle}`}>
                   <p className={`text-xs ${theme.textMuted}`}>Precio del ciclo actual</p>
                   <p className="mt-1 text-lg font-semibold">
-                    ${getCyclePrice(Number(currentPlan?.price_monthly || 0), currentBillingCycle as "monthly" | "quarterly" | "yearly").toFixed(2)}
+                    ${getCyclePrice(
+                      Number(currentPlan?.price_monthly || 0),
+                      currentBillingCycle as "monthly" | "quarterly" | "yearly"
+                    ).toFixed(2)}
                   </p>
                 </div>
 
@@ -299,9 +302,12 @@ export default async function ProfilePage({
                 const features = Object.entries(plan.features || {}).filter(
                   ([, enabled]) => !!enabled
                 );
-                const isCurrent =
-                  plan.code === currentPlanCode &&
-                  currentBillingCycle === selectedCycle;
+
+                const isSamePlan = plan.code === currentPlanCode;
+                const isCurrent = isSamePlan && currentBillingCycle === selectedCycle;
+                const isSamePlanDifferentCycle =
+                  isSamePlan && currentBillingCycle !== selectedCycle;
+
                 const styles = getPlanCardClasses(plan.code);
                 const cyclePrice = getCyclePrice(plan.price_monthly, selectedCycle);
 
@@ -390,7 +396,9 @@ export default async function ProfilePage({
                               type="submit"
                               className={`rounded-2xl px-5 py-3 text-sm font-semibold transition ${theme.buttonPrimary}`}
                             >
-                              Cambiar a este plan
+                              {isSamePlanDifferentCycle
+                                ? "Cambiar ciclo"
+                                : "Cambiar a este plan"}
                             </button>
                           </form>
                         )}
