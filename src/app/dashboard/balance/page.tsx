@@ -1,5 +1,5 @@
 import { requireSectionAccess } from "@/lib/auth/requireSectionAccess";
-import { requirePlanFeature } from "@/lib/billing/requirePlanFeature";
+import { getCurrentPlan } from "@/lib/billing/getCurrentPlan";
 import { createClient } from "@/lib/supabase/server";
 import { getThemeClasses } from "@/lib/theme/getThemeClasses";
 import BalanceClient from "./BalanceClient";
@@ -146,14 +146,18 @@ export default async function BalancePage({
 }) {
   const params = await searchParams;
   const ctx = await requireSectionAccess("balance");
-  await requirePlanFeature("balance");
 
   const { business } = ctx;
   const theme = getThemeClasses(business.theme || "warm");
   const supabase = await createClient();
+  const plan = await getCurrentPlan();
 
   const selectedMonth = params.month || getCurrentMonthKey();
   const range = getMonthRange(selectedMonth);
+
+  const planCode = String(plan?.code || "").toLowerCase();
+  const canSeeAdvancedBalance = planCode !== "basic";
+  const canExportBalance = planCode !== "basic";
 
   const [
     { data: completedAppointmentsRaw, error: completedError },
@@ -520,6 +524,8 @@ export default async function BalancePage({
           appointmentRevenue={appointmentRevenue}
           salesRevenue={salesRevenue}
           totalRevenue={totalRevenue}
+          canSeeAdvancedBalance={canSeeAdvancedBalance}
+          canExportBalance={canExportBalance}
         />
       </div>
     </main>

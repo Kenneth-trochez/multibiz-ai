@@ -8,6 +8,7 @@ import {
   X,
   Download,
   Search,
+  Lock,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 
@@ -122,6 +123,47 @@ function formatDateTime(dateStr: string) {
   }).format(new Date(dateStr));
 }
 
+function LockedFeatureCard({
+  theme,
+  title,
+  description,
+}: {
+  theme: Theme;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className={`rounded-3xl border p-6 shadow-sm ${theme.card}`}>
+      <div className="flex items-start gap-4">
+        <div className={`rounded-2xl border p-3 ${theme.cardSoft}`}>
+          <Lock className="h-5 w-5" />
+        </div>
+
+        <div className="flex-1">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-xl font-semibold">{title}</h2>
+              <p className={`mt-2 text-sm ${theme.textMuted}`}>{description}</p>
+            </div>
+
+            <a
+              href="/dashboard/upgrade?feature=balance"
+              className={`inline-flex items-center justify-center rounded-2xl px-4 py-2.5 text-sm font-medium transition ${theme.buttonPrimary}`}
+            >
+              Desbloquear
+            </a>
+          </div>
+
+          <div className={`mt-4 rounded-2xl border px-4 py-3 text-sm ${theme.cardSoft}`}>
+            Disponible en planes <span className="font-semibold">Bronze</span> y{" "}
+            <span className="font-semibold">Premium</span>.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function BalanceClient({
   theme,
   rangeLabel,
@@ -149,6 +191,8 @@ export default function BalanceClient({
   appointmentRevenue,
   salesRevenue,
   totalRevenue,
+  canSeeAdvancedBalance,
+  canExportBalance,
 }: {
   theme: Theme;
   rangeLabel: string;
@@ -181,6 +225,8 @@ export default function BalanceClient({
   appointmentRevenue: number;
   salesRevenue: number;
   totalRevenue: number;
+  canSeeAdvancedBalance: boolean;
+  canExportBalance: boolean;
 }) {
   const [chartPage, setChartPage] = useState(0);
   const [showRecordsModal, setShowRecordsModal] = useState(false);
@@ -243,6 +289,8 @@ export default function BalanceClient({
   const canGoNext = chartPage < totalChartPages - 1;
 
   const exportRecords = () => {
+    if (!canExportBalance) return;
+
     const summaryData = [
       {
         Periodo: rangeLabel,
@@ -510,197 +558,215 @@ export default function BalanceClient({
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-3">
-        <div className={`rounded-3xl border p-6 shadow-sm ${theme.card}`}>
-          <div className="mb-5">
-            <h2 className="text-xl font-semibold">Servicios con más ingresos</h2>
-            <p className={`text-sm ${theme.textMuted}`}>
-              Top por citas del período.
-            </p>
-          </div>
+      {canSeeAdvancedBalance ? (
+        <>
+          <section className="grid gap-6 xl:grid-cols-3">
+            <div className={`rounded-3xl border p-6 shadow-sm ${theme.card}`}>
+              <div className="mb-5">
+                <h2 className="text-xl font-semibold">Servicios con más ingresos</h2>
+                <p className={`text-sm ${theme.textMuted}`}>
+                  Top por citas del período.
+                </p>
+              </div>
 
-          {topServices.length === 0 ? (
-            <p className={theme.textMuted}>Aún no hay datos suficientes.</p>
-          ) : (
-            <div className="space-y-4">
-              {topServices.map((service) => (
-                <div key={service.name}>
-                  <div className="mb-1 flex items-center justify-between text-sm">
-                    <span>{service.name}</span>
-                    <span className={theme.textMuted}>
-                      {formatMoney(service.revenue)} · {service.count} cita(s)
-                    </span>
-                  </div>
-                  <div className={`h-3 overflow-hidden rounded-full ${theme.subtle}`}>
-                    <div
-                      className={`h-full rounded-full ${theme.softAccent}`}
-                      style={{
-                        width: `${maxServiceRevenue > 0 ? (service.revenue / maxServiceRevenue) * 100 : 0}%`,
-                      }}
-                    />
-                  </div>
+              {topServices.length === 0 ? (
+                <p className={theme.textMuted}>Aún no hay datos suficientes.</p>
+              ) : (
+                <div className="space-y-4">
+                  {topServices.map((service) => (
+                    <div key={service.name}>
+                      <div className="mb-1 flex items-center justify-between text-sm">
+                        <span>{service.name}</span>
+                        <span className={theme.textMuted}>
+                          {formatMoney(service.revenue)} · {service.count} cita(s)
+                        </span>
+                      </div>
+                      <div className={`h-3 overflow-hidden rounded-full ${theme.subtle}`}>
+                        <div
+                          className={`h-full rounded-full ${theme.softAccent}`}
+                          style={{
+                            width: `${maxServiceRevenue > 0 ? (service.revenue / maxServiceRevenue) * 100 : 0}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
-          )}
-        </div>
 
-        <div className={`rounded-3xl border p-6 shadow-sm ${theme.card}`}>
-          <div className="mb-5">
-            <h2 className="text-xl font-semibold">Staff con mejor rendimiento</h2>
-            <p className={`text-sm ${theme.textMuted}`}>
-              Según ingresos por citas del período.
-            </p>
-          </div>
+            <div className={`rounded-3xl border p-6 shadow-sm ${theme.card}`}>
+              <div className="mb-5">
+                <h2 className="text-xl font-semibold">Staff con mejor rendimiento</h2>
+                <p className={`text-sm ${theme.textMuted}`}>
+                  Según ingresos por citas del período.
+                </p>
+              </div>
 
-          {topStaff.length === 0 ? (
-            <p className={theme.textMuted}>Aún no hay datos suficientes.</p>
-          ) : (
-            <div className="space-y-4">
-              {topStaff.map((member) => (
-                <div key={member.name}>
-                  <div className="mb-1 flex items-center justify-between text-sm">
-                    <span>{member.name}</span>
-                    <span className={theme.textMuted}>
-                      {formatMoney(member.revenue)} · {member.count} cita(s)
-                    </span>
-                  </div>
-                  <div className={`h-3 overflow-hidden rounded-full ${theme.subtle}`}>
-                    <div
-                      className={`h-full rounded-full ${theme.softAccent}`}
-                      style={{
-                        width: `${maxStaffRevenue > 0 ? (member.revenue / maxStaffRevenue) * 100 : 0}%`,
-                      }}
-                    />
-                  </div>
+              {topStaff.length === 0 ? (
+                <p className={theme.textMuted}>Aún no hay datos suficientes.</p>
+              ) : (
+                <div className="space-y-4">
+                  {topStaff.map((member) => (
+                    <div key={member.name}>
+                      <div className="mb-1 flex items-center justify-between text-sm">
+                        <span>{member.name}</span>
+                        <span className={theme.textMuted}>
+                          {formatMoney(member.revenue)} · {member.count} cita(s)
+                        </span>
+                      </div>
+                      <div className={`h-3 overflow-hidden rounded-full ${theme.subtle}`}>
+                        <div
+                          className={`h-full rounded-full ${theme.softAccent}`}
+                          style={{
+                            width: `${maxStaffRevenue > 0 ? (member.revenue / maxStaffRevenue) * 100 : 0}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
-          )}
-        </div>
 
-        <div className={`rounded-3xl border p-6 shadow-sm ${theme.card}`}>
-          <div className="mb-5">
-            <h2 className="text-xl font-semibold">Productos con más ingresos</h2>
-            <p className={`text-sm ${theme.textMuted}`}>
-              Top por ventas del período.
-            </p>
-          </div>
+            <div className={`rounded-3xl border p-6 shadow-sm ${theme.card}`}>
+              <div className="mb-5">
+                <h2 className="text-xl font-semibold">Productos con más ingresos</h2>
+                <p className={`text-sm ${theme.textMuted}`}>
+                  Top por ventas del período.
+                </p>
+              </div>
 
-          {topProducts.length === 0 ? (
-            <p className={theme.textMuted}>Aún no hay datos suficientes.</p>
-          ) : (
-            <div className="space-y-4">
-              {topProducts.map((product) => (
-                <div key={product.name}>
-                  <div className="mb-1 flex items-center justify-between text-sm">
-                    <span>{product.name}</span>
-                    <span className={theme.textMuted}>
-                      {formatMoney(product.revenue)} · {product.count} unidad(es)
-                    </span>
-                  </div>
-                  <div className={`h-3 overflow-hidden rounded-full ${theme.subtle}`}>
-                    <div
-                      className={`h-full rounded-full ${theme.softAccent}`}
-                      style={{
-                        width: `${maxProductRevenue > 0 ? (product.revenue / maxProductRevenue) * 100 : 0}%`,
-                      }}
-                    />
-                  </div>
+              {topProducts.length === 0 ? (
+                <p className={theme.textMuted}>Aún no hay datos suficientes.</p>
+              ) : (
+                <div className="space-y-4">
+                  {topProducts.map((product) => (
+                    <div key={product.name}>
+                      <div className="mb-1 flex items-center justify-between text-sm">
+                        <span>{product.name}</span>
+                        <span className={theme.textMuted}>
+                          {formatMoney(product.revenue)} · {product.count} unidad(es)
+                        </span>
+                      </div>
+                      <div className={`h-3 overflow-hidden rounded-full ${theme.subtle}`}>
+                        <div
+                          className={`h-full rounded-full ${theme.softAccent}`}
+                          style={{
+                            width: `${maxProductRevenue > 0 ? (product.revenue / maxProductRevenue) * 100 : 0}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
-          )}
-        </div>
-      </section>
+          </section>
 
-      <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <div className={`rounded-3xl border p-6 shadow-sm ${theme.card}`}>
-          <h2 className="text-xl font-semibold">Últimos registros del período</h2>
-          <p className={`mt-1 text-sm ${theme.textMuted}`}>
-            Vista rápida de citas completadas y ventas recientes.
-          </p>
+          <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+            <div className={`rounded-3xl border p-6 shadow-sm ${theme.card}`}>
+              <h2 className="text-xl font-semibold">Últimos registros del período</h2>
+              <p className={`mt-1 text-sm ${theme.textMuted}`}>
+                Vista rápida de citas completadas y ventas recientes.
+              </p>
 
-          <div className="mt-5 space-y-3">
-            {completedAppointments.slice(0, 4).map((apt) => (
-              <div
-                key={`apt-${apt.id}`}
-                className={`rounded-2xl border p-4 ${theme.cardSoft}`}
-              >
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                  <div>
-                    <p className="font-semibold">
-                      Cita · {apt.customer?.name || "Cliente no disponible"}
-                    </p>
-                    <div className={`mt-1 flex flex-wrap gap-3 text-sm ${theme.textMuted}`}>
-                      <span>{apt.service?.name || "Sin servicio"}</span>
-                      <span>{apt.staff?.display_name || "Sin staff"}</span>
-                      <span>{formatDateTime(apt.appointment_at)}</span>
+              <div className="mt-5 space-y-3">
+                {completedAppointments.slice(0, 4).map((apt) => (
+                  <div
+                    key={`apt-${apt.id}`}
+                    className={`rounded-2xl border p-4 ${theme.cardSoft}`}
+                  >
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                      <div>
+                        <p className="font-semibold">
+                          Cita · {apt.customer?.name || "Cliente no disponible"}
+                        </p>
+                        <div className={`mt-1 flex flex-wrap gap-3 text-sm ${theme.textMuted}`}>
+                          <span>{apt.service?.name || "Sin servicio"}</span>
+                          <span>{apt.staff?.display_name || "Sin staff"}</span>
+                          <span>{formatDateTime(apt.appointment_at)}</span>
+                        </div>
+                      </div>
+
+                      <div className="text-sm font-semibold">
+                        {formatMoney(Number(apt.service?.price || 0))}
+                      </div>
                     </div>
                   </div>
+                ))}
 
-                  <div className="text-sm font-semibold">
-                    {formatMoney(Number(apt.service?.price || 0))}
-                  </div>
-                </div>
-              </div>
-            ))}
+                {sales.slice(0, 4).map((sale) => (
+                  <div
+                    key={`sale-${sale.id}`}
+                    className={`rounded-2xl border p-4 ${theme.cardSoft}`}
+                  >
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                      <div>
+                        <p className="font-semibold">
+                          Venta · {sale.customer?.name || "Sin cliente"}
+                        </p>
+                        <div className={`mt-1 flex flex-wrap gap-3 text-sm ${theme.textMuted}`}>
+                          <span>{sale.staff?.display_name || "Sin staff"}</span>
+                          <span>{formatDateTime(sale.sale_at)}</span>
+                          <span>Descuento: {formatMoney(Number(sale.discount || 0))}</span>
+                        </div>
+                      </div>
 
-            {sales.slice(0, 4).map((sale) => (
-              <div
-                key={`sale-${sale.id}`}
-                className={`rounded-2xl border p-4 ${theme.cardSoft}`}
-              >
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                  <div>
-                    <p className="font-semibold">
-                      Venta · {sale.customer?.name || "Sin cliente"}
-                    </p>
-                    <div className={`mt-1 flex flex-wrap gap-3 text-sm ${theme.textMuted}`}>
-                      <span>{sale.staff?.display_name || "Sin staff"}</span>
-                      <span>{formatDateTime(sale.sale_at)}</span>
-                      <span>Descuento: {formatMoney(Number(sale.discount || 0))}</span>
+                      <div className="text-sm font-semibold">
+                        {formatMoney(Number(sale.total || 0))}
+                      </div>
                     </div>
                   </div>
+                ))}
 
-                  <div className="text-sm font-semibold">
-                    {formatMoney(Number(sale.total || 0))}
+                {completedAppointments.length === 0 && sales.length === 0 && (
+                  <div className={`rounded-2xl border p-6 ${theme.cardSoft}`}>
+                    <p className={theme.textMuted}>Aún no hay movimientos en este período.</p>
                   </div>
-                </div>
+                )}
               </div>
-            ))}
+            </div>
 
-            {completedAppointments.length === 0 && sales.length === 0 && (
-              <div className={`rounded-2xl border p-6 ${theme.cardSoft}`}>
-                <p className={theme.textMuted}>Aún no hay movimientos en este período.</p>
+            <div className={`rounded-3xl border p-6 shadow-sm ${theme.card}`}>
+              <h2 className="text-xl font-semibold">Resumen general</h2>
+              <div className="mt-5 space-y-3">
+                {[
+                  { label: "Clientes registrados", value: customersCount || 0 },
+                  { label: "Servicios configurados", value: servicesCount || 0 },
+                  { label: "Productos registrados", value: productsCount || 0 },
+                  { label: "Miembros de staff", value: staffCount || 0 },
+                  { label: "Ingresos por citas", value: formatMoney(appointmentRevenue) },
+                  { label: "Ingresos por ventas", value: formatMoney(salesRevenue) },
+                  { label: "Ingresos del período", value: formatMoney(totalRevenue) },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    className={`flex items-center justify-between rounded-2xl border px-4 py-3 ${theme.cardSoft}`}
+                  >
+                    <span className="text-sm">{item.label}</span>
+                    <span className="text-sm font-semibold">{item.value}</span>
+                  </div>
+                ))}
               </div>
-            )}
-          </div>
-        </div>
+            </div>
+          </section>
+        </>
+      ) : (
+        <>
+          <LockedFeatureCard
+            theme={theme}
+            title="Análisis de servicios, staff y productos"
+            description="Aquí podrás ver cuáles servicios generan más ingresos, qué miembros del staff rinden mejor y qué productos venden más durante el período seleccionado."
+          />
 
-        <div className={`rounded-3xl border p-6 shadow-sm ${theme.card}`}>
-          <h2 className="text-xl font-semibold">Resumen general</h2>
-          <div className="mt-5 space-y-3">
-            {[
-              { label: "Clientes registrados", value: customersCount || 0 },
-              { label: "Servicios configurados", value: servicesCount || 0 },
-              { label: "Productos registrados", value: productsCount || 0 },
-              { label: "Miembros de staff", value: staffCount || 0 },
-              { label: "Ingresos por citas", value: formatMoney(appointmentRevenue) },
-              { label: "Ingresos por ventas", value: formatMoney(salesRevenue) },
-              { label: "Ingresos del período", value: formatMoney(totalRevenue) },
-            ].map((item) => (
-              <div
-                key={item.label}
-                className={`flex items-center justify-between rounded-2xl border px-4 py-3 ${theme.cardSoft}`}
-              >
-                <span className="text-sm">{item.label}</span>
-                <span className="text-sm font-semibold">{item.value}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+          <LockedFeatureCard
+            theme={theme}
+            title="Registros detallados y resumen ampliado"
+            description="Esta sección te permite revisar movimientos recientes del período, consultar detalles operativos y acceder a un resumen más completo del negocio."
+          />
+        </>
+      )}
 
       {showRecordsModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -720,26 +786,35 @@ export default function BalanceClient({
               </div>
 
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <div
-                  className={`flex items-center gap-2 rounded-2xl border px-3 py-2 ${theme.input}`}
-                >
-                  <Search className={`h-4 w-4 ${theme.textMuted}`} />
-                  <input
-                    value={recordsSearch}
-                    onChange={(e) => setRecordsSearch(e.target.value)}
-                    placeholder="Buscar cliente, staff, servicio, teléfono o ID..."
-                    className="w-full bg-transparent text-sm outline-none placeholder:opacity-70"
-                  />
-                </div>
+                {canSeeAdvancedBalance ? (
+                  <div
+                    className={`flex items-center gap-2 rounded-2xl border px-3 py-2 ${theme.input}`}
+                  >
+                    <Search className={`h-4 w-4 ${theme.textMuted}`} />
+                    <input
+                      value={recordsSearch}
+                      onChange={(e) => setRecordsSearch(e.target.value)}
+                      placeholder="Buscar cliente, staff, servicio, teléfono o ID..."
+                      className="w-full bg-transparent text-sm outline-none placeholder:opacity-70"
+                    />
+                  </div>
+                ) : null}
 
-                <button
-                  type="button"
-                  onClick={exportRecords}
-                  className={`inline-flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-medium transition ${theme.buttonPrimary}`}
-                >
-                  <Download className="h-4 w-4" />
-                  Exportar a Excel
-                </button>
+                {canExportBalance ? (
+                  <button
+                    type="button"
+                    onClick={exportRecords}
+                    className={`inline-flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-medium transition ${theme.buttonPrimary}`}
+                  >
+                    <Download className="h-4 w-4" />
+                    Exportar a Excel
+                  </button>
+                ) : (
+                  <div className={`inline-flex items-center gap-2 rounded-2xl border px-4 py-2.5 text-sm font-medium opacity-80 ${theme.cardSoft}`}>
+                    <Lock className="h-4 w-4" />
+                    Excel bloqueado en Basic
+                  </div>
+                )}
 
                 <button
                   type="button"
@@ -751,132 +826,163 @@ export default function BalanceClient({
               </div>
             </div>
 
-            <div className="max-h-[70vh] space-y-8 overflow-auto p-6">
-              <div>
-                <h4 className="mb-3 text-lg font-semibold">Citas completadas</h4>
-                {filteredAppointments.length === 0 ? (
-                  <div className={`rounded-2xl border p-6 ${theme.cardSoft}`}>
-                    <p className={theme.textMuted}>
-                      No hay citas que coincidan con la búsqueda.
-                    </p>
+            <div className="max-h-[70vh] overflow-auto p-6">
+              {canSeeAdvancedBalance ? (
+                <div className="space-y-8">
+                  <div>
+                    <h4 className="mb-3 text-lg font-semibold">Citas completadas</h4>
+                    {filteredAppointments.length === 0 ? (
+                      <div className={`rounded-2xl border p-6 ${theme.cardSoft}`}>
+                        <p className={theme.textMuted}>
+                          No hay citas que coincidan con la búsqueda.
+                        </p>
+                      </div>
+                    ) : (
+                      <table className="min-w-full">
+                        <thead>
+                          <tr className="border-b">
+                            <th className={`px-4 py-3 text-left text-xs uppercase tracking-wider ${theme.textMuted}`}>
+                              Fecha
+                            </th>
+                            <th className={`px-4 py-3 text-left text-xs uppercase tracking-wider ${theme.textMuted}`}>
+                              Cliente
+                            </th>
+                            <th className={`px-4 py-3 text-left text-xs uppercase tracking-wider ${theme.textMuted}`}>
+                              Staff
+                            </th>
+                            <th className={`px-4 py-3 text-left text-xs uppercase tracking-wider ${theme.textMuted}`}>
+                              Servicio
+                            </th>
+                            <th className={`px-4 py-3 text-left text-xs uppercase tracking-wider ${theme.textMuted}`}>
+                              Teléfono
+                            </th>
+                            <th className={`px-4 py-3 text-right text-xs uppercase tracking-wider ${theme.textMuted}`}>
+                              Monto
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredAppointments.map((apt) => (
+                            <tr key={apt.id} className="border-t">
+                              <td className="px-4 py-3 text-sm">
+                                {formatDateTime(apt.appointment_at)}
+                              </td>
+                              <td className="px-4 py-3 text-sm font-medium">
+                                {apt.customer?.name || "Cliente no disponible"}
+                              </td>
+                              <td className="px-4 py-3 text-sm">
+                                {apt.staff?.display_name || "Sin asignar"}
+                              </td>
+                              <td className="px-4 py-3 text-sm">
+                                {apt.service?.name || "Sin servicio"}
+                              </td>
+                              <td className={`px-4 py-3 text-sm ${theme.textMuted}`}>
+                                {apt.customer?.phone || "Sin teléfono"}
+                              </td>
+                              <td className="px-4 py-3 text-right text-sm font-semibold">
+                                {formatMoney(Number(apt.service?.price || 0))}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
                   </div>
-                ) : (
-                  <table className="min-w-full">
-                    <thead>
-                      <tr className="border-b">
-                        <th className={`px-4 py-3 text-left text-xs uppercase tracking-wider ${theme.textMuted}`}>
-                          Fecha
-                        </th>
-                        <th className={`px-4 py-3 text-left text-xs uppercase tracking-wider ${theme.textMuted}`}>
-                          Cliente
-                        </th>
-                        <th className={`px-4 py-3 text-left text-xs uppercase tracking-wider ${theme.textMuted}`}>
-                          Staff
-                        </th>
-                        <th className={`px-4 py-3 text-left text-xs uppercase tracking-wider ${theme.textMuted}`}>
-                          Servicio
-                        </th>
-                        <th className={`px-4 py-3 text-left text-xs uppercase tracking-wider ${theme.textMuted}`}>
-                          Teléfono
-                        </th>
-                        <th className={`px-4 py-3 text-right text-xs uppercase tracking-wider ${theme.textMuted}`}>
-                          Monto
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredAppointments.map((apt) => (
-                        <tr key={apt.id} className="border-t">
-                          <td className="px-4 py-3 text-sm">
-                            {formatDateTime(apt.appointment_at)}
-                          </td>
-                          <td className="px-4 py-3 text-sm font-medium">
-                            {apt.customer?.name || "Cliente no disponible"}
-                          </td>
-                          <td className="px-4 py-3 text-sm">
-                            {apt.staff?.display_name || "Sin asignar"}
-                          </td>
-                          <td className="px-4 py-3 text-sm">
-                            {apt.service?.name || "Sin servicio"}
-                          </td>
-                          <td className={`px-4 py-3 text-sm ${theme.textMuted}`}>
-                            {apt.customer?.phone || "Sin teléfono"}
-                          </td>
-                          <td className="px-4 py-3 text-right text-sm font-semibold">
-                            {formatMoney(Number(apt.service?.price || 0))}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
 
-              <div>
-                <h4 className="mb-3 text-lg font-semibold">Ventas</h4>
-                {filteredSales.length === 0 ? (
-                  <div className={`rounded-2xl border p-6 ${theme.cardSoft}`}>
-                    <p className={theme.textMuted}>
-                      No hay ventas que coincidan con la búsqueda.
-                    </p>
+                  <div>
+                    <h4 className="mb-3 text-lg font-semibold">Ventas</h4>
+                    {filteredSales.length === 0 ? (
+                      <div className={`rounded-2xl border p-6 ${theme.cardSoft}`}>
+                        <p className={theme.textMuted}>
+                          No hay ventas que coincidan con la búsqueda.
+                        </p>
+                      </div>
+                    ) : (
+                      <table className="min-w-full">
+                        <thead>
+                          <tr className="border-b">
+                            <th className={`px-4 py-3 text-left text-xs uppercase tracking-wider ${theme.textMuted}`}>
+                              Fecha
+                            </th>
+                            <th className={`px-4 py-3 text-left text-xs uppercase tracking-wider ${theme.textMuted}`}>
+                              Cliente
+                            </th>
+                            <th className={`px-4 py-3 text-left text-xs uppercase tracking-wider ${theme.textMuted}`}>
+                              Staff
+                            </th>
+                            <th className={`px-4 py-3 text-left text-xs uppercase tracking-wider ${theme.textMuted}`}>
+                              Teléfono
+                            </th>
+                            <th className={`px-4 py-3 text-right text-xs uppercase tracking-wider ${theme.textMuted}`}>
+                              Subtotal
+                            </th>
+                            <th className={`px-4 py-3 text-right text-xs uppercase tracking-wider ${theme.textMuted}`}>
+                              Descuento
+                            </th>
+                            <th className={`px-4 py-3 text-right text-xs uppercase tracking-wider ${theme.textMuted}`}>
+                              Total
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredSales.map((sale) => (
+                            <tr key={sale.id} className="border-t">
+                              <td className="px-4 py-3 text-sm">
+                                {formatDateTime(sale.sale_at)}
+                              </td>
+                              <td className="px-4 py-3 text-sm font-medium">
+                                {sale.customer?.name || "Sin cliente"}
+                              </td>
+                              <td className="px-4 py-3 text-sm">
+                                {sale.staff?.display_name || "Sin asignar"}
+                              </td>
+                              <td className={`px-4 py-3 text-sm ${theme.textMuted}`}>
+                                {sale.customer?.phone || "Sin teléfono"}
+                              </td>
+                              <td className="px-4 py-3 text-right text-sm">
+                                {formatMoney(Number(sale.subtotal || 0))}
+                              </td>
+                              <td className="px-4 py-3 text-right text-sm">
+                                {formatMoney(Number(sale.discount || 0))}
+                              </td>
+                              <td className="px-4 py-3 text-right text-sm font-semibold">
+                                {formatMoney(Number(sale.total || 0))}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
                   </div>
-                ) : (
-                  <table className="min-w-full">
-                    <thead>
-                      <tr className="border-b">
-                        <th className={`px-4 py-3 text-left text-xs uppercase tracking-wider ${theme.textMuted}`}>
-                          Fecha
-                        </th>
-                        <th className={`px-4 py-3 text-left text-xs uppercase tracking-wider ${theme.textMuted}`}>
-                          Cliente
-                        </th>
-                        <th className={`px-4 py-3 text-left text-xs uppercase tracking-wider ${theme.textMuted}`}>
-                          Staff
-                        </th>
-                        <th className={`px-4 py-3 text-left text-xs uppercase tracking-wider ${theme.textMuted}`}>
-                          Teléfono
-                        </th>
-                        <th className={`px-4 py-3 text-right text-xs uppercase tracking-wider ${theme.textMuted}`}>
-                          Subtotal
-                        </th>
-                        <th className={`px-4 py-3 text-right text-xs uppercase tracking-wider ${theme.textMuted}`}>
-                          Descuento
-                        </th>
-                        <th className={`px-4 py-3 text-right text-xs uppercase tracking-wider ${theme.textMuted}`}>
-                          Total
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredSales.map((sale) => (
-                        <tr key={sale.id} className="border-t">
-                          <td className="px-4 py-3 text-sm">
-                            {formatDateTime(sale.sale_at)}
-                          </td>
-                          <td className="px-4 py-3 text-sm font-medium">
-                            {sale.customer?.name || "Sin cliente"}
-                          </td>
-                          <td className="px-4 py-3 text-sm">
-                            {sale.staff?.display_name || "Sin asignar"}
-                          </td>
-                          <td className={`px-4 py-3 text-sm ${theme.textMuted}`}>
-                            {sale.customer?.phone || "Sin teléfono"}
-                          </td>
-                          <td className="px-4 py-3 text-right text-sm">
-                            {formatMoney(Number(sale.subtotal || 0))}
-                          </td>
-                          <td className="px-4 py-3 text-right text-sm">
-                            {formatMoney(Number(sale.discount || 0))}
-                          </td>
-                          <td className="px-4 py-3 text-right text-sm font-semibold">
-                            {formatMoney(Number(sale.total || 0))}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
+                </div>
+              ) : (
+                <div className={`rounded-3xl border p-6 ${theme.cardSoft}`}>
+                  <div className="flex items-start gap-4">
+                    <div className={`rounded-2xl border p-3 ${theme.card}`}>
+                      <Lock className="h-5 w-5" />
+                    </div>
+
+                    <div className="flex-1">
+                      <h4 className="text-lg font-semibold">
+                        Registros detallados bloqueados en Basic
+                      </h4>
+                      <p className={`mt-2 text-sm ${theme.textMuted}`}>
+                        En Bronze y Premium podrás buscar citas y ventas del período,
+                        revisar movimientos detallados y exportar la información a Excel.
+                      </p>
+
+                      <div className="mt-4">
+                        <a
+                          href="/dashboard/upgrade?feature=balance"
+                          className={`inline-flex items-center justify-center rounded-2xl px-4 py-2.5 text-sm font-medium transition ${theme.buttonPrimary}`}
+                        >
+                          Mejorar plan
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
