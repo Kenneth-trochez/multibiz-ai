@@ -15,16 +15,14 @@ type InsertableAlert = {
 };
 
 function getDatePartsInTegucigalpa(baseDate = new Date()) {
-  const localDate = new Intl.DateTimeFormat("sv-SE", {
+  const ymd = new Intl.DateTimeFormat("sv-SE", {
     timeZone: "America/Tegucigalpa",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
   }).format(baseDate);
 
-  return {
-    ymd: localDate,
-  };
+  return { ymd };
 }
 
 function addDaysToYmd(ymd: string, days: number) {
@@ -38,6 +36,13 @@ function addDaysToYmd(ymd: string, days: number) {
     month: "2-digit",
     day: "2-digit",
   }).format(date);
+}
+
+function getUtcRangeForTegucigalpaDay(ymd: string) {
+  return {
+    start: `${ymd}T06:00:00.000Z`,
+    end: `${addDaysToYmd(ymd, 1)}T06:00:00.000Z`,
+  };
 }
 
 function pushAlert(alerts: InsertableAlert[], alert: InsertableAlert) {
@@ -56,8 +61,10 @@ export async function generateAlerts(
 
   const { ymd: todayYmd } = getDatePartsInTegucigalpa();
   const tomorrowYmd = addDaysToYmd(todayYmd, 1);
-  const nextTomorrowYmd = addDaysToYmd(todayYmd, 2);
   const thirtyDaysAgoYmd = addDaysToYmd(todayYmd, -30);
+
+  const todayRange = getUtcRangeForTegucigalpaDay(todayYmd);
+  const tomorrowRange = getUtcRangeForTegucigalpaDay(tomorrowYmd);
 
   // =========================
   // ALERTAS BÁSICAS
@@ -94,8 +101,8 @@ export async function generateAlerts(
       .select("id, appointment_at, status")
       .eq("business_id", businessId)
       .in("status", ["pending", "confirmed"])
-      .gte("appointment_at", `${tomorrowYmd}T00:00:00`)
-      .lt("appointment_at", `${nextTomorrowYmd}T00:00:00`);
+      .gte("appointment_at", tomorrowRange.start)
+      .lt("appointment_at", tomorrowRange.end);
 
     const upcomingCount = (upcomingAppointments || []).length;
 
@@ -122,8 +129,8 @@ export async function generateAlerts(
       .from("sales")
       .select("id")
       .eq("business_id", businessId)
-      .gte("sale_at", `${todayYmd}T00:00:00`)
-      .lt("sale_at", `${addDaysToYmd(todayYmd, 1)}T00:00:00`)
+      .gte("sale_at", todayRange.start)
+      .lt("sale_at", todayRange.end)
       .limit(1);
 
     if (!salesToday || salesToday.length === 0) {
@@ -136,8 +143,6 @@ export async function generateAlerts(
       });
     }
 
-    // ========= CLIENTES INACTIVOS REALES =========
-    // 1) obtenemos clientes del negocio
     const { data: customers } = await supabase
       .from("customers")
       .select("id, name")
@@ -149,7 +154,6 @@ export async function generateAlerts(
       customerMap.set(customer.id, customer.name);
     }
 
-    // 2) obtenemos actividad reciente en ventas
     const { data: recentSalesActivity } = await supabase
       .from("sales")
       .select("customer_id, sale_at")
@@ -158,7 +162,6 @@ export async function generateAlerts(
       .gte("sale_at", `${thirtyDaysAgoYmd}T00:00:00`)
       .limit(1000);
 
-    // 3) obtenemos actividad reciente en citas
     const { data: recentAppointmentsActivity } = await supabase
       .from("appointments")
       .select("customer_id, appointment_at")
@@ -167,7 +170,6 @@ export async function generateAlerts(
       .gte("appointment_at", `${thirtyDaysAgoYmd}T00:00:00`)
       .limit(1000);
 
-    // 4) obtenemos actividad histórica para saber si alguna vez sí tuvieron movimiento
     const { data: historicalSalesActivity } = await supabase
       .from("sales")
       .select("customer_id, sale_at")
@@ -222,7 +224,6 @@ export async function generateAlerts(
       }
     }
 
-    // 5) clientes con actividad histórica pero sin movimiento reciente
     const inactiveCandidates = Array.from(historicalLastActivity.entries())
       .filter(([customerId]) => customerMap.has(customerId))
       .filter(([customerId]) => !recentActiveCustomerIds.has(customerId))

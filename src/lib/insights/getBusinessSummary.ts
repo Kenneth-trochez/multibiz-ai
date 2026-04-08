@@ -46,6 +46,13 @@ function startOfMonthYmd(ymd: string) {
   return `${year}-${String(month).padStart(2, "0")}-01`;
 }
 
+function getUtcRangeForTegucigalpaDay(ymd: string) {
+  return {
+    start: `${ymd}T06:00:00.000Z`,
+    end: `${addDaysToYmd(ymd, 1)}T06:00:00.000Z`,
+  };
+}
+
 function formatMoney(value: number) {
   return `L ${Number(value || 0).toFixed(2)}`;
 }
@@ -89,13 +96,16 @@ export async function getBusinessSummary(
 
   const { ymd: todayYmd } = getDatePartsInTegucigalpa();
   const tomorrowYmd = addDaysToYmd(todayYmd, 1);
-  const nextTomorrowYmd = addDaysToYmd(todayYmd, 2);
   const monthStartYmd = startOfMonthYmd(todayYmd);
   const thirtyDaysAgoYmd = addDaysToYmd(todayYmd, -30);
+
+  const todayRange = getUtcRangeForTegucigalpaDay(todayYmd);
+  const tomorrowRange = getUtcRangeForTegucigalpaDay(tomorrowYmd);
 
   const [
     salesTodayResult,
     salesMonthResult,
+    allSalesResult,
     lowStockResult,
     appointmentsTomorrowResult,
     customersResult,
@@ -103,7 +113,6 @@ export async function getBusinessSummary(
     recentAppointmentsActivityResult,
     historicalSalesActivityResult,
     historicalAppointmentsActivityResult,
-    saleItemsResult,
     staffSalesResult,
     productsCountResult,
   ] = await Promise.all([
@@ -111,15 +120,21 @@ export async function getBusinessSummary(
       .from("sales")
       .select("id, total, sale_at")
       .eq("business_id", businessId)
-      .gte("sale_at", `${todayYmd}T00:00:00`)
-      .lt("sale_at", `${addDaysToYmd(todayYmd, 1)}T00:00:00`),
+      .gte("sale_at", todayRange.start)
+      .lt("sale_at", todayRange.end),
 
     supabase
       .from("sales")
       .select("id, total, sale_at")
       .eq("business_id", businessId)
-      .gte("sale_at", `${monthStartYmd}T00:00:00`)
-      .lt("sale_at", `${addDaysToYmd(todayYmd, 1)}T00:00:00`),
+      .gte("sale_at", `${monthStartYmd}T06:00:00.000Z`)
+      .lt("sale_at", todayRange.end),
+
+    supabase
+      .from("sales")
+      .select("id, total, sale_at")
+      .eq("business_id", businessId)
+      .limit(3000),
 
     supabase
       .from("products")
@@ -135,8 +150,8 @@ export async function getBusinessSummary(
       .select("id, appointment_at, status")
       .eq("business_id", businessId)
       .in("status", ["pending", "confirmed"])
-      .gte("appointment_at", `${tomorrowYmd}T00:00:00`)
-      .lt("appointment_at", `${nextTomorrowYmd}T00:00:00`),
+      .gte("appointment_at", tomorrowRange.start)
+      .lt("appointment_at", tomorrowRange.end),
 
     supabase
       .from("customers")
@@ -175,19 +190,6 @@ export async function getBusinessSummary(
       .limit(3000),
 
     supabase
-      .from("sale_items")
-      .select(`
-        product_id,
-        quantity,
-        line_total,
-        product:products(
-          id,
-          name
-        )
-      `)
-      .limit(3000),
-
-    supabase
       .from("sales")
       .select(`
         staff_id,
@@ -210,6 +212,7 @@ export async function getBusinessSummary(
 
   const salesToday = salesTodayResult.data || [];
   const salesMonth = salesMonthResult.data || [];
+  const allSales = allSalesResult.data || [];
   const lowStockProducts = lowStockResult.data || [];
   const appointmentsTomorrow = appointmentsTomorrowResult.data || [];
   const customers = customersResult.data || [];
@@ -218,9 +221,32 @@ export async function getBusinessSummary(
   const historicalSalesActivity = historicalSalesActivityResult.data || [];
   const historicalAppointmentsActivity =
     historicalAppointmentsActivityResult.data || [];
-  const saleItems = saleItemsResult.data || [];
   const staffSales = staffSalesResult.data || [];
   const totalActiveProducts = productsCountResult.count || 0;
+
+  const saleIds = allSales.map((sale) => sale.id);
+
+  let saleItems: any[] = [];
+
+  if (saleIds.length > 0) {
+    const { data } = await supabase
+      .from("sale_items")
+      .select(`
+        product_id,
+        quantity,
+        line_total,
+        sale_id,
+        product:products(
+          id,
+          name,
+          business_id
+        )
+      `)
+      .in("sale_id", saleIds)
+      .limit(3000);
+
+    saleItems = data || [];
+  }
 
   const salesTodayCount = salesToday.length;
   const salesTodayTotal = salesToday.reduce(
@@ -283,6 +309,7 @@ export async function getBusinessSummary(
   for (const item of saleItems) {
     const product = Array.isArray(item.product) ? item.product[0] : item.product;
     if (!item.product_id || !product?.name) continue;
+    if (product.business_id !== businessId) continue;
 
     const current = productMap.get(item.product_id) || {
       name: product.name,
@@ -299,9 +326,12 @@ export async function getBusinessSummary(
   const topProduct = Array.from(productMap.values()).sort((a, b) => {
     if (b.quantity !== a.quantity) return b.quantity - a.quantity;
     return b.revenue - a.revenue;
-  })[0];
+  })[0] || null;
 
-  const staffMap = new Map<string, { name: string; salesCount: number; revenue: number }>();
+  const staffMap = new Map<
+    string,
+    { name: string; salesCount: number; revenue: number }
+  >();
 
   for (const row of staffSales) {
     const staff = Array.isArray(row.staff) ? row.staff[0] : row.staff;
@@ -321,110 +351,94 @@ export async function getBusinessSummary(
 
   const topStaff = Array.from(staffMap.values()).sort(
     (a, b) => b.revenue - a.revenue
-  )[0];
+  )[0] || null;
 
-  const highlights: string[] = [];
-  const risks: string[] = [];
-  const opportunities: string[] = [];
-
-  if (monthlySalesCount > 0) {
-    highlights.push(
-      `Este mes llevas ${monthlySalesCount} venta(s) por ${formatMoney(monthlySalesTotal)}.`
-    );
-  } else {
-    risks.push("Aún no se registran ventas en el mes actual.");
-  }
-
-  if (topProduct) {
-    highlights.push(
-      `El producto con mejor rotación es "${topProduct.name}" con ${topProduct.quantity} unidad(es) vendidas.`
-    );
-  }
-
-  if (topStaff) {
-    highlights.push(
-      `"${topStaff.name}" lidera en ingresos con ${formatMoney(topStaff.revenue)}.`
-    );
-  }
-
-  if (lowStockProducts.length > 0) {
-    risks.push(
-      `Tienes ${lowStockProducts.length} producto(s) con stock bajo. El más urgente es "${
-        lowStockProducts[0].name
-      }" con ${lowStockProducts[0].stock} unidad(es).`
-    );
-  }
-
-  if (salesTodayCount === 0) {
-    risks.push("Hoy todavía no se ha registrado ninguna venta.");
-  }
-
-  if (inactiveCustomersCount > 0) {
-    const firstInactiveCustomerName =
-      customerMap.get(inactiveCustomers[0][0]) || "Un cliente";
-    opportunities.push(
-      `${firstInactiveCustomerName} y otros ${Math.max(
-        inactiveCustomersCount - 1,
-        0
-      )} cliente(s) podrían reactivarse con seguimiento o promoción.`
-    );
-  }
-
-  if (upcomingAppointmentsCount > 0) {
-    opportunities.push(
-      `Hay ${upcomingAppointmentsCount} cita(s) programada(s) para mañana, lo que ayuda a prever carga operativa.`
-    );
-  }
-
-  if (highlights.length === 0) {
-    highlights.push("Todavía no hay suficiente actividad para destacar indicadores fuertes.");
-  }
-
-  if (risks.length === 0) {
-    risks.push("No se detectan riesgos operativos importantes en este momento.");
-  }
-
-  if (opportunities.length === 0) {
-    opportunities.push("Todavía no se detectan oportunidades destacadas con la actividad actual.");
-  }
-
-  const healthyStockPercent =
-    totalActiveProducts > 0
-      ? ((totalActiveProducts - lowStockCount) / totalActiveProducts) * 100
-      : 100;
+  const dailySalesGoal = Number(settings?.daily_sales_goal || 0);
+  const monthlySalesGoal = Number(settings?.monthly_sales_goal || 0);
+  const dailyAppointmentsGoal = Number(settings?.daily_appointments_goal || 0);
 
   const metrics: SummaryMetric[] = [
     {
       label: "Ventas hoy",
       value: formatMoney(salesTodayTotal),
-      helper: `Meta diaria: ${formatMoney(settings.daily_sales_goal)}`,
-      progress: clampProgress(salesTodayTotal, settings.daily_sales_goal),
+      helper: `${salesTodayCount} venta(s) registradas hoy`,
+      progress: clampProgress(salesTodayTotal, dailySalesGoal),
     },
     {
       label: "Ventas del mes",
       value: formatMoney(monthlySalesTotal),
-      helper: `Meta mensual: ${formatMoney(settings.monthly_sales_goal)}`,
-      progress: clampProgress(monthlySalesTotal, settings.monthly_sales_goal),
+      helper: `${monthlySalesCount} venta(s) acumuladas en el mes`,
+      progress: clampProgress(monthlySalesTotal, monthlySalesGoal),
     },
     {
-      label: "Citas mañana",
+      label: "Citas de mañana",
       value: String(upcomingAppointmentsCount),
-      helper: `Meta diaria: ${settings.daily_appointments_goal} cita(s)`,
-      progress: clampProgress(
-        upcomingAppointmentsCount,
-        settings.daily_appointments_goal
-      ),
+      helper: "Pendientes o confirmadas",
+      progress: clampProgress(upcomingAppointmentsCount, dailyAppointmentsGoal),
     },
     {
-      label: "Inventario saludable",
-      value: `${Math.max(0, totalActiveProducts - lowStockCount)}/${totalActiveProducts}`,
-      helper: `${lowStockCount} producto(s) en riesgo`,
-      progress: Math.max(0, Math.min(100, healthyStockPercent)),
+      label: "Productos activos",
+      value: String(totalActiveProducts),
+      helper: `${lowStockCount} con stock bajo`,
+      progress: totalActiveProducts > 0
+        ? Math.max(0, Math.min(100, ((totalActiveProducts - lowStockCount) / totalActiveProducts) * 100))
+        : 0,
     },
   ];
 
+  const highlights: string[] = [];
+  const risks: string[] = [];
+  const opportunities: string[] = [];
+
+  if (salesTodayCount > 0) {
+    highlights.push(`Ya registraste ${salesTodayCount} venta(s) hoy por ${formatMoney(salesTodayTotal)}.`);
+  } else {
+    risks.push("Todavía no se han registrado ventas hoy.");
+  }
+
+  if (topProduct) {
+    highlights.push(`El producto con mayor rotación actual es "${topProduct.name}" con ${topProduct.quantity} unidad(es) vendidas.`);
+  } else {
+    opportunities.push("Aún no hay suficiente historial de ventas para detectar productos líderes.");
+  }
+
+  if (topStaff) {
+    highlights.push(`"${topStaff.name}" lidera en ingresos registrados con ${formatMoney(topStaff.revenue)}.`);
+  } else {
+    opportunities.push("Asocia ventas al staff para medir mejor el rendimiento del equipo.");
+  }
+
+  if (lowStockCount > 0) {
+    risks.push(`Tienes ${lowStockCount} producto(s) con stock bajo que requieren reposición.`);
+  } else {
+    highlights.push("No se detectan productos con stock bajo en este momento.");
+  }
+
+  if (inactiveCustomersCount > 0) {
+    risks.push(`Se detectaron ${inactiveCustomersCount} cliente(s) con historial previo y sin actividad reciente.`);
+    opportunities.push("Puedes reactivar clientes inactivos con promociones, recordatorios o seguimiento.");
+  } else {
+    highlights.push("No se detectan clientes inactivos relevantes por ahora.");
+  }
+
+  if (upcomingAppointmentsCount > 0) {
+    opportunities.push(`Tienes ${upcomingAppointmentsCount} cita(s) mañana: prepárate para convertirlas en ventas o fidelización.`);
+  }
+
+  if (highlights.length === 0) {
+    highlights.push("Aún no hay suficientes datos para destacar fortalezas claras del negocio.");
+  }
+
+  if (risks.length === 0) {
+    risks.push("No se detectan riesgos críticos inmediatos con los datos actuales.");
+  }
+
+  if (opportunities.length === 0) {
+    opportunities.push("Mantén el ritmo actual y sigue registrando datos para detectar oportunidades más precisas.");
+  }
+
   return {
-    title: "Resumen inteligente del negocio",
+    title: "Resumen ejecutivo del negocio",
     overview: buildOverview({
       salesTodayCount,
       salesTodayTotal,

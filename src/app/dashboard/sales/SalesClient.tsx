@@ -9,6 +9,7 @@ import {
   DollarSign,
   Pencil,
   Percent,
+  Search,
 } from "lucide-react";
 import {
   createSaleAction,
@@ -249,6 +250,7 @@ export default function SalesClient({
   const [discountType, setDiscountType] = useState<DiscountType>("fixed");
   const [discountValue, setDiscountValue] = useState("0");
   const [taxPercent, setTaxPercent] = useState("15");
+  const [salesSearch, setSalesSearch] = useState("");
 
   const [selectedSale, setSelectedSale] = useState<SaleRow | null>(null);
   const [editLines, setEditLines] = useState<SaleLine[]>([makeLine()]);
@@ -282,6 +284,49 @@ export default function SalesClient({
 
   const itemsJson = buildItemsJson(lines);
   const editItemsJson = buildItemsJson(editLines);
+
+  const filteredSales = useMemo(() => {
+    const term = salesSearch.trim().toLowerCase();
+
+    if (!term) return sales;
+
+    return sales.filter((sale) => {
+      const customer = sale.customer?.name?.toLowerCase() || "";
+      const staffName = sale.staff?.display_name?.toLowerCase() || "";
+      const notes = sale.notes?.toLowerCase() || "";
+      const id = sale.id.toLowerCase();
+      const total = sale.total.toFixed(2).toLowerCase();
+      const subtotal = sale.subtotal.toFixed(2).toLowerCase();
+
+      const itemsText = sale.items
+        .map((item) => {
+          const categoryName = Array.isArray(item.product?.product_categories)
+            ? item.product?.product_categories[0]?.name || ""
+            : item.product?.product_categories?.name || "";
+
+          return [
+            item.product?.name || "",
+            item.product?.sku || "",
+            categoryName,
+          ]
+            .join(" ")
+            .toLowerCase();
+        })
+        .join(" ");
+
+      return (
+        customer.includes(term) ||
+        staffName.includes(term) ||
+        notes.includes(term) ||
+        id.includes(term) ||
+        total.includes(term) ||
+        subtotal.includes(term) ||
+        itemsText.includes(term)
+      );
+    });
+  }, [sales, salesSearch]);
+
+  const visibleSales = useMemo(() => filteredSales.slice(0, 5), [filteredSales]);
 
   const openEdit = (sale: SaleRow) => {
     setSelectedSale(sale);
@@ -338,20 +383,36 @@ export default function SalesClient({
 
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Ventas recientes</h2>
-            <p className={`text-sm ${theme.textMuted}`}>
-              {sales.length} cargadas
-            </p>
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-xl font-semibold">Ventas recientes</h2>
+              <p className={`text-sm ${theme.textMuted}`}>
+                Mostrando {visibleSales.length} de {filteredSales.length}
+              </p>
+            </div>
+
+            <div
+              className={`flex items-center gap-2 rounded-2xl border px-3 py-2 ${theme.input}`}
+            >
+              <Search className={`h-4 w-4 ${theme.textMuted}`} />
+              <input
+                value={salesSearch}
+                onChange={(e) => setSalesSearch(e.target.value)}
+                placeholder="Buscar cliente, staff, producto, SKU, nota o ID..."
+                className="w-full bg-transparent text-sm outline-none placeholder:opacity-70 md:w-80"
+              />
+            </div>
           </div>
 
-          {sales.length === 0 ? (
+          {filteredSales.length === 0 ? (
             <div className={`rounded-2xl border p-6 ${theme.card}`}>
-              <p className={theme.textMuted}>Aún no hay ventas registradas.</p>
+              <p className={theme.textMuted}>
+                No se encontraron ventas con esa búsqueda.
+              </p>
             </div>
           ) : (
             <div className="space-y-3">
-              {sales.map((sale) => (
+              {visibleSales.map((sale) => (
                 <div
                   key={sale.id}
                   className={`rounded-2xl border p-4 shadow-sm ${theme.card}`}
@@ -423,6 +484,14 @@ export default function SalesClient({
                   </div>
                 </div>
               ))}
+
+              {filteredSales.length > 5 && (
+                <div className={`rounded-2xl border p-4 text-sm ${theme.cardSoft}`}>
+                  <p className={theme.textMuted}>
+                    Solo se muestran las 5 ventas más recientes según la búsqueda actual.
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </section>
@@ -850,9 +919,7 @@ export default function SalesClient({
 
                       <button
                         type="button"
-                        onClick={() =>
-                          setEditLines((prev) => [...prev, makeLine()])
-                        }
+                        onClick={() => setEditLines((prev) => [...prev, makeLine()])}
                         className={`inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm transition ${theme.buttonSecondary}`}
                       >
                         <Plus className="h-4 w-4" />
@@ -959,7 +1026,7 @@ export default function SalesClient({
                                 <p className={`mt-2 text-xs ${theme.textMuted}`}>
                                   Categoría: {selectedProduct.category_name || "Sin categoría"} ·
                                   Precio: L {Number(selectedProduct.price || 0).toFixed(2)} ·
-                                  Stock actual: {selectedProduct.stock}
+                                  Stock: {selectedProduct.stock}
                                 </p>
                               )}
                             </div>
@@ -1102,9 +1169,12 @@ export default function SalesClient({
                       </p>
                       <p>Base gravable: L {editPreview.taxableBase.toFixed(2)}</p>
                       <p>
-                        ISV: L {editPreview.taxAmount.toFixed(2)} ({editPreview.taxPercent.toFixed(2)}%)
+                        ISV: L {editPreview.taxAmount.toFixed(2)} (
+                        {editPreview.taxPercent.toFixed(2)}%)
                       </p>
-                      <p className="font-semibold">Total: L {editPreview.total.toFixed(2)}</p>
+                      <p className="font-semibold">
+                        Total: L {editPreview.total.toFixed(2)}
+                      </p>
                     </div>
                   </div>
 

@@ -44,6 +44,13 @@ function startOfMonthYmd(ymd: string) {
   return `${year}-${String(month).padStart(2, "0")}-01`;
 }
 
+function getUtcRangeForTegucigalpaDay(ymd: string) {
+  return {
+    start: `${ymd}T06:00:00.000Z`,
+    end: `${addDaysToYmd(ymd, 1)}T06:00:00.000Z`,
+  };
+}
+
 function formatMoney(value: number) {
   return `L ${Number(value || 0).toFixed(2)}`;
 }
@@ -155,12 +162,19 @@ export async function getBusinessAssistantAnswer(
       label = "este mes";
     }
 
+    const startUtc =
+      label === "hoy"
+        ? getUtcRangeForTegucigalpaDay(todayYmd).start
+        : `${startYmd}T06:00:00.000Z`;
+
+    const endUtc = getUtcRangeForTegucigalpaDay(todayYmd).end;
+
     const { data: sales } = await supabase
       .from("sales")
       .select("id, total, sale_at")
       .eq("business_id", businessId)
-      .gte("sale_at", `${startYmd}T00:00:00`)
-      .lt("sale_at", `${addDaysToYmd(todayYmd, 1)}T00:00:00`);
+      .gte("sale_at", startUtc)
+      .lt("sale_at", endUtc);
 
     const totalSales = (sales || []).reduce(
       (acc, row) => acc + Number(row.total || 0),
@@ -180,17 +194,37 @@ export async function getBusinessAssistantAnswer(
   }
 
   if (intent === "top_products") {
+    const { data: salesRows } = await supabase
+      .from("sales")
+      .select("id")
+      .eq("business_id", businessId)
+      .limit(3000);
+
+    const saleIds = (salesRows || []).map((row) => row.id);
+
+    if (saleIds.length === 0) {
+      return {
+        matched: true,
+        title: "Top productos",
+        answer: "Todavía no hay ventas suficientes para calcular el producto más vendido.",
+        suggestions: defaultSuggestions(),
+      };
+    }
+
     const { data: items } = await supabase
       .from("sale_items")
       .select(`
         product_id,
         quantity,
         line_total,
+        sale_id,
         product:products(
           id,
-          name
+          name,
+          business_id
         )
       `)
+      .in("sale_id", saleIds)
       .limit(3000);
 
     const map = new Map<
@@ -201,6 +235,7 @@ export async function getBusinessAssistantAnswer(
     for (const item of items || []) {
       const product = Array.isArray(item.product) ? item.product[0] : item.product;
       if (!item.product_id || !product?.name) continue;
+      if (product.business_id !== businessId) continue;
 
       const current = map.get(item.product_id) || {
         name: product.name,
@@ -340,15 +375,15 @@ export async function getBusinessAssistantAnswer(
 
   if (intent === "upcoming_appointments") {
     const tomorrowYmd = addDaysToYmd(todayYmd, 1);
-    const nextTomorrowYmd = addDaysToYmd(todayYmd, 2);
+    const tomorrowRange = getUtcRangeForTegucigalpaDay(tomorrowYmd);
 
     const { data: appointments } = await supabase
       .from("appointments")
       .select("id, appointment_at, status")
       .eq("business_id", businessId)
       .in("status", ["pending", "confirmed"])
-      .gte("appointment_at", `${tomorrowYmd}T00:00:00`)
-      .lt("appointment_at", `${nextTomorrowYmd}T00:00:00`)
+      .gte("appointment_at", tomorrowRange.start)
+      .lt("appointment_at", tomorrowRange.end)
       .order("appointment_at", { ascending: true });
 
     if (!appointments || appointments.length === 0) {

@@ -34,6 +34,7 @@ export default async function ProductsPage({
     success?: string;
     page?: string;
     category?: string;
+    q?: string;
   }>;
 }) {
   const params = await searchParams;
@@ -46,6 +47,7 @@ export default async function ProductsPage({
 
   const currentPage = Math.max(1, Number(params.page || "1") || 1);
   const selectedCategory = String(params.category || "").trim();
+  const searchTerm = String(params.q || "").trim();
   const pageSize = 10;
   const from = (currentPage - 1) * pageSize;
   const to = from + pageSize - 1;
@@ -85,6 +87,12 @@ export default async function ProductsPage({
     productsQuery = productsQuery.eq("category_id", selectedCategory);
   }
 
+  if (searchTerm) {
+    const searchFilter = `name.ilike.%${searchTerm}%,sku.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`;
+    countQuery = countQuery.or(searchFilter);
+    productsQuery = productsQuery.or(searchFilter);
+  }
+
   const { count, error: countError } = await countQuery;
   const { data: rawProducts, error } = await productsQuery.range(from, to);
 
@@ -114,9 +122,12 @@ export default async function ProductsPage({
 
   const totalProducts = count || 0;
   const totalPages = Math.max(1, Math.ceil(totalProducts / pageSize));
-  const categoryQuery = selectedCategory
-    ? `&category=${encodeURIComponent(selectedCategory)}`
-    : "";
+
+  const queryParts = new URLSearchParams();
+  if (selectedCategory) queryParts.set("category", selectedCategory);
+  if (searchTerm) queryParts.set("q", searchTerm);
+
+  const extraQuery = queryParts.toString() ? `&${queryParts.toString()}` : "";
 
   return (
     <main className={`min-h-screen p-6 ${theme.pageBg}`}>
@@ -182,6 +193,36 @@ export default async function ProductsPage({
           theme={theme}
         />
 
+        <section className={`rounded-2xl border p-4 shadow-sm ${theme.card}`}>
+          <form action="/dashboard/products" className="flex flex-col gap-3 md:flex-row">
+            <input type="hidden" name="category" value={selectedCategory} />
+
+            <input
+              type="text"
+              name="q"
+              defaultValue={searchTerm}
+              placeholder="Buscar por nombre, SKU o descripción..."
+              className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+            />
+
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                className={`rounded-xl px-4 py-2 text-sm font-medium transition ${theme.buttonPrimary}`}
+              >
+                Buscar
+              </button>
+
+              <Link
+                href={selectedCategory ? `/dashboard/products?category=${encodeURIComponent(selectedCategory)}` : "/dashboard/products"}
+                className={`rounded-xl px-4 py-2 text-sm font-medium transition ${theme.buttonSecondary}`}
+              >
+                Limpiar
+              </Link>
+            </div>
+          </form>
+        </section>
+
         <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
           <section className="space-y-4">
             <ProductsList
@@ -197,7 +238,7 @@ export default async function ProductsPage({
 
               <div className="flex items-center gap-2">
                 <Link
-                  href={`/dashboard/products?page=${currentPage - 1}${categoryQuery}`}
+                  href={`/dashboard/products?page=${currentPage - 1}${extraQuery}`}
                   className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
                     currentPage <= 1
                       ? "pointer-events-none opacity-50"
@@ -208,7 +249,7 @@ export default async function ProductsPage({
                 </Link>
 
                 <Link
-                  href={`/dashboard/products?page=${currentPage + 1}${categoryQuery}`}
+                  href={`/dashboard/products?page=${currentPage + 1}${extraQuery}`}
                   className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
                     currentPage >= totalPages
                       ? "pointer-events-none opacity-50"
