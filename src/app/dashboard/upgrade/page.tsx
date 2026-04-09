@@ -56,7 +56,10 @@ function getPlanCardClasses(code: string) {
   }
 }
 
-function getCyclePrice(priceMonthly: number, cycle: "monthly" | "quarterly" | "yearly") {
+function getCyclePrice(
+  priceMonthly: number,
+  cycle: "monthly" | "quarterly" | "yearly"
+) {
   switch (cycle) {
     case "quarterly":
       return Number(priceMonthly || 0) * 3;
@@ -265,9 +268,27 @@ export default async function UpgradePage({
                       </div>
 
                       <div className={`rounded-2xl border p-3 ${theme.subtle}`}>
-                        <p className={`text-xs ${theme.textMuted}`}>IA mensual</p>
+                        <p className={`text-xs ${theme.textMuted}`}>Minutos IA / mes</p>
                         <p className="mt-1 text-sm font-semibold">
-                          {plan.limits?.max_monthly_ai_calls ?? "-"}
+                          {plan.limits?.ai_monthly_minutes ?? "-"}
+                        </p>
+                      </div>
+
+                      <div className={`rounded-2xl border p-3 ${theme.subtle}`}>
+                        <p className={`text-xs ${theme.textMuted}`}>Máx. por llamada</p>
+                        <p className="mt-1 text-sm font-semibold">
+                          {plan.limits?.ai_max_call_minutes
+                            ? `${plan.limits.ai_max_call_minutes} min`
+                            : "-"}
+                        </p>
+                      </div>
+
+                      <div className={`rounded-2xl border p-3 ${theme.subtle}`}>
+                        <p className={`text-xs ${theme.textMuted}`}>Minuto extra</p>
+                        <p className="mt-1 text-sm font-semibold">
+                          {typeof plan.limits?.ai_overage_price === "number"
+                            ? `$${Number(plan.limits.ai_overage_price).toFixed(2)}`
+                            : "-"}
                         </p>
                       </div>
                     </div>

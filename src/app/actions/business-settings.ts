@@ -4,6 +4,26 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+const VALID_TIMEZONES = ["America/Tegucigalpa"] as const;
+const VALID_WORKDAYS = [
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+  "sunday",
+] as const;
+
+function isValidTime(value: string) {
+  return /^([01]\d|2[0-3]):([0-5]\d)$/.test(value);
+}
+
+function timeToMinutes(value: string) {
+  const [hours, minutes] = value.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
 export async function updateBusinessGoalsAction(
   formData: FormData
 ): Promise<void> {
@@ -51,4 +71,75 @@ export async function updateBusinessGoalsAction(
   revalidatePath("/dashboard/insights");
 
   redirect("/dashboard/settings?success=goals_updated");
+}
+
+export async function updateBusinessScheduleAction(
+  formData: FormData
+): Promise<void> {
+  const businessId = String(formData.get("businessId") || "").trim();
+  const timezone = String(
+    formData.get("timezone") || "America/Tegucigalpa"
+  ).trim();
+  const workdayStartTime = String(
+    formData.get("workday_start_time") || ""
+  ).trim();
+  const workdayEndTime = String(
+    formData.get("workday_end_time") || ""
+  ).trim();
+
+  const selectedWorkdays = formData
+    .getAll("workdays")
+    .map((value) => String(value).trim())
+    .filter(Boolean);
+
+  if (!businessId) {
+    redirect("/dashboard/settings?error=Negocio+inválido");
+  }
+
+  if (!VALID_TIMEZONES.includes(timezone as (typeof VALID_TIMEZONES)[number])) {
+    redirect("/dashboard/settings?error=Zona+horaria+inválida");
+  }
+
+  if (!isValidTime(workdayStartTime) || !isValidTime(workdayEndTime)) {
+    redirect("/dashboard/settings?error=Hora+de+apertura+o+cierre+inválida");
+  }
+
+  if (timeToMinutes(workdayStartTime) >= timeToMinutes(workdayEndTime)) {
+    redirect("/dashboard/settings?error=La+hora+de+apertura+debe+ser+menor+que+la+de+cierre");
+  }
+
+  const normalizedWorkdays = Array.from(
+    new Set(
+      selectedWorkdays.filter((day) =>
+        VALID_WORKDAYS.includes(day as (typeof VALID_WORKDAYS)[number])
+      )
+    )
+  );
+
+  if (normalizedWorkdays.length === 0) {
+    redirect("/dashboard/settings?error=Debes+seleccionar+al+menos+un+día+laboral");
+  }
+
+  const supabase = await createClient();
+
+  const { error } = await supabase.from("business_settings").upsert(
+    {
+      business_id: businessId,
+      timezone,
+      workday_start_time: workdayStartTime,
+      workday_end_time: workdayEndTime,
+      workdays: normalizedWorkdays,
+    },
+    {
+      onConflict: "business_id",
+    }
+  );
+
+  if (error) {
+    redirect(`/dashboard/settings?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/dashboard/settings");
+
+  redirect("/dashboard/settings?success=schedule_updated");
 }
