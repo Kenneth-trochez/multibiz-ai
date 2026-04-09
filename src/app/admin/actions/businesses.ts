@@ -205,6 +205,75 @@ export async function updateBusinessSubscriptionAction(
   redirect("/admin/businesses?success=subscription_updated");
 }
 
+export async function saveBusinessVapiAssistantAction(
+  formData: FormData
+): Promise<void> {
+  await requirePlatformAdmin();
+
+  const businessId = String(formData.get("businessId") || "").trim();
+  const assistantId = String(formData.get("assistantId") || "").trim();
+  const phoneNumberId = String(formData.get("phoneNumberId") || "").trim();
+  const activeValue = String(formData.get("active") || "").trim();
+  const active = activeValue === "true" || activeValue === "on";
+
+  if (!businessId) {
+    redirect("/admin/businesses?error=Negocio+invalido");
+  }
+
+  if (!assistantId) {
+    redirect("/admin/businesses?error=Assistant+ID+es+obligatorio");
+  }
+
+  const supabase = createAdminClient();
+
+  const { data: existingByBusiness, error: existingError } = await supabase
+    .from("business_vapi_assistants")
+    .select("id, business_id, vapi_assistant_id")
+    .eq("business_id", businessId)
+    .maybeSingle();
+
+  if (existingError) {
+    redirect(
+      `/admin/businesses?error=${encodeURIComponent(existingError.message)}`
+    );
+  }
+
+  if (existingByBusiness) {
+    const { error: updateError } = await supabase
+      .from("business_vapi_assistants")
+      .update({
+        vapi_assistant_id: assistantId,
+        vapi_phone_number_id: phoneNumberId || null,
+        active,
+      })
+      .eq("id", existingByBusiness.id);
+
+    if (updateError) {
+      redirect(
+        `/admin/businesses?error=${encodeURIComponent(updateError.message)}`
+      );
+    }
+  } else {
+    const { error: insertError } = await supabase
+      .from("business_vapi_assistants")
+      .insert({
+        business_id: businessId,
+        vapi_assistant_id: assistantId,
+        vapi_phone_number_id: phoneNumberId || null,
+        active,
+      });
+
+    if (insertError) {
+      redirect(
+        `/admin/businesses?error=${encodeURIComponent(insertError.message)}`
+      );
+    }
+  }
+
+  revalidateAdminPages();
+  redirect("/admin/businesses?success=vapi_saved");
+}
+
 export async function deleteBusinessAction(
   formData: FormData
 ): Promise<void> {

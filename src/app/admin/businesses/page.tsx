@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requirePlatformAdmin } from "@/lib/auth/requirePlatformAdmin";
 import {
   deleteBusinessAction,
+  saveBusinessVapiAssistantAction,
   updateBusinessSubscriptionAction,
 } from "../actions/businesses";
 
@@ -50,6 +51,15 @@ type BusinessSubscriptionRow = {
   updated_at: string;
 };
 
+type BusinessVapiAssistantRow = {
+  id: string;
+  business_id: string;
+  vapi_assistant_id: string;
+  vapi_phone_number_id: string | null;
+  active: boolean;
+  created_at: string;
+};
+
 function formatDate(value: string | null) {
   if (!value) return "—";
   return new Date(value).toLocaleString("es-HN");
@@ -65,62 +75,75 @@ export default async function AdminBusinessesPage({
 
   const supabase = createAdminClient();
 
-  const [businessesResult, plansResult, subscriptionsResult] = await Promise.all([
-    supabase
-      .from("businesses")
-      .select(`
-        id,
-        name,
-        slug,
-        business_type,
-        logo_url,
-        primary_color,
-        secondary_color,
-        default_icon,
-        phone,
-        address,
-        owner_user_id,
-        theme,
-        created_at,
-        updated_at
-      `)
-      .order("created_at", { ascending: false }),
+  const [businessesResult, plansResult, subscriptionsResult, vapiAssistantsResult] =
+    await Promise.all([
+      supabase
+        .from("businesses")
+        .select(`
+          id,
+          name,
+          slug,
+          business_type,
+          logo_url,
+          primary_color,
+          secondary_color,
+          default_icon,
+          phone,
+          address,
+          owner_user_id,
+          theme,
+          created_at,
+          updated_at
+        `)
+        .order("created_at", { ascending: false }),
 
-    supabase
-      .from("subscription_plans")
-      .select("id, code, name, description, price_monthly, active")
-      .eq("active", true)
-      .order("price_monthly", { ascending: true }),
+      supabase
+        .from("subscription_plans")
+        .select("id, code, name, description, price_monthly, active")
+        .eq("active", true)
+        .order("price_monthly", { ascending: true }),
 
-    supabase
-      .from("business_subscriptions")
-      .select(`
-        id,
-        business_id,
-        plan_id,
-        status,
-        billing_cycle,
-        current_period_start,
-        current_period_end,
-        trial_ends_at,
-        canceled_at,
-        created_at,
-        updated_at
-      `)
-      .in("status", ["trialing", "active", "past_due"])
-      .order("created_at", { ascending: false }),
-  ]);
+      supabase
+        .from("business_subscriptions")
+        .select(`
+          id,
+          business_id,
+          plan_id,
+          status,
+          billing_cycle,
+          current_period_start,
+          current_period_end,
+          trial_ends_at,
+          canceled_at,
+          created_at,
+          updated_at
+        `)
+        .in("status", ["trialing", "active", "past_due"])
+        .order("created_at", { ascending: false }),
+
+      supabase
+        .from("business_vapi_assistants")
+        .select("id, business_id, vapi_assistant_id, vapi_phone_number_id, active, created_at")
+        .order("created_at", { ascending: false }),
+    ]);
 
   const businesses = (businessesResult.data || []) as BusinessRow[];
   const plans = (plansResult.data || []) as SubscriptionPlanRow[];
   const subscriptions = (subscriptionsResult.data || []) as BusinessSubscriptionRow[];
+  const vapiAssistants = (vapiAssistantsResult.data || []) as BusinessVapiAssistantRow[];
 
   const error =
-    businessesResult.error || plansResult.error || subscriptionsResult.error;
+    businessesResult.error ||
+    plansResult.error ||
+    subscriptionsResult.error ||
+    vapiAssistantsResult.error;
 
   const planMap = new Map(plans.map((plan) => [plan.id, plan]));
   const subscriptionMap = new Map(
     subscriptions.map((subscription) => [subscription.business_id, subscription])
+  );
+  const vapiAssistantMap = new Map(
+    vapiAssistants.map((item) => [item.business_id, item])
   );
 
   return (
@@ -128,7 +151,7 @@ export default async function AdminBusinessesPage({
       <div className="rounded-[2rem] border border-[#e7d8c7] bg-[#fffaf3] p-5 shadow-sm sm:p-6">
         <h2 className="text-2xl font-bold text-[#2f241d] sm:text-3xl">Negocios</h2>
         <p className="mt-2 text-sm text-[#6b5b4d]">
-          Administra negocios y su suscripción real del SaaS.
+          Administra negocios, suscripción real del SaaS e integración Vapi.
         </p>
       </div>
 
@@ -150,6 +173,12 @@ export default async function AdminBusinessesPage({
         </div>
       )}
 
+      {params.success === "vapi_saved" && (
+        <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+          Integración Vapi guardada correctamente.
+        </div>
+      )}
+
       {error ? (
         <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-red-700">
           Error cargando negocios: {error.message}
@@ -165,6 +194,7 @@ export default async function AdminBusinessesPage({
             const currentPlan = subscription
               ? planMap.get(subscription.plan_id)
               : null;
+            const vapiAssistant = vapiAssistantMap.get(business.id);
 
             return (
               <div
@@ -191,21 +221,69 @@ export default async function AdminBusinessesPage({
                           Plan: {currentPlan.name} ({currentPlan.code})
                         </span>
                       )}
+
+                      {vapiAssistant ? (
+                        <span
+                          className={`rounded-full border px-3 py-1 text-xs ${
+                            vapiAssistant.active
+                              ? "border-blue-200 bg-blue-50 text-blue-700"
+                              : "border-zinc-200 bg-zinc-50 text-zinc-700"
+                          }`}
+                        >
+                          Vapi: {vapiAssistant.active ? "activo" : "inactivo"}
+                        </span>
+                      ) : (
+                        <span className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs text-zinc-700">
+                          Vapi: no configurado
+                        </span>
+                      )}
                     </div>
 
                     <div className="mt-3 grid gap-2 text-sm text-[#6b5b4d] sm:grid-cols-2">
-                      <p className="break-all"><span className="font-medium text-[#3f3128]">Business ID:</span> {business.id}</p>
-                      <p className="break-all"><span className="font-medium text-[#3f3128]">Slug:</span> {business.slug}</p>
-                      <p className="break-all"><span className="font-medium text-[#3f3128]">Owner user ID:</span> {business.owner_user_id}</p>
-                      <p><span className="font-medium text-[#3f3128]">Icono:</span> {business.default_icon}</p>
-                      <p><span className="font-medium text-[#3f3128]">Teléfono:</span> {business.phone || "—"}</p>
-                      <p><span className="font-medium text-[#3f3128]">Dirección:</span> {business.address || "—"}</p>
-                      <p><span className="font-medium text-[#3f3128]">Creado:</span> {formatDate(business.created_at)}</p>
-                      <p><span className="font-medium text-[#3f3128]">Actualizado:</span> {formatDate(business.updated_at)}</p>
-                      <p><span className="font-medium text-[#3f3128]">Status suscripción:</span> {subscription?.status || "Sin suscripción activa"}</p>
-                      <p><span className="font-medium text-[#3f3128]">Ciclo:</span> {subscription?.billing_cycle || "—"}</p>
-                      <p><span className="font-medium text-[#3f3128]">Inicio período:</span> {formatDate(subscription?.current_period_start || null)}</p>
-                      <p><span className="font-medium text-[#3f3128]">Fin período:</span> {formatDate(subscription?.current_period_end || null)}</p>
+                      <p className="break-all">
+                        <span className="font-medium text-[#3f3128]">Business ID:</span> {business.id}
+                      </p>
+                      <p className="break-all">
+                        <span className="font-medium text-[#3f3128]">Slug:</span> {business.slug}
+                      </p>
+                      <p className="break-all">
+                        <span className="font-medium text-[#3f3128]">Owner user ID:</span> {business.owner_user_id}
+                      </p>
+                      <p>
+                        <span className="font-medium text-[#3f3128]">Icono:</span> {business.default_icon}
+                      </p>
+                      <p>
+                        <span className="font-medium text-[#3f3128]">Teléfono:</span> {business.phone || "—"}
+                      </p>
+                      <p>
+                        <span className="font-medium text-[#3f3128]">Dirección:</span> {business.address || "—"}
+                      </p>
+                      <p>
+                        <span className="font-medium text-[#3f3128]">Creado:</span> {formatDate(business.created_at)}
+                      </p>
+                      <p>
+                        <span className="font-medium text-[#3f3128]">Actualizado:</span> {formatDate(business.updated_at)}
+                      </p>
+                      <p>
+                        <span className="font-medium text-[#3f3128]">Status suscripción:</span> {subscription?.status || "Sin suscripción activa"}
+                      </p>
+                      <p>
+                        <span className="font-medium text-[#3f3128]">Ciclo:</span> {subscription?.billing_cycle || "—"}
+                      </p>
+                      <p>
+                        <span className="font-medium text-[#3f3128]">Inicio período:</span> {formatDate(subscription?.current_period_start || null)}
+                      </p>
+                      <p>
+                        <span className="font-medium text-[#3f3128]">Fin período:</span> {formatDate(subscription?.current_period_end || null)}
+                      </p>
+                      <p className="break-all sm:col-span-2">
+                        <span className="font-medium text-[#3f3128]">Assistant ID actual:</span>{" "}
+                        {vapiAssistant?.vapi_assistant_id || "—"}
+                      </p>
+                      <p className="break-all sm:col-span-2">
+                        <span className="font-medium text-[#3f3128]">Phone Number ID actual:</span>{" "}
+                        {vapiAssistant?.vapi_phone_number_id || "—"}
+                      </p>
                     </div>
                   </div>
 
@@ -302,6 +380,64 @@ export default async function AdminBusinessesPage({
                             className="w-full rounded-xl bg-[#a56a3a] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#8d582e] sm:w-auto"
                           >
                             Guardar suscripción
+                          </button>
+                        </form>
+                      </div>
+
+                      <div className="rounded-[1.5rem] border border-[#ead9c8] bg-[#fff7ee] p-4">
+                        <p className="mb-3 text-sm font-medium text-[#3f3128]">
+                          Integración Vapi
+                        </p>
+
+                        <form action={saveBusinessVapiAssistantAction} className="space-y-3">
+                          <input type="hidden" name="businessId" value={business.id} />
+
+                          <div>
+                            <label className="mb-1 block text-xs text-[#6b5b4d]">
+                              Assistant ID
+                            </label>
+                            <input
+                              type="text"
+                              name="assistantId"
+                              defaultValue={vapiAssistant?.vapi_assistant_id || ""}
+                              placeholder="Ej. test-assistant-123"
+                              className="w-full rounded-xl border border-[#d9c6b2] bg-white px-3 py-2 text-sm text-[#2f241d] outline-none"
+                              required
+                            />
+                          </div>
+
+                          <div>
+                            <label className="mb-1 block text-xs text-[#6b5b4d]">
+                              Phone Number ID (opcional)
+                            </label>
+                            <input
+                              type="text"
+                              name="phoneNumberId"
+                              defaultValue={vapiAssistant?.vapi_phone_number_id || ""}
+                              placeholder="Ej. phone-number-id"
+                              className="w-full rounded-xl border border-[#d9c6b2] bg-white px-3 py-2 text-sm text-[#2f241d] outline-none"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="mb-1 block text-xs text-[#6b5b4d]">
+                              Estado
+                            </label>
+                            <select
+                              name="active"
+                              defaultValue={vapiAssistant?.active ? "true" : "false"}
+                              className="w-full rounded-xl border border-[#d9c6b2] bg-white px-3 py-2 text-sm text-[#2f241d] outline-none"
+                            >
+                              <option value="true">Activo</option>
+                              <option value="false">Inactivo</option>
+                            </select>
+                          </div>
+
+                          <button
+                            type="submit"
+                            className="w-full rounded-xl bg-[#4b7bec] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#3867d6] sm:w-auto"
+                          >
+                            Guardar integración Vapi
                           </button>
                         </form>
                       </div>
