@@ -1,3 +1,4 @@
+// app/api/vapi/book-appointment/route.ts
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkStaffAvailability } from "@/lib/appointments/checkStaffAvailability";
@@ -9,16 +10,34 @@ import {
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-function normalizeHondurasPhone(raw: string): string | null {
-  const value = raw.trim();
+// NEW: API key protection (simple)
+function requireVapiKey(request: Request) {
+  const key = request.headers.get("x-vapi-key") || "";
+  const expected = process.env.VAPI_INTERNAL_KEY || "";
 
-  if (!value) return null;
+  if (!expected) {
+    return NextResponse.json(
+      { ok: false, error: "Server misconfigured: missing VAPI_INTERNAL_KEY" },
+      { status: 500 }
+    );
+  }
+
+  if (key !== expected) {
+    return NextResponse.json(
+      { ok: false, error: "Unauthorized" },
+      { status: 401 }
+    );
+  }
+
+  return null;
+}
+
+function normalizeHondurasPhone(raw: string): string {
+  const value = raw.trim();
+  if (!value) throw new Error("El teléfono es obligatorio");
 
   let digits = value.replace(/\D/g, "");
-
-  if (digits.startsWith("504")) {
-    digits = digits.slice(3);
-  }
+  if (digits.startsWith("504")) digits = digits.slice(3);
 
   if (digits.length !== 8) {
     throw new Error("El teléfono debe tener 8 dígitos de Honduras");
@@ -29,7 +48,6 @@ function normalizeHondurasPhone(raw: string): string | null {
 
 function normalizeEmail(raw: string): string | null {
   const value = raw.trim().toLowerCase();
-
   if (!value) return null;
 
   if (!EMAIL_REGEX.test(value)) {
@@ -39,28 +57,45 @@ function normalizeEmail(raw: string): string | null {
   return value;
 }
 
+function validateAppointmentAt(appointmentAt: string) {
+  const value = appointmentAt.trim();
+  if (!value) throw new Error("appointmentAt es obligatorio");
+
+  // Require offset (e.g. -06:00) so we don't accidentally treat as UTC/local
+  if (!/[-+]\d{2}:\d{2}$/.test(value)) {
+    throw new Error("appointmentAt debe incluir offset, ej: 2026-04-09T14:00:00-06:00");
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new Error("appointmentAt inválido");
+  }
+
+  return value;
+}
+
 async function findExistingCustomer(params: {
   businessId: string;
-  phone: string | null;
+  phone: string;
   email: string | null;
 }) {
   const { businessId, phone, email } = params;
   const supabase = createAdminClient();
 
-  if (phone) {
-    const { data } = await supabase
-      .from("customers")
-      .select("id, name, phone, email")
-      .eq("business_id", businessId)
-      .eq("phone", phone)
-      .limit(1)
-      .maybeSingle();
+  // Prefer phone match
+  const { data: byPhone } = await supabase
+    .from("customers")
+    .select("id, name, phone, email")
+    .eq("business_id", businessId)
+    .eq("phone", phone)
+    .limit(1)
+    .maybeSingle();
 
-    if (data) return data;
-  }
+  if (byPhone) return byPhone;
 
+  // Optional email match
   if (email) {
-    const { data } = await supabase
+    const { data: byEmail } = await supabase
       .from("customers")
       .select("id, name, phone, email")
       .eq("business_id", businessId)
@@ -68,7 +103,7 @@ async function findExistingCustomer(params: {
       .limit(1)
       .maybeSingle();
 
-    if (data) return data;
+    if (byEmail) return byEmail;
   }
 
   return null;
@@ -76,6 +111,10 @@ async function findExistingCustomer(params: {
 
 export async function POST(request: Request) {
   try {
+    // NEW: protect endpoint
+    const unauthorized = requireVapiKey(request);
+    if (unauthorized) return unauthorized;
+
     const payload = await request.json().catch(() => ({}));
     const { assistantId, phoneNumberId, callId } = extractVapiContext(payload);
 
@@ -84,12 +123,14 @@ export async function POST(request: Request) {
     const rawEmail = String(payload?.email || "").trim();
     const serviceId = String(payload?.serviceId || "").trim();
     const staffId = String(payload?.staffId || "").trim();
-    const appointmentAt = String(payload?.appointmentAt || "").trim();
+    const appointmentAtRaw = String(payload?.appointmentAt || "").trim();
     const notes = String(payload?.notes || "").trim();
 
-    if (!customerName || !serviceId || !appointmentAt) {
+    if (!customerName || !serviceId || !appointmentAtRaw) {
       throw new Error("customerName, serviceId y appointmentAt son obligatorios");
     }
+
+    const appointmentAt = validateAppointmentAt(appointmentAtRaw);
 
     const ctx = await resolveBusinessFromCall({
       assistantId,
@@ -137,11 +178,11 @@ export async function POST(request: Request) {
       }
     }
 
-    let phone: string | null = null;
-    let email: string | null = null;
+    // NEW: enforce phone required
+    const phone = normalizeHondurasPhone(rawPhone);
 
+    let email: string | null = null;
     try {
-      phone = normalizeHondurasPhone(rawPhone);
       email = normalizeEmail(rawEmail);
     } catch (error) {
       const message =
@@ -203,6 +244,7 @@ export async function POST(request: Request) {
       );
     }
 
+    // Optional: more stable output for LLM
     return NextResponse.json({
       ok: true,
       message: "Cita creada correctamente",

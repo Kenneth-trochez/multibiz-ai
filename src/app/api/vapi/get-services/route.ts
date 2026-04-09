@@ -6,8 +6,34 @@ import {
   resolveBusinessFromCall,
 } from "@/lib/vapi/resolveBusinessFromCall";
 
+// ✅ NEW: API key protection (simple)
+function requireVapiKey(request: Request) {
+  const key = request.headers.get("x-vapi-key") || "";
+  const expected = process.env.VAPI_INTERNAL_KEY || "";
+
+  if (!expected) {
+    return NextResponse.json(
+      { ok: false, error: "Server misconfigured: missing VAPI_INTERNAL_KEY" },
+      { status: 500 }
+    );
+  }
+
+  if (key !== expected) {
+    return NextResponse.json(
+      { ok: false, error: "Unauthorized" },
+      { status: 401 }
+    );
+  }
+
+  return null;
+}
+
 export async function POST(request: Request) {
   try {
+    // ✅ NEW: protect endpoint
+    const unauthorized = requireVapiKey(request);
+    if (unauthorized) return unauthorized;
+
     const payload = await request.json().catch(() => ({}));
     const { assistantId, phoneNumberId } = extractVapiContext(payload);
 
@@ -33,6 +59,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       ok: true,
+      mode: "service_list",
       business: {
         id: ctx.business.id,
         name: ctx.business.name,

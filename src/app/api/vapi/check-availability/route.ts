@@ -20,6 +20,25 @@ const WEEKDAY_KEYS = [
   "saturday",
 ] as const;
 
+// ✅ NEW: API key protection (simple)
+function requireVapiKey(request: Request) {
+  const key = request.headers.get("x-vapi-key") || "";
+  const expected = process.env.VAPI_INTERNAL_KEY || "";
+
+  if (!expected) {
+    return NextResponse.json(
+      { ok: false, error: "Server misconfigured: missing VAPI_INTERNAL_KEY" },
+      { status: 500 }
+    );
+  }
+
+  if (key !== expected) {
+    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+  }
+
+  return null;
+}
+
 function buildAppointmentIso(date: string, hour: number, minute: number) {
   const hh = String(hour).padStart(2, "0");
   const mm = String(minute).padStart(2, "0");
@@ -44,15 +63,28 @@ function getWeekdayKeyFromDate(date: string) {
   return WEEKDAY_KEYS[jsDate.getDay()];
 }
 
+function isTimeInsideWorkday(params: {
+  requestedMinutes: number;
+  workdayStartMinutes: number;
+  workdayEndMinutes: number;
+}) {
+  const { requestedMinutes, workdayStartMinutes, workdayEndMinutes } = params;
+  return !(requestedMinutes < workdayStartMinutes || requestedMinutes >= workdayEndMinutes);
+}
+
 export async function POST(request: Request) {
   try {
+    // ✅ NEW: protect endpoint
+    const unauthorized = requireVapiKey(request);
+    if (unauthorized) return unauthorized;
+
     const payload = await request.json().catch(() => ({}));
     const { assistantId, phoneNumberId } = extractVapiContext(payload);
 
     const serviceId = String(payload?.serviceId || "").trim();
     const requestedDate = String(payload?.date || "").trim();
-    const requestedTime = String(payload?.time || "").trim();
-    const staffId = String(payload?.staffId || "").trim();
+    const requestedTime = String(payload?.time || "").trim(); // optional
+    const staffId = String(payload?.staffId || "").trim(); // optional
 
     if (!serviceId || !requestedDate) {
       throw new Error("serviceId y date son obligatorios");
@@ -67,29 +99,41 @@ export async function POST(request: Request) {
 
     const supabase = createAdminClient();
 
-    const [{ data: service, error: serviceError }, { data: settings, error: settingsError }] =
-      await Promise.all([
-        supabase
-          .from("services")
-          .select("id, name, duration_minutes, active")
-          .eq("business_id", ctx.businessId)
-          .eq("id", serviceId)
-          .eq("active", true)
-          .maybeSingle(),
+    const [
+      { data: service, error: serviceError },
+      { data: settings, error: settingsError },
+      { data: activeStaff, error: staffError },
+    ] = await Promise.all([
+      supabase
+        .from("services")
+        .select("id, name, duration_minutes, active")
+        .eq("business_id", ctx.businessId)
+        .eq("id", serviceId)
+        .eq("active", true)
+        .maybeSingle(),
 
-        supabase
-          .from("business_settings")
-          .select("timezone, workday_start_time, workday_end_time, workdays")
-          .eq("business_id", ctx.businessId)
-          .maybeSingle(),
-      ]);
+      supabase
+        .from("business_settings")
+        .select("timezone, workday_start_time, workday_end_time, workdays")
+        .eq("business_id", ctx.businessId)
+        .maybeSingle(),
+
+      supabase
+        .from("staff")
+        .select("id, display_name, specialty, active")
+        .eq("business_id", ctx.businessId)
+        .eq("active", true)
+        .order("display_name", { ascending: true }),
+    ]);
 
     if (serviceError || !service) {
       throw new Error("No se encontró el servicio solicitado");
     }
-
     if (settingsError) {
       throw new Error("No se pudo leer la configuración del negocio");
+    }
+    if (staffError) {
+      throw new Error("No se pudo leer el staff del negocio");
     }
 
     const timezone = settings?.timezone || "America/Tegucigalpa";
@@ -112,45 +156,40 @@ export async function POST(request: Request) {
         available: false,
         date: requestedDate,
         reason: "El negocio no atiende ese día",
+        schedule: { timezone, workday_start_time: workdayStartTime, workday_end_time: workdayEndTime, workdays },
       });
     }
 
     const workdayStartMinutes = timeToMinutes(workdayStartTime);
     const workdayEndMinutes = timeToMinutes(workdayEndTime);
 
-    const { data: activeStaff, error: staffError } = await supabase
-      .from("staff")
-      .select("id, display_name, specialty")
-      .eq("business_id", ctx.businessId)
-      .eq("active", true)
-      .order("display_name", { ascending: true });
-
-    if (staffError) {
-      throw new Error("No se pudo leer el staff del negocio");
+    const allStaff = activeStaff || [];
+    if (allStaff.length === 0) {
+      throw new Error("No hay staff activo para ofrecer disponibilidad");
     }
 
     const selectedStaff = staffId
-      ? (activeStaff || []).filter((member) => member.id === staffId)
-      : activeStaff || [];
+      ? allStaff.filter((member) => member.id === staffId)
+      : allStaff;
 
     if (staffId && selectedStaff.length === 0) {
       throw new Error("El staff seleccionado no existe o no está activo");
     }
 
+    // ✅ CASE 1: user provided a specific time
     if (requestedTime) {
-      if (!staffId) {
-        throw new Error("Para validar una hora específica debes enviar staffId");
-      }
-
       const requestedMinutes = timeToMinutes(requestedTime);
 
       if (
-        requestedMinutes < workdayStartMinutes ||
-        requestedMinutes >= workdayEndMinutes
+        !isTimeInsideWorkday({
+          requestedMinutes,
+          workdayStartMinutes,
+          workdayEndMinutes,
+        })
       ) {
         return NextResponse.json({
           ok: true,
-          mode: "single_time",
+          mode: staffId ? "single_time" : "single_time_any_staff",
           available: false,
           requested: {
             date: requestedDate,
@@ -158,47 +197,79 @@ export async function POST(request: Request) {
             appointment_at: buildRequestedIso(requestedDate, requestedTime),
           },
           reason: "La hora solicitada está fuera del horario del negocio",
+          schedule: { timezone, workday_start_time: workdayStartTime, workday_end_time: workdayEndTime, workdays },
         });
       }
 
       const appointmentAt = buildRequestedIso(requestedDate, requestedTime);
 
-      const availability = await checkStaffAvailability({
-        businessId: ctx.businessId,
-        staffId,
-        serviceId,
-        appointmentAt,
-      });
+      // If staffId provided -> check that one staff
+      if (staffId) {
+        const availability = await checkStaffAvailability({
+          businessId: ctx.businessId,
+          staffId,
+          serviceId,
+          appointmentAt,
+        });
+
+        return NextResponse.json({
+          ok: true,
+          mode: "single_time",
+          available: availability.available,
+          requested: { date: requestedDate, time: requestedTime, appointment_at: appointmentAt },
+          service: {
+            id: service.id,
+            name: service.name,
+            duration_minutes: Number(service.duration_minutes || 0),
+          },
+          staff: selectedStaff[0]
+            ? { id: selectedStaff[0].id, display_name: selectedStaff[0].display_name, specialty: selectedStaff[0].specialty || null }
+            : null,
+          conflict: availability.conflict,
+        });
+      }
+
+      // ✅ NEW: no staffId -> check all staff and return who is available
+      const checks = await Promise.all(
+        selectedStaff.map(async (member) => {
+          const availability = await checkStaffAvailability({
+            businessId: ctx.businessId,
+            staffId: member.id,
+            serviceId,
+            appointmentAt,
+          });
+          return { member, availability };
+        })
+      );
+
+      const availableStaff = checks
+        .filter((x) => x.availability.available)
+        .map((x) => ({
+          id: x.member.id,
+          display_name: x.member.display_name,
+          specialty: x.member.specialty || null,
+        }));
 
       return NextResponse.json({
         ok: true,
-        mode: "single_time",
-        available: availability.available,
-        requested: {
-          date: requestedDate,
-          time: requestedTime,
-          appointment_at: appointmentAt,
-        },
+        mode: "single_time_any_staff",
+        available: availableStaff.length > 0,
+        requested: { date: requestedDate, time: requestedTime, appointment_at: appointmentAt },
         service: {
           id: service.id,
           name: service.name,
           duration_minutes: Number(service.duration_minutes || 0),
         },
-        conflict: availability.conflict,
+        availableStaff,
+        schedule: { timezone, workday_start_time: workdayStartTime, workday_end_time: workdayEndTime, workdays },
       });
     }
 
-    if (selectedStaff.length === 0) {
-      throw new Error("No hay staff activo para ofrecer disponibilidad");
-    }
-
+    // ✅ CASE 2: no time -> return daily slots per staff (your original behavior)
     const result = [];
 
     for (const member of selectedStaff) {
-      const slots: Array<{
-        time: string;
-        appointment_at: string;
-      }> = [];
+      const slots: Array<{ time: string; appointment_at: string }> = [];
 
       for (
         let totalMinutes = workdayStartMinutes;
