@@ -8,6 +8,8 @@ import { updateAiOverageSettingAction } from "../../actions/business-settings";
 type SearchParams = Promise<{
   error?: string;
   success?: string;
+  page?: string;
+  q?: string;
 }>;
 
 type AiUsageLogRow = {
@@ -24,6 +26,8 @@ type AiUsageLogRow = {
   source: string;
   created_at: string;
 };
+
+const LOGS_PER_PAGE = 5;
 
 function formatDateTime(value: string | null) {
   if (!value) return "—";
@@ -44,6 +48,23 @@ function formatMoney(value: number) {
   return `$${Number(value || 0).toFixed(2)}`;
 }
 
+function buildAiAssistantUrl(params: { page?: number; q?: string }) {
+  const search = new URLSearchParams();
+
+  if (params.page && params.page > 1) {
+    search.set("page", String(params.page));
+  }
+
+  if (params.q?.trim()) {
+    search.set("q", params.q.trim());
+  }
+
+  const queryString = search.toString();
+  return queryString
+    ? `/dashboard/ai-assistant?${queryString}`
+    : "/dashboard/ai-assistant";
+}
+
 export default async function AiAssistantPage({
   searchParams,
 }: {
@@ -58,14 +79,54 @@ export default async function AiAssistantPage({
   const theme = getThemeClasses(business.theme || "warm");
 
   const hasAiAccess = Boolean(plan?.features?.ai_booking);
+  const currentPage = Math.max(1, Number(params.page || "1") || 1);
+  const searchQuery = String(params.q || "").trim();
 
   const { start, end } = getMonthRange();
+  const from = (currentPage - 1) * LOGS_PER_PAGE;
+  const to = from + LOGS_PER_PAGE - 1;
 
-  const [{ data: usageLogs }, { data: businessSettings }, { data: vapiAssistant }] =
-    await Promise.all([
-      supabase
-        .from("ai_usage_logs")
-        .select(`
+  const baseLogsQuery = supabase
+    .from("ai_usage_logs")
+    .select(
+      `
+        id,
+        call_id,
+        assistant_id,
+        usage_date,
+        started_at,
+        ended_at,
+        duration_seconds,
+        minutes_used,
+        overage_minutes,
+        billing_status,
+        source,
+        created_at
+      `,
+      { count: "exact" }
+    )
+    .eq("business_id", business.id)
+    .gte("usage_date", start)
+    .lt("usage_date", end);
+
+  const filteredLogsQuery = searchQuery
+    ? baseLogsQuery.ilike("call_id", `%${searchQuery}%`)
+    : baseLogsQuery;
+
+  const [
+    { data: usageLogs, count: totalLogs },
+    { data: allLogsForSummary },
+    { data: businessSettings },
+    { data: vapiAssistant },
+  ] = await Promise.all([
+    filteredLogsQuery
+      .order("created_at", { ascending: false })
+      .range(from, to),
+
+    supabase
+      .from("ai_usage_logs")
+      .select(
+        `
           id,
           call_id,
           assistant_id,
@@ -78,26 +139,27 @@ export default async function AiAssistantPage({
           billing_status,
           source,
           created_at
-        `)
-        .eq("business_id", business.id)
-        .gte("usage_date", start)
-        .lt("usage_date", end)
-        .order("created_at", { ascending: false }),
+        `
+      )
+      .eq("business_id", business.id)
+      .gte("usage_date", start)
+      .lt("usage_date", end),
 
-      supabase
-        .from("business_settings")
-        .select("ai_allow_overage")
-        .eq("business_id", business.id)
-        .maybeSingle(),
+    supabase
+      .from("business_settings")
+      .select("ai_allow_overage")
+      .eq("business_id", business.id)
+      .maybeSingle(),
 
-      supabase
-        .from("business_vapi_assistants")
-        .select("vapi_assistant_id, vapi_phone_number_id, active")
-        .eq("business_id", business.id)
-        .maybeSingle(),
-    ]);
+    supabase
+      .from("business_vapi_assistants")
+      .select("vapi_assistant_id, vapi_phone_number_id, active")
+      .eq("business_id", business.id)
+      .maybeSingle(),
+  ]);
 
   const logs = (usageLogs || []) as AiUsageLogRow[];
+  const allLogs = (allLogsForSummary || []) as AiUsageLogRow[];
 
   const includedMinutes = Number(plan?.limits?.ai_monthly_minutes || 0);
   const maxCallMinutes = Number(plan?.limits?.ai_max_call_minutes || 0);
@@ -105,15 +167,19 @@ export default async function AiAssistantPage({
   const aiAllowOverage = Boolean(businessSettings?.ai_allow_overage);
 
   const usedMinutes = Number(
-    logs.reduce((acc, row) => acc + Number(row.minutes_used || 0), 0)
+    allLogs.reduce((acc, row) => acc + Number(row.minutes_used || 0), 0)
   );
 
   const overageMinutes = Number(
-    logs.reduce((acc, row) => acc + Number(row.overage_minutes || 0), 0)
+    allLogs.reduce((acc, row) => acc + Number(row.overage_minutes || 0), 0)
   );
 
   const remainingMinutes = Math.max(0, includedMinutes - usedMinutes);
   const estimatedOverageCost = Number((overageMinutes * overagePrice).toFixed(2));
+
+  const totalPages = Math.max(1, Math.ceil(Number(totalLogs || 0) / LOGS_PER_PAGE));
+  const hasPreviousPage = currentPage > 1;
+  const hasNextPage = currentPage < totalPages;
 
   if (!hasAiAccess) {
     return (
@@ -265,16 +331,46 @@ export default async function AiAssistantPage({
 
         <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
           <div className={`rounded-[28px] border p-6 ${theme.card}`}>
-            <div className="mb-5">
-              <h2 className="text-2xl font-semibold">Logs de llamadas</h2>
-              <p className={`mt-1 text-sm ${theme.textMuted}`}>
-                Historial mensual de consumo de IA por llamada.
-              </p>
+            <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <h2 className="text-2xl font-semibold">Logs de llamadas</h2>
+                <p className={`mt-1 text-sm ${theme.textMuted}`}>
+                  Historial mensual de consumo de IA por llamada.
+                </p>
+              </div>
+
+              <form
+                action="/dashboard/ai-assistant"
+                method="get"
+                className="flex w-full max-w-md gap-2"
+              >
+                <input
+                  type="text"
+                  name="q"
+                  defaultValue={searchQuery}
+                  placeholder="Buscar por call id"
+                  className={`w-full rounded-2xl border px-4 py-3 outline-none transition ${theme.input}`}
+                />
+                <button
+                  type="submit"
+                  className={`rounded-2xl px-4 py-3 text-sm font-semibold transition ${theme.buttonPrimary}`}
+                >
+                  Buscar
+                </button>
+              </form>
             </div>
+
+            {searchQuery && (
+              <div className={`mb-4 rounded-2xl border px-4 py-3 text-sm ${theme.subtle}`}>
+                Buscando por: <span className="font-semibold">{searchQuery}</span>
+              </div>
+            )}
 
             {logs.length === 0 ? (
               <div className={`rounded-2xl border p-6 text-sm ${theme.subtle} ${theme.textMuted}`}>
-                Aún no hay llamadas registradas este mes.
+                {searchQuery
+                  ? "No se encontraron llamadas para ese call id en este mes."
+                  : "Aún no hay llamadas registradas este mes."}
               </div>
             ) : (
               <div className="space-y-4">
@@ -337,13 +433,70 @@ export default async function AiAssistantPage({
                         </div>
                       </div>
 
-                      <div className={`rounded-2xl border px-4 py-3 text-sm ${theme.subtle}`}>
-                        <p className={`text-xs ${theme.textMuted}`}>Fuente</p>
-                        <p className="mt-1 font-medium">{log.source}</p>
+                      <div className="flex flex-col gap-3 lg:items-end">
+                        <div className={`rounded-2xl border px-4 py-3 text-sm ${theme.subtle}`}>
+                          <p className={`text-xs ${theme.textMuted}`}>Fuente</p>
+                          <p className="mt-1 font-medium">{log.source}</p>
+                        </div>
+
+                        <Link
+                          href={`/dashboard/ai-assistant/${encodeURIComponent(log.call_id)}`}
+                          className={`rounded-2xl px-4 py-3 text-sm font-semibold transition ${theme.buttonSecondary}`}
+                        >
+                          Ver detalle
+                        </Link>
                       </div>
                     </div>
                   </div>
                 ))}
+
+                <div className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+                  <p className={`text-sm ${theme.textMuted}`}>
+                    Página {currentPage} de {totalPages}
+                  </p>
+
+                  <div className="flex gap-2">
+                    {hasPreviousPage ? (
+                      <Link
+                        href={buildAiAssistantUrl({
+                          page: currentPage - 1,
+                          q: searchQuery,
+                        })}
+                        className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${theme.buttonSecondary}`}
+                      >
+                        Anterior
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled
+                        className={`rounded-2xl px-4 py-2 text-sm font-semibold opacity-60 ${theme.buttonSecondary}`}
+                      >
+                        Anterior
+                      </button>
+                    )}
+
+                    {hasNextPage ? (
+                      <Link
+                        href={buildAiAssistantUrl({
+                          page: currentPage + 1,
+                          q: searchQuery,
+                        })}
+                        className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${theme.buttonPrimary}`}
+                      >
+                        Siguiente
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled
+                        className={`rounded-2xl px-4 py-2 text-sm font-semibold opacity-60 ${theme.buttonSecondary}`}
+                      >
+                        Siguiente
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
           </div>
