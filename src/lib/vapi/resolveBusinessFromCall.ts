@@ -19,10 +19,19 @@ type CurrentPlan = {
   limits: Record<string, number>;
 };
 
+// ✅ FIX: ignore Liquid template placeholders like "{{call.assistantId}}"
+function isLiquidPlaceholder(value: string) {
+  return value.includes("{{") && value.includes("}}");
+}
+
+// ✅ FIX: only return non-empty strings that are NOT liquid placeholders
 function firstNonEmptyString(...values: unknown[]): string | null {
   for (const value of values) {
-    if (typeof value === "string" && value.trim()) {
-      return value.trim();
+    if (typeof value === "string") {
+      const v = value.trim();
+      if (!v) continue;
+      if (isLiquidPlaceholder(v)) continue;
+      return v;
     }
   }
   return null;
@@ -30,12 +39,17 @@ function firstNonEmptyString(...values: unknown[]): string | null {
 
 export function extractVapiContext(payload: any) {
   const assistantId = firstNonEmptyString(
+    // Code tool payload (what your Vapi Code Tools send)
     payload?.assistantId,
+
+    // Other possible shapes (webhooks / assistant-request / etc)
     payload?.assistant?.id,
     payload?.message?.assistantId,
     payload?.message?.assistant?.id,
     payload?.call?.assistantId,
-    payload?.call?.assistant?.id
+    payload?.call?.assistant?.id,
+    payload?.message?.call?.assistantId,
+    payload?.message?.call?.assistant?.id
   );
 
   const phoneNumberId = firstNonEmptyString(
@@ -44,13 +58,16 @@ export function extractVapiContext(payload: any) {
     payload?.message?.phoneNumberId,
     payload?.message?.phoneNumber?.id,
     payload?.call?.phoneNumberId,
-    payload?.call?.phoneNumber?.id
+    payload?.call?.phoneNumber?.id,
+    payload?.message?.call?.phoneNumberId,
+    payload?.message?.call?.phoneNumber?.id
   );
 
   const callId = firstNonEmptyString(
     payload?.callId,
     payload?.call?.id,
     payload?.message?.callId,
+    payload?.message?.call?.id,
     payload?.message?.call?.id
   );
 
