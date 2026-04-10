@@ -6,7 +6,6 @@ import {
   resolveBusinessFromCall,
 } from "@/lib/vapi/resolveBusinessFromCall";
 
-// ✅ NEW: API key protection (simple)
 function requireVapiKey(request: Request) {
   const key = request.headers.get("x-vapi-key") || "";
   const expected = process.env.VAPI_INTERNAL_KEY || "";
@@ -19,23 +18,49 @@ function requireVapiKey(request: Request) {
   }
 
   if (key !== expected) {
-    return NextResponse.json(
-      { ok: false, error: "Unauthorized" },
-      { status: 401 }
-    );
+    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
 
   return null;
 }
 
 export async function POST(request: Request) {
+  let payload: any = {};
+  let debug: any = {};
+
   try {
-    // ✅ NEW: protect endpoint
     const unauthorized = requireVapiKey(request);
     if (unauthorized) return unauthorized;
 
-    const payload = await request.json().catch(() => ({}));
-    const { assistantId, phoneNumberId } = extractVapiContext(payload);
+    payload = await request.json().catch(() => ({}));
+
+    // Tu extracción actual
+    const extracted = extractVapiContext(payload) || {};
+    // Fallback directo para Code Tools: body.assistantId
+    const assistantId =
+      extracted.assistantId ??
+      payload?.assistantId ??
+      payload?.call?.assistantId ??
+      null;
+
+    const phoneNumberId =
+      extracted.phoneNumberId ??
+      payload?.phoneNumberId ??
+      payload?.call?.phoneNumberId ??
+      null;
+
+    debug = {
+      assistantId_extracted: extracted.assistantId ?? null,
+      assistantId_payload: payload?.assistantId ?? null,
+      assistantId_call: payload?.call?.assistantId ?? null,
+      assistantId_used: assistantId,
+      phoneNumberId_extracted: extracted.phoneNumberId ?? null,
+      phoneNumberId_payload: payload?.phoneNumberId ?? null,
+      phoneNumberId_call: payload?.call?.phoneNumberId ?? null,
+      phoneNumberId_used: phoneNumberId,
+      vercelEnv: process.env.VERCEL_ENV ?? null,
+      nodeEnv: process.env.NODE_ENV ?? null,
+    };
 
     const ctx = await resolveBusinessFromCall({
       assistantId,
@@ -53,9 +78,7 @@ export async function POST(request: Request) {
       .eq("active", true)
       .order("name", { ascending: true });
 
-    if (error) {
-      throw new Error(error.message);
-    }
+    if (error) throw new Error(error.message);
 
     return NextResponse.json({
       ok: true,
@@ -71,6 +94,8 @@ export async function POST(request: Request) {
         price: Number(service.price || 0),
         duration_minutes: Number(service.duration_minutes || 0),
       })),
+      // opcional: quítalo cuando esté resuelto
+      debug,
     });
   } catch (error) {
     const message =
@@ -80,6 +105,7 @@ export async function POST(request: Request) {
       {
         ok: false,
         error: message,
+        debug, // clave para ver qué assistantId se usó realmente
       },
       { status: 400 }
     );
