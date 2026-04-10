@@ -20,7 +20,6 @@ const WEEKDAY_KEYS = [
   "saturday",
 ] as const;
 
-// ✅ NEW: API key protection (simple)
 function requireVapiKey(request: Request) {
   const key = request.headers.get("x-vapi-key") || "";
   const expected = process.env.VAPI_INTERNAL_KEY || "";
@@ -74,12 +73,11 @@ function isTimeInsideWorkday(params: {
 
 export async function POST(request: Request) {
   try {
-    // ✅ NEW: protect endpoint
     const unauthorized = requireVapiKey(request);
     if (unauthorized) return unauthorized;
 
     const payload = await request.json().catch(() => ({}));
-    const { assistantId, phoneNumberId } = extractVapiContext(payload);
+    const { assistantId, phoneNumberId, callId } = extractVapiContext(payload);
 
     const serviceId = String(payload?.serviceId || "").trim();
     const requestedDate = String(payload?.date || "").trim();
@@ -90,9 +88,11 @@ export async function POST(request: Request) {
       throw new Error("serviceId y date son obligatorios");
     }
 
+    // ✅ KEY CHANGE: pass callId too
     const ctx = await resolveBusinessFromCall({
       assistantId,
       phoneNumberId,
+      callId,
     });
 
     await ensureAiBookingEnabled(ctx.businessId);
@@ -126,15 +126,9 @@ export async function POST(request: Request) {
         .order("display_name", { ascending: true }),
     ]);
 
-    if (serviceError || !service) {
-      throw new Error("No se encontró el servicio solicitado");
-    }
-    if (settingsError) {
-      throw new Error("No se pudo leer la configuración del negocio");
-    }
-    if (staffError) {
-      throw new Error("No se pudo leer el staff del negocio");
-    }
+    if (serviceError || !service) throw new Error("No se encontró el servicio solicitado");
+    if (settingsError) throw new Error("No se pudo leer la configuración del negocio");
+    if (staffError) throw new Error("No se pudo leer el staff del negocio");
 
     const timezone = settings?.timezone || "America/Tegucigalpa";
     if (timezone !== "America/Tegucigalpa") {
@@ -164,29 +158,17 @@ export async function POST(request: Request) {
     const workdayEndMinutes = timeToMinutes(workdayEndTime);
 
     const allStaff = activeStaff || [];
-    if (allStaff.length === 0) {
-      throw new Error("No hay staff activo para ofrecer disponibilidad");
-    }
+    if (allStaff.length === 0) throw new Error("No hay staff activo para ofrecer disponibilidad");
 
-    const selectedStaff = staffId
-      ? allStaff.filter((member) => member.id === staffId)
-      : allStaff;
-
+    const selectedStaff = staffId ? allStaff.filter((m) => m.id === staffId) : allStaff;
     if (staffId && selectedStaff.length === 0) {
       throw new Error("El staff seleccionado no existe o no está activo");
     }
 
-    // ✅ CASE 1: user provided a specific time
     if (requestedTime) {
       const requestedMinutes = timeToMinutes(requestedTime);
 
-      if (
-        !isTimeInsideWorkday({
-          requestedMinutes,
-          workdayStartMinutes,
-          workdayEndMinutes,
-        })
-      ) {
+      if (!isTimeInsideWorkday({ requestedMinutes, workdayStartMinutes, workdayEndMinutes })) {
         return NextResponse.json({
           ok: true,
           mode: staffId ? "single_time" : "single_time_any_staff",
@@ -203,7 +185,6 @@ export async function POST(request: Request) {
 
       const appointmentAt = buildRequestedIso(requestedDate, requestedTime);
 
-      // If staffId provided -> check that one staff
       if (staffId) {
         const availability = await checkStaffAvailability({
           businessId: ctx.businessId,
@@ -229,7 +210,6 @@ export async function POST(request: Request) {
         });
       }
 
-      // ✅ NEW: no staffId -> check all staff and return who is available
       const checks = await Promise.all(
         selectedStaff.map(async (member) => {
           const availability = await checkStaffAvailability({
@@ -265,7 +245,6 @@ export async function POST(request: Request) {
       });
     }
 
-    // ✅ CASE 2: no time -> return daily slots per staff (your original behavior)
     const result = [];
 
     for (const member of selectedStaff) {
@@ -288,10 +267,7 @@ export async function POST(request: Request) {
         });
 
         if (availability.available) {
-          slots.push({
-            time: toTimeLabel(hour, minute),
-            appointment_at: appointmentAt,
-          });
+          slots.push({ time: toTimeLabel(hour, minute), appointment_at: appointmentAt });
         }
       }
 
@@ -331,12 +307,6 @@ export async function POST(request: Request) {
     const message =
       error instanceof Error ? error.message : "No se pudo validar la disponibilidad";
 
-    return NextResponse.json(
-      {
-        ok: false,
-        error: message,
-      },
-      { status: 400 }
-    );
+    return NextResponse.json({ ok: false, error: message }, { status: 400 });
   }
 }

@@ -19,18 +19,16 @@ type CurrentPlan = {
   limits: Record<string, number>;
 };
 
-// ✅ FIX: ignore Liquid template placeholders like "{{call.assistantId}}"
-function isLiquidPlaceholder(value: string) {
-  return value.includes("{{") && value.includes("}}");
+function isLiquidPlaceholder(value: unknown) {
+  return typeof value === "string" && value.includes("{{") && value.includes("}}");
 }
 
-// ✅ FIX: only return non-empty strings that are NOT liquid placeholders
 function firstNonEmptyString(...values: unknown[]): string | null {
   for (const value of values) {
     if (typeof value === "string") {
       const v = value.trim();
       if (!v) continue;
-      if (isLiquidPlaceholder(v)) continue;
+      if (isLiquidPlaceholder(v)) continue; // ✅ key fix
       return v;
     }
   }
@@ -39,10 +37,7 @@ function firstNonEmptyString(...values: unknown[]): string | null {
 
 export function extractVapiContext(payload: any) {
   const assistantId = firstNonEmptyString(
-    // Code tool payload (what your Vapi Code Tools send)
     payload?.assistantId,
-
-    // Other possible shapes (webhooks / assistant-request / etc)
     payload?.assistant?.id,
     payload?.message?.assistantId,
     payload?.message?.assistant?.id,
@@ -68,22 +63,62 @@ export function extractVapiContext(payload: any) {
     payload?.call?.id,
     payload?.message?.callId,
     payload?.message?.call?.id,
-    payload?.message?.call?.id
+    payload?.id
   );
 
-  return {
-    assistantId,
-    phoneNumberId,
-    callId,
-  };
+  return { assistantId, phoneNumberId, callId };
+}
+
+async function getAssistantIdFromVapiCall(callId: string): Promise<string> {
+  const apiKey = process.env.VAPI_PRIVATE_KEY || "";
+  if (!apiKey) throw new Error("Server misconfigured: missing VAPI_PRIVATE_KEY");
+
+  const res = await fetch(`https://api.vapi.ai/call/${callId}`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    cache: "no-store",
+  });
+
+  const text = await res.text();
+  let data: any;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    data = { raw: text };
+  }
+
+  if (!res.ok) {
+    throw new Error(`Vapi GET /call failed (${res.status}): ${JSON.stringify(data)}`);
+  }
+
+  const assistantId = data?.assistantId;
+  if (!assistantId || typeof assistantId !== "string") {
+    throw new Error("Vapi call missing assistantId");
+  }
+
+  return assistantId;
 }
 
 export async function resolveBusinessFromCall(params: {
   assistantId?: string | null;
   phoneNumberId?: string | null;
+  callId?: string | null; // ✅ new
 }): Promise<BusinessContext> {
-  const { assistantId, phoneNumberId } = params;
+  let { assistantId, phoneNumberId, callId } = params;
   const supabase = createAdminClient();
+
+  // ✅ Guard against placeholders
+  if (isLiquidPlaceholder(assistantId)) assistantId = null;
+  if (isLiquidPlaceholder(phoneNumberId)) phoneNumberId = null;
+  if (isLiquidPlaceholder(callId)) callId = null;
+
+  // ✅ WebCall fix: resolve assistantId via Vapi API when we have callId
+  if (!assistantId && callId) {
+    assistantId = await getAssistantIdFromVapiCall(callId);
+  }
 
   if (!assistantId && !phoneNumberId) {
     throw new Error("No se recibió assistantId ni phoneNumberId para identificar el negocio");
@@ -120,10 +155,7 @@ export async function resolveBusinessFromCall(params: {
   }
 
   const business = Array.isArray(data.business) ? data.business[0] : data.business;
-
-  if (!business) {
-    throw new Error("No se pudo cargar el negocio asociado al assistant");
-  }
+  if (!business) throw new Error("No se pudo cargar el negocio asociado al assistant");
 
   return {
     businessId: data.business_id,
@@ -153,15 +185,10 @@ export async function getCurrentPlanForBusiness(
     .in("status", ["active", "trialing", "past_due"])
     .maybeSingle();
 
-  if (error || !data) {
-    return null;
-  }
+  if (error || !data) return null;
 
   const plan = Array.isArray(data.plan) ? data.plan[0] : data.plan;
-
-  if (!plan) {
-    return null;
-  }
+  if (!plan) return null;
 
   return {
     code: plan.code,
@@ -173,10 +200,7 @@ export async function getCurrentPlanForBusiness(
 export async function ensureAiBookingEnabled(businessId: string) {
   const plan = await getCurrentPlanForBusiness(businessId);
 
-  if (!plan) {
-    throw new Error("No se pudo leer el plan actual del negocio");
-  }
-
+  if (!plan) throw new Error("No se pudo leer el plan actual del negocio");
   if (!plan.features?.ai_booking) {
     throw new Error("El plan actual del negocio no incluye agendamiento por IA");
   }

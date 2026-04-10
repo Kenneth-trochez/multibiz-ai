@@ -34,9 +34,8 @@ export async function POST(request: Request) {
 
     payload = await request.json().catch(() => ({}));
 
-    // Tu extracción actual
     const extracted = extractVapiContext(payload) || {};
-    // Fallback directo para Code Tools: body.assistantId
+
     const assistantId =
       extracted.assistantId ??
       payload?.assistantId ??
@@ -49,6 +48,12 @@ export async function POST(request: Request) {
       payload?.call?.phoneNumberId ??
       null;
 
+    const callId =
+      extracted.callId ??
+      payload?.callId ??
+      payload?.call?.id ??
+      null;
+
     debug = {
       assistantId_extracted: extracted.assistantId ?? null,
       assistantId_payload: payload?.assistantId ?? null,
@@ -58,13 +63,18 @@ export async function POST(request: Request) {
       phoneNumberId_payload: payload?.phoneNumberId ?? null,
       phoneNumberId_call: payload?.call?.phoneNumberId ?? null,
       phoneNumberId_used: phoneNumberId,
+      callId_extracted: extracted.callId ?? null,
+      callId_payload: payload?.callId ?? null,
+      callId_used: callId,
       vercelEnv: process.env.VERCEL_ENV ?? null,
       nodeEnv: process.env.NODE_ENV ?? null,
     };
 
+    // ✅ KEY CHANGE: pass callId too
     const ctx = await resolveBusinessFromCall({
       assistantId,
       phoneNumberId,
+      callId,
     });
 
     await ensureAiBookingEnabled(ctx.businessId);
@@ -94,7 +104,6 @@ export async function POST(request: Request) {
         price: Number(service.price || 0),
         duration_minutes: Number(service.duration_minutes || 0),
       })),
-      // opcional: quítalo cuando esté resuelto
       debug,
     });
   } catch (error) {
@@ -105,7 +114,7 @@ export async function POST(request: Request) {
       {
         ok: false,
         error: message,
-        debug, // clave para ver qué assistantId se usó realmente
+        debug,
       },
       { status: 400 }
     );

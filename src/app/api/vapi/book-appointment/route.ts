@@ -1,4 +1,3 @@
-// app/api/vapi/book-appointment/route.ts
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkStaffAvailability } from "@/lib/appointments/checkStaffAvailability";
@@ -10,7 +9,6 @@ import {
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// NEW: API key protection (simple)
 function requireVapiKey(request: Request) {
   const key = request.headers.get("x-vapi-key") || "";
   const expected = process.env.VAPI_INTERNAL_KEY || "";
@@ -23,10 +21,7 @@ function requireVapiKey(request: Request) {
   }
 
   if (key !== expected) {
-    return NextResponse.json(
-      { ok: false, error: "Unauthorized" },
-      { status: 401 }
-    );
+    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
 
   return null;
@@ -61,7 +56,6 @@ function validateAppointmentAt(appointmentAt: string) {
   const value = appointmentAt.trim();
   if (!value) throw new Error("appointmentAt es obligatorio");
 
-  // Require offset (e.g. -06:00) so we don't accidentally treat as UTC/local
   if (!/[-+]\d{2}:\d{2}$/.test(value)) {
     throw new Error("appointmentAt debe incluir offset, ej: 2026-04-09T14:00:00-06:00");
   }
@@ -82,7 +76,6 @@ async function findExistingCustomer(params: {
   const { businessId, phone, email } = params;
   const supabase = createAdminClient();
 
-  // Prefer phone match
   const { data: byPhone } = await supabase
     .from("customers")
     .select("id, name, phone, email")
@@ -93,7 +86,6 @@ async function findExistingCustomer(params: {
 
   if (byPhone) return byPhone;
 
-  // Optional email match
   if (email) {
     const { data: byEmail } = await supabase
       .from("customers")
@@ -111,7 +103,6 @@ async function findExistingCustomer(params: {
 
 export async function POST(request: Request) {
   try {
-    // NEW: protect endpoint
     const unauthorized = requireVapiKey(request);
     if (unauthorized) return unauthorized;
 
@@ -132,9 +123,11 @@ export async function POST(request: Request) {
 
     const appointmentAt = validateAppointmentAt(appointmentAtRaw);
 
+    // ✅ KEY CHANGE: pass callId too
     const ctx = await resolveBusinessFromCall({
       assistantId,
       phoneNumberId,
+      callId,
     });
 
     const plan = await ensureAiBookingEnabled(ctx.businessId);
@@ -178,7 +171,6 @@ export async function POST(request: Request) {
       }
     }
 
-    // NEW: enforce phone required
     const phone = normalizeHondurasPhone(rawPhone);
 
     let email: string | null = null;
@@ -210,9 +202,7 @@ export async function POST(request: Request) {
         .single();
 
       if (insertCustomerError || !insertedCustomer) {
-        throw new Error(
-          insertCustomerError?.message || "No se pudo crear el cliente"
-        );
+        throw new Error(insertCustomerError?.message || "No se pudo crear el cliente");
       }
 
       customer = insertedCustomer;
@@ -222,29 +212,25 @@ export async function POST(request: Request) {
       .filter(Boolean)
       .join(" | ");
 
-    const { data: insertedAppointment, error: insertAppointmentError } =
-      await supabase
-        .from("appointments")
-        .insert({
-          business_id: ctx.businessId,
-          customer_id: customer.id,
-          service_id: serviceId,
-          staff_id: staffId || null,
-          appointment_at: appointmentAt,
-          status: "confirmed",
-          source: "ai_voice",
-          notes: finalNotes || null,
-        })
-        .select("id, appointment_at, status, source")
-        .single();
+    const { data: insertedAppointment, error: insertAppointmentError } = await supabase
+      .from("appointments")
+      .insert({
+        business_id: ctx.businessId,
+        customer_id: customer.id,
+        service_id: serviceId,
+        staff_id: staffId || null,
+        appointment_at: appointmentAt,
+        status: "confirmed",
+        source: "ai_voice",
+        notes: finalNotes || null,
+      })
+      .select("id, appointment_at, status, source")
+      .single();
 
     if (insertAppointmentError || !insertedAppointment) {
-      throw new Error(
-        insertAppointmentError?.message || "No se pudo crear la cita"
-      );
+      throw new Error(insertAppointmentError?.message || "No se pudo crear la cita");
     }
 
-    // Optional: more stable output for LLM
     return NextResponse.json({
       ok: true,
       message: "Cita creada correctamente",
@@ -275,12 +261,6 @@ export async function POST(request: Request) {
     const message =
       error instanceof Error ? error.message : "No se pudo crear la cita";
 
-    return NextResponse.json(
-      {
-        ok: false,
-        error: message,
-      },
-      { status: 400 }
-    );
+    return NextResponse.json({ ok: false, error: message }, { status: 400 });
   }
 }

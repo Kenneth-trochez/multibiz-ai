@@ -6,7 +6,6 @@ import {
   resolveBusinessFromCall,
 } from "@/lib/vapi/resolveBusinessFromCall";
 
-// ✅ NEW: API key protection (simple)
 function requireVapiKey(request: Request) {
   const key = request.headers.get("x-vapi-key") || "";
   const expected = process.env.VAPI_INTERNAL_KEY || "";
@@ -19,10 +18,7 @@ function requireVapiKey(request: Request) {
   }
 
   if (key !== expected) {
-    return NextResponse.json(
-      { ok: false, error: "Unauthorized" },
-      { status: 401 }
-    );
+    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
 
   return null;
@@ -30,16 +26,17 @@ function requireVapiKey(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    // ✅ NEW: protect endpoint
     const unauthorized = requireVapiKey(request);
     if (unauthorized) return unauthorized;
 
     const payload = await request.json().catch(() => ({}));
-    const { assistantId, phoneNumberId } = extractVapiContext(payload);
+    const { assistantId, phoneNumberId, callId } = extractVapiContext(payload);
 
+    // ✅ KEY CHANGE: pass callId too
     const ctx = await resolveBusinessFromCall({
       assistantId,
       phoneNumberId,
+      callId,
     });
 
     await ensureAiBookingEnabled(ctx.businessId);
@@ -53,9 +50,7 @@ export async function POST(request: Request) {
       .eq("active", true)
       .order("display_name", { ascending: true });
 
-    if (error) {
-      throw new Error(error.message);
-    }
+    if (error) throw new Error(error.message);
 
     return NextResponse.json({
       ok: true,
@@ -75,12 +70,6 @@ export async function POST(request: Request) {
     const message =
       error instanceof Error ? error.message : "No se pudo cargar el staff";
 
-    return NextResponse.json(
-      {
-        ok: false,
-        error: message,
-      },
-      { status: 400 }
-    );
+    return NextResponse.json({ ok: false, error: message }, { status: 400 });
   }
 }
