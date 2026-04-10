@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { enforceAiUsagePolicy } from "@/lib/billing/enforceAiUsagePolicy";
 import { checkStaffAvailability } from "@/lib/appointments/checkStaffAvailability";
 import {
   ensureAiBookingEnabled,
@@ -123,7 +124,6 @@ export async function POST(request: Request) {
 
     const appointmentAt = validateAppointmentAt(appointmentAtRaw);
 
-    // ✅ KEY CHANGE: pass callId too
     const ctx = await resolveBusinessFromCall({
       assistantId,
       phoneNumberId,
@@ -131,6 +131,18 @@ export async function POST(request: Request) {
     });
 
     const plan = await ensureAiBookingEnabled(ctx.businessId);
+    const usagePolicy = await enforceAiUsagePolicy(ctx.businessId);
+
+    if (!usagePolicy.allowed) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: usagePolicy.warning,
+          usage: usagePolicy,
+        },
+        { status: 402 }
+      );
+    }
 
     const supabase = createAdminClient();
 
@@ -239,6 +251,7 @@ export async function POST(request: Request) {
         name: ctx.business.name,
         slug: ctx.business.slug,
       },
+      usage: usagePolicy,
       plan: {
         code: plan.code,
         ai_monthly_minutes: plan.limits?.ai_monthly_minutes ?? 0,

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { enforceAiUsagePolicy } from "@/lib/billing/enforceAiUsagePolicy";
 import { checkStaffAvailability } from "@/lib/appointments/checkStaffAvailability";
 import {
   ensureAiBookingEnabled,
@@ -81,14 +82,13 @@ export async function POST(request: Request) {
 
     const serviceId = String(payload?.serviceId || "").trim();
     const requestedDate = String(payload?.date || "").trim();
-    const requestedTime = String(payload?.time || "").trim(); // optional
-    const staffId = String(payload?.staffId || "").trim(); // optional
+    const requestedTime = String(payload?.time || "").trim();
+    const staffId = String(payload?.staffId || "").trim();
 
     if (!serviceId || !requestedDate) {
       throw new Error("serviceId y date son obligatorios");
     }
 
-    // ✅ KEY CHANGE: pass callId too
     const ctx = await resolveBusinessFromCall({
       assistantId,
       phoneNumberId,
@@ -96,6 +96,19 @@ export async function POST(request: Request) {
     });
 
     await ensureAiBookingEnabled(ctx.businessId);
+
+    const usagePolicy = await enforceAiUsagePolicy(ctx.businessId);
+
+    if (!usagePolicy.allowed) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: usagePolicy.warning,
+          usage: usagePolicy,
+        },
+        { status: 402 }
+      );
+    }
 
     const supabase = createAdminClient();
 
@@ -150,6 +163,7 @@ export async function POST(request: Request) {
         available: false,
         date: requestedDate,
         reason: "El negocio no atiende ese día",
+        usage: usagePolicy,
         schedule: { timezone, workday_start_time: workdayStartTime, workday_end_time: workdayEndTime, workdays },
       });
     }
@@ -179,6 +193,7 @@ export async function POST(request: Request) {
             appointment_at: buildRequestedIso(requestedDate, requestedTime),
           },
           reason: "La hora solicitada está fuera del horario del negocio",
+          usage: usagePolicy,
           schedule: { timezone, workday_start_time: workdayStartTime, workday_end_time: workdayEndTime, workdays },
         });
       }
@@ -198,6 +213,7 @@ export async function POST(request: Request) {
           mode: "single_time",
           available: availability.available,
           requested: { date: requestedDate, time: requestedTime, appointment_at: appointmentAt },
+          usage: usagePolicy,
           service: {
             id: service.id,
             name: service.name,
@@ -235,6 +251,7 @@ export async function POST(request: Request) {
         mode: "single_time_any_staff",
         available: availableStaff.length > 0,
         requested: { date: requestedDate, time: requestedTime, appointment_at: appointmentAt },
+        usage: usagePolicy,
         service: {
           id: service.id,
           name: service.name,
@@ -289,6 +306,7 @@ export async function POST(request: Request) {
         name: ctx.business.name,
         slug: ctx.business.slug,
       },
+      usage: usagePolicy,
       service: {
         id: service.id,
         name: service.name,

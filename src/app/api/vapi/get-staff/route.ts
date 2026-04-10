@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { enforceAiUsagePolicy } from "@/lib/billing/enforceAiUsagePolicy";
 import {
   ensureAiBookingEnabled,
   extractVapiContext,
@@ -32,7 +33,6 @@ export async function POST(request: Request) {
     const payload = await request.json().catch(() => ({}));
     const { assistantId, phoneNumberId, callId } = extractVapiContext(payload);
 
-    // ✅ KEY CHANGE: pass callId too
     const ctx = await resolveBusinessFromCall({
       assistantId,
       phoneNumberId,
@@ -40,6 +40,19 @@ export async function POST(request: Request) {
     });
 
     await ensureAiBookingEnabled(ctx.businessId);
+
+    const usagePolicy = await enforceAiUsagePolicy(ctx.businessId);
+
+    if (!usagePolicy.allowed) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: usagePolicy.warning,
+          usage: usagePolicy,
+        },
+        { status: 402 }
+      );
+    }
 
     const supabase = createAdminClient();
 
@@ -60,6 +73,7 @@ export async function POST(request: Request) {
         name: ctx.business.name,
         slug: ctx.business.slug,
       },
+      usage: usagePolicy,
       staff: (data || []).map((member) => ({
         id: member.id,
         display_name: member.display_name,
