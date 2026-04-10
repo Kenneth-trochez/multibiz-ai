@@ -23,7 +23,6 @@ type AiUsageLogRow = {
   overage_minutes: number;
   billing_status: string;
   source: string;
-  metadata: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 };
@@ -33,8 +32,7 @@ type AiCallDetailRow = {
   assistant_id: string | null;
   transcript: string | null;
   summary: string | null;
-  messages: unknown[];
-  raw_payload: Record<string, unknown> | null;
+  messages: any[];
 };
 
 function formatDateTime(value: string | null) {
@@ -61,7 +59,7 @@ export default async function AiAssistantCallDetailPage({
     notFound();
   }
 
-  const [{ data: usageData, error: usageError }, { data: detailData }] =
+  const [{ data: usageData }, { data: detailData }] =
     await Promise.all([
       supabase
         .from("ai_usage_logs")
@@ -77,7 +75,6 @@ export default async function AiAssistantCallDetailPage({
           overage_minutes,
           billing_status,
           source,
-          metadata,
           created_at,
           updated_at
         `)
@@ -92,15 +89,14 @@ export default async function AiAssistantCallDetailPage({
           assistant_id,
           transcript,
           summary,
-          messages,
-          raw_payload
+          messages
         `)
         .eq("business_id", business.id)
         .eq("call_id", decodedCallId)
         .maybeSingle(),
     ]);
 
-  if (usageError || !usageData) {
+  if (!usageData) {
     notFound();
   }
 
@@ -110,10 +106,14 @@ export default async function AiAssistantCallDetailPage({
   return (
     <main className={`min-h-screen ${theme.pageBg}`}>
       <div className="mx-auto max-w-5xl space-y-6 p-4 md:p-6">
+
+        {/* HEADER */}
         <section className={`rounded-[28px] border p-6 md:p-8 ${theme.card}`}>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <p className={`text-sm ${theme.textMuted}`}>Detalle de llamada IA</p>
+              <p className={`text-sm ${theme.textMuted}`}>
+                Detalle de llamada IA
+              </p>
               <h1 className="mt-1 text-3xl font-bold">Call ID</h1>
               <p className={`mt-2 break-all text-sm ${theme.textMuted}`}>
                 {log.call_id}
@@ -124,49 +124,43 @@ export default async function AiAssistantCallDetailPage({
               href="/dashboard/ai-assistant"
               className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${theme.buttonSecondary}`}
             >
-              Volver a IA Asistente
+              Volver
             </Link>
           </div>
         </section>
 
+        {/* MÉTRICAS */}
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <div className={`rounded-[24px] border p-5 ${theme.cardSoft}`}>
-            <p className={`text-xs uppercase tracking-wide ${theme.textMuted}`}>
-              Billing status
-            </p>
+            <p className={`text-xs ${theme.textMuted}`}>Estado</p>
             <p className="mt-2 text-2xl font-bold">{log.billing_status}</p>
           </div>
 
           <div className={`rounded-[24px] border p-5 ${theme.cardSoft}`}>
-            <p className={`text-xs uppercase tracking-wide ${theme.textMuted}`}>
-              Duración (seg)
-            </p>
+            <p className={`text-xs ${theme.textMuted}`}>Duración (seg)</p>
             <p className="mt-2 text-2xl font-bold">
-              {Number(log.duration_seconds || 0)}
+              {log.duration_seconds}
             </p>
           </div>
 
           <div className={`rounded-[24px] border p-5 ${theme.cardSoft}`}>
-            <p className={`text-xs uppercase tracking-wide ${theme.textMuted}`}>
-              Minutos usados
-            </p>
+            <p className={`text-xs ${theme.textMuted}`}>Minutos usados</p>
             <p className="mt-2 text-2xl font-bold">
-              {Number(log.minutes_used || 0).toFixed(2)}
+              {log.minutes_used.toFixed(2)}
             </p>
           </div>
 
           <div className={`rounded-[24px] border p-5 ${theme.cardSoft}`}>
-            <p className={`text-xs uppercase tracking-wide ${theme.textMuted}`}>
-              Minutos extra
-            </p>
+            <p className={`text-xs ${theme.textMuted}`}>Minutos extra</p>
             <p className="mt-2 text-2xl font-bold">
-              {Number(log.overage_minutes || 0).toFixed(2)}
+              {log.overage_minutes.toFixed(2)}
             </p>
           </div>
         </section>
 
+        {/* INFO */}
         <section className={`rounded-[28px] border p-6 ${theme.card}`}>
-          <h2 className="text-2xl font-semibold">Información de la llamada</h2>
+          <h2 className="text-2xl font-semibold">Información</h2>
 
           <div className="mt-5 grid gap-4 text-sm sm:grid-cols-2">
             <div className={`rounded-2xl border p-4 ${theme.subtle}`}>
@@ -183,64 +177,81 @@ export default async function AiAssistantCallDetailPage({
 
             <div className={`rounded-2xl border p-4 ${theme.subtle}`}>
               <p className={`text-xs ${theme.textMuted}`}>Inicio</p>
-              <p className="mt-1 font-medium">{formatDateTime(log.started_at)}</p>
+              <p className="mt-1 font-medium">
+                {formatDateTime(log.started_at)}
+              </p>
             </div>
 
             <div className={`rounded-2xl border p-4 ${theme.subtle}`}>
               <p className={`text-xs ${theme.textMuted}`}>Fin</p>
-              <p className="mt-1 font-medium">{formatDateTime(log.ended_at)}</p>
-            </div>
-
-            <div className={`rounded-2xl border p-4 ${theme.subtle}`}>
-              <p className={`text-xs ${theme.textMuted}`}>Creado</p>
-              <p className="mt-1 font-medium">{formatDateTime(log.created_at)}</p>
-            </div>
-
-            <div className={`rounded-2xl border p-4 ${theme.subtle}`}>
-              <p className={`text-xs ${theme.textMuted}`}>Actualizado</p>
-              <p className="mt-1 font-medium">{formatDateTime(log.updated_at)}</p>
+              <p className="mt-1 font-medium">
+                {formatDateTime(log.ended_at)}
+              </p>
             </div>
           </div>
         </section>
 
+        {/* RESUMEN */}
         <section className={`rounded-[28px] border p-6 ${theme.card}`}>
           <h2 className="text-2xl font-semibold">Resumen</h2>
 
           <div className={`mt-4 rounded-2xl border p-4 ${theme.subtle}`}>
             <p className="text-sm leading-7">
-              {detail?.summary || "Aún no hay resumen guardado para esta llamada."}
+              {detail?.summary ||
+                "No hay resumen disponible para esta llamada."}
             </p>
           </div>
         </section>
 
+        {/* CONVERSACIÓN */}
         <section className={`rounded-[28px] border p-6 ${theme.card}`}>
-          <h2 className="text-2xl font-semibold">Transcript</h2>
+          <h2 className="text-2xl font-semibold">Conversación</h2>
 
-          <div className={`mt-4 rounded-2xl border p-4 ${theme.subtle}`}>
-            <pre className="whitespace-pre-wrap text-sm leading-7">
-              {detail?.transcript || "Aún no hay transcript guardado para esta llamada."}
-            </pre>
-          </div>
-        </section>
+          {Array.isArray(detail?.messages) &&
+          detail.messages.length > 0 ? (
+            <div className="mt-5 space-y-4">
+              {detail.messages.map((msg: any, index: number) => {
+                const role = msg?.role || "assistant";
+                const content =
+                  typeof msg?.content === "string"
+                    ? msg.content
+                    : JSON.stringify(msg?.content || "");
 
-        <section className={`rounded-[28px] border p-6 ${theme.cardSoft}`}>
-          <h2 className="text-2xl font-semibold">Mensajes / payload</h2>
+                const isAssistant = role === "assistant";
 
-          <div className="mt-5 grid gap-4 xl:grid-cols-2">
-            <div>
-              <h3 className="text-lg font-semibold">Messages</h3>
-              <pre className="mt-3 overflow-x-auto rounded-2xl border p-4 text-xs leading-6">
-{JSON.stringify(detail?.messages || [], null, 2)}
+                return (
+                  <div
+                    key={index}
+                    className={`flex ${
+                      isAssistant ? "justify-start" : "justify-end"
+                    }`}
+                  >
+                    <div
+                      className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm ${
+                        isAssistant
+                          ? `${theme.subtle} border`
+                          : `${theme.buttonPrimary} text-white`
+                      }`}
+                    >
+                      <p className="text-xs mb-1 opacity-70">
+                        {isAssistant ? "Asistente IA" : "Cliente"}
+                      </p>
+                      <p className="whitespace-pre-wrap leading-relaxed">
+                        {content}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className={`mt-4 rounded-2xl border p-4 ${theme.subtle}`}>
+              <pre className="whitespace-pre-wrap text-sm leading-7">
+                {detail?.transcript ||
+                  "No hay conversación disponible."}
               </pre>
             </div>
-
-            <div>
-              <h3 className="text-lg font-semibold">Raw payload</h3>
-              <pre className="mt-3 overflow-x-auto rounded-2xl border p-4 text-xs leading-6">
-{JSON.stringify(detail?.raw_payload || {}, null, 2)}
-              </pre>
-            </div>
-          </div>
+          )}
         </section>
       </div>
     </main>
