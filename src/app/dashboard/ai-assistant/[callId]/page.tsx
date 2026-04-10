@@ -28,6 +28,15 @@ type AiUsageLogRow = {
   updated_at: string;
 };
 
+type AiCallDetailRow = {
+  call_id: string;
+  assistant_id: string | null;
+  transcript: string | null;
+  summary: string | null;
+  messages: unknown[];
+  raw_payload: Record<string, unknown> | null;
+};
+
 function formatDateTime(value: string | null) {
   if (!value) return "—";
   return new Date(value).toLocaleString("es-HN");
@@ -52,33 +61,51 @@ export default async function AiAssistantCallDetailPage({
     notFound();
   }
 
-  const { data, error } = await supabase
-    .from("ai_usage_logs")
-    .select(`
-      id,
-      call_id,
-      assistant_id,
-      usage_date,
-      started_at,
-      ended_at,
-      duration_seconds,
-      minutes_used,
-      overage_minutes,
-      billing_status,
-      source,
-      metadata,
-      created_at,
-      updated_at
-    `)
-    .eq("business_id", business.id)
-    .eq("call_id", decodedCallId)
-    .maybeSingle();
+  const [{ data: usageData, error: usageError }, { data: detailData }] =
+    await Promise.all([
+      supabase
+        .from("ai_usage_logs")
+        .select(`
+          id,
+          call_id,
+          assistant_id,
+          usage_date,
+          started_at,
+          ended_at,
+          duration_seconds,
+          minutes_used,
+          overage_minutes,
+          billing_status,
+          source,
+          metadata,
+          created_at,
+          updated_at
+        `)
+        .eq("business_id", business.id)
+        .eq("call_id", decodedCallId)
+        .maybeSingle(),
 
-  if (error || !data) {
+      supabase
+        .from("ai_call_details")
+        .select(`
+          call_id,
+          assistant_id,
+          transcript,
+          summary,
+          messages,
+          raw_payload
+        `)
+        .eq("business_id", business.id)
+        .eq("call_id", decodedCallId)
+        .maybeSingle(),
+    ]);
+
+  if (usageError || !usageData) {
     notFound();
   }
 
-  const log = data as AiUsageLogRow;
+  const log = usageData as AiUsageLogRow;
+  const detail = (detailData || null) as AiCallDetailRow | null;
 
   return (
     <main className={`min-h-screen ${theme.pageBg}`}>
@@ -145,7 +172,7 @@ export default async function AiAssistantCallDetailPage({
             <div className={`rounded-2xl border p-4 ${theme.subtle}`}>
               <p className={`text-xs ${theme.textMuted}`}>Assistant ID</p>
               <p className="mt-1 break-all font-medium">
-                {log.assistant_id || "—"}
+                {log.assistant_id || detail?.assistant_id || "—"}
               </p>
             </div>
 
@@ -176,15 +203,44 @@ export default async function AiAssistantCallDetailPage({
           </div>
         </section>
 
-        <section className={`rounded-[28px] border p-6 ${theme.cardSoft}`}>
-          <h2 className="text-2xl font-semibold">Metadata</h2>
-          <p className={`mt-2 text-sm ${theme.textMuted}`}>
-            Aquí luego podremos mostrar transcript, mensajes y detalles extendidos de Vapi.
-          </p>
+        <section className={`rounded-[28px] border p-6 ${theme.card}`}>
+          <h2 className="text-2xl font-semibold">Resumen</h2>
 
-          <pre className="mt-5 overflow-x-auto rounded-2xl border p-4 text-xs leading-6">
-{JSON.stringify(log.metadata || {}, null, 2)}
-          </pre>
+          <div className={`mt-4 rounded-2xl border p-4 ${theme.subtle}`}>
+            <p className="text-sm leading-7">
+              {detail?.summary || "Aún no hay resumen guardado para esta llamada."}
+            </p>
+          </div>
+        </section>
+
+        <section className={`rounded-[28px] border p-6 ${theme.card}`}>
+          <h2 className="text-2xl font-semibold">Transcript</h2>
+
+          <div className={`mt-4 rounded-2xl border p-4 ${theme.subtle}`}>
+            <pre className="whitespace-pre-wrap text-sm leading-7">
+              {detail?.transcript || "Aún no hay transcript guardado para esta llamada."}
+            </pre>
+          </div>
+        </section>
+
+        <section className={`rounded-[28px] border p-6 ${theme.cardSoft}`}>
+          <h2 className="text-2xl font-semibold">Mensajes / payload</h2>
+
+          <div className="mt-5 grid gap-4 xl:grid-cols-2">
+            <div>
+              <h3 className="text-lg font-semibold">Messages</h3>
+              <pre className="mt-3 overflow-x-auto rounded-2xl border p-4 text-xs leading-6">
+{JSON.stringify(detail?.messages || [], null, 2)}
+              </pre>
+            </div>
+
+            <div>
+              <h3 className="text-lg font-semibold">Raw payload</h3>
+              <pre className="mt-3 overflow-x-auto rounded-2xl border p-4 text-xs leading-6">
+{JSON.stringify(detail?.raw_payload || {}, null, 2)}
+              </pre>
+            </div>
+          </div>
         </section>
       </div>
     </main>

@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
-import { extractVapiContext, resolveBusinessFromCall } from "@/lib/vapi/resolveBusinessFromCall";
+import {
+  extractVapiContext,
+  resolveBusinessFromCall,
+} from "@/lib/vapi/resolveBusinessFromCall";
 import { registerAiUsage } from "@/lib/billing/registerAiUsage";
+import { registerAiCallDetail } from "@/lib/billing/registerAiCallDetail";
 
 function requireVapiKey(request: Request) {
   const key = request.headers.get("x-vapi-key") || "";
@@ -42,6 +46,60 @@ function getDurationSeconds(payload: any): number {
   return 0;
 }
 
+function extractTranscript(payload: any): string | null {
+  const candidates = [
+    payload?.transcript,
+    payload?.call?.transcript,
+    payload?.message?.transcript,
+    payload?.artifact?.transcript,
+    payload?.analysis?.transcript,
+  ];
+
+  for (const value of candidates) {
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return null;
+}
+
+function extractSummary(payload: any): string | null {
+  const candidates = [
+    payload?.summary,
+    payload?.call?.summary,
+    payload?.message?.summary,
+    payload?.analysis?.summary,
+    payload?.artifact?.summary,
+  ];
+
+  for (const value of candidates) {
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return null;
+}
+
+function extractMessages(payload: any): unknown[] {
+  const candidates = [
+    payload?.messages,
+    payload?.call?.messages,
+    payload?.message?.messages,
+    payload?.artifact?.messages,
+    payload?.transcriptMessages,
+  ];
+
+  for (const value of candidates) {
+    if (Array.isArray(value)) {
+      return value;
+    }
+  }
+
+  return [];
+}
+
 export async function POST(request: Request) {
   try {
     const unauthorized = requireVapiKey(request);
@@ -56,20 +114,10 @@ export async function POST(request: Request) {
 
     const eventType = String(
       payload?.type ||
-      payload?.message?.type ||
-      payload?.event ||
-      ""
+        payload?.message?.type ||
+        payload?.event ||
+        ""
     ).trim();
-
-    // Ajusta luego si quieres registrar más eventos.
-    const shouldRegister =
-      eventType.includes("end") ||
-      eventType.includes("completed") ||
-      eventType.includes("finished");
-
-    if (!shouldRegister) {
-      return NextResponse.json({ ok: true, skipped: true, reason: "Event ignored" });
-    }
 
     const ctx = await resolveBusinessFromCall({
       assistantId,
@@ -77,9 +125,40 @@ export async function POST(request: Request) {
       callId,
     });
 
+    // Siempre intentamos guardar detalle si viene transcript/messages/summary
+    const transcript = extractTranscript(payload);
+    const summary = extractSummary(payload);
+    const messages = extractMessages(payload);
+
+    if (transcript || summary || messages.length > 0) {
+      await registerAiCallDetail({
+        businessId: ctx.businessId,
+        callId,
+        assistantId: ctx.assistantId,
+        transcript,
+        summary,
+        messages,
+        rawPayload: payload,
+      });
+    }
+
+    const shouldRegisterUsage =
+      eventType.includes("end") ||
+      eventType.includes("completed") ||
+      eventType.includes("finished");
+
+    if (!shouldRegisterUsage) {
+      return NextResponse.json({
+        ok: true,
+        savedDetail: transcript || summary || messages.length > 0,
+        skippedUsage: true,
+        reason: "Event ignored for usage",
+      });
+    }
+
     const durationSeconds = getDurationSeconds(payload);
 
-    const result = await registerAiUsage({
+    const usage = await registerAiUsage({
       businessId: ctx.businessId,
       assistantId: ctx.assistantId,
       callId,
@@ -105,7 +184,8 @@ export async function POST(request: Request) {
       registered: true,
       callId,
       businessId: ctx.businessId,
-      ...result,
+      savedDetail: transcript || summary || messages.length > 0,
+      ...usage,
     });
   } catch (error) {
     const message =
