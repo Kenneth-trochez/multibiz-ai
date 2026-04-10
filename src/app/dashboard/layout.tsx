@@ -21,7 +21,8 @@ type IconName =
   | "sales"
   | "balance"
   | "insights"
-  | "settings";
+  | "settings"
+  | "ai_assistant";
 
 type NavItem = {
   href: string;
@@ -106,6 +107,12 @@ export default async function DashboardLayout({
       label: "Balance",
       icon: "balance",
       section: "balance",
+    },
+    {
+      href: "/dashboard/ai-assistant",
+      label: "IA Asistente",
+      icon: "ai_assistant",
+      section: "ai_assistant",
     },
     {
       href: "/dashboard/insights",

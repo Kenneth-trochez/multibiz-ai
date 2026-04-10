@@ -13,6 +13,7 @@ import {
   Package,
   ShoppingCart,
   BellRing,
+  Bot,
 } from "lucide-react";
 
 type IconName =
@@ -25,7 +26,8 @@ type IconName =
   | "sales"
   | "balance"
   | "insights"
-  | "settings";
+  | "settings"
+  | "ai_assistant";
 
 type NavItem = {
   href: string;
@@ -55,6 +57,8 @@ function getIcon(icon: IconName) {
       return BellRing;
     case "settings":
       return SettingsIcon;
+    case "ai_assistant":
+      return Bot;
     default:
       return LayoutDashboard;
   }

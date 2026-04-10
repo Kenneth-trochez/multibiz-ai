@@ -143,3 +143,39 @@ export async function updateBusinessScheduleAction(
 
   redirect("/dashboard/settings?success=schedule_updated");
 }
+
+export async function updateAiOverageSettingAction(
+  formData: FormData
+): Promise<void> {
+  const businessId = String(formData.get("businessId") || "").trim();
+  const allowOverageValue = String(formData.get("ai_allow_overage") || "").trim();
+
+  if (!businessId) {
+    redirect("/dashboard/ai-assistant?error=Negocio+inválido");
+  }
+
+  const aiAllowOverage =
+    allowOverageValue === "true" || allowOverageValue === "on";
+
+  const supabase = await createClient();
+
+  const { error } = await supabase.from("business_settings").upsert(
+    {
+      business_id: businessId,
+      ai_allow_overage: aiAllowOverage,
+    },
+    {
+      onConflict: "business_id",
+    }
+  );
+
+  if (error) {
+    redirect(
+      `/dashboard/ai-assistant?error=${encodeURIComponent(error.message)}`
+    );
+  }
+
+  revalidatePath("/dashboard/ai-assistant");
+
+  redirect("/dashboard/ai-assistant?success=overage_updated");
+}
