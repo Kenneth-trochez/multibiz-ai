@@ -1,25 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentBusiness } from "@/lib/tenant/getCurrentBusiness";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
-    const ctx = await getCurrentBusiness();
+    const businessId = request.nextUrl.searchParams.get("business_id");
 
-    if (!ctx?.business) {
+    if (!businessId) {
       return NextResponse.json(
-        { error: "Negocio actual no encontrado" },
-        { status: 404 }
+        { error: "business_id es obligatorio" },
+        { status: 400 }
       );
     }
-
-    const business = ctx.business;
 
     const { data, error } = await supabase
       .from("api_lab_items")
       .select("*")
-      .eq("business_id", business.id)
+      .eq("business_id", businessId)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -44,22 +41,21 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
-    const ctx = await getCurrentBusiness();
-
-    if (!ctx?.business) {
-      return NextResponse.json(
-        { error: "Negocio actual no encontrado" },
-        { status: 404 }
-      );
-    }
-
-    const business = ctx.business;
-
     const body = await request.json();
+
+    const businessId =
+      typeof body.business_id === "string" ? body.business_id.trim() : "";
     const title = typeof body.title === "string" ? body.title.trim() : "";
     const description =
       typeof body.description === "string" ? body.description.trim() : null;
     const status = body.status === "inactive" ? "inactive" : "active";
+
+    if (!businessId) {
+      return NextResponse.json(
+        { error: "El campo business_id es obligatorio" },
+        { status: 400 }
+      );
+    }
 
     if (!title) {
       return NextResponse.json(
@@ -71,7 +67,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from("api_lab_items")
       .insert({
-        business_id: business.id,
+        business_id: businessId,
         title,
         description,
         status,

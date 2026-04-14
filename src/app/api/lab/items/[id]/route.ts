@@ -1,33 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentBusiness } from "@/lib/tenant/getCurrentBusiness";
 
 type RouteContext = {
-  params: Promise<{
-    id: string;
-  }>;
+  params: Promise<{ id: string }>;
 };
 
-export async function GET(_: NextRequest, context: RouteContext) {
+export async function GET(request: NextRequest, context: RouteContext) {
   try {
     const supabase = await createClient();
-    const ctx = await getCurrentBusiness();
+    const { id } = await context.params;
+    const businessId = request.nextUrl.searchParams.get("business_id");
 
-    if (!ctx?.business) {
+    if (!businessId) {
       return NextResponse.json(
-        { error: "Negocio actual no encontrado" },
-        { status: 404 }
+        { error: "business_id es obligatorio" },
+        { status: 400 }
       );
     }
-
-    const business = ctx.business;
-    const { id } = await context.params;
 
     const { data, error } = await supabase
       .from("api_lab_items")
       .select("*")
       .eq("id", id)
-      .eq("business_id", business.id)
+      .eq("business_id", businessId)
       .maybeSingle();
 
     if (error) {
@@ -59,23 +54,22 @@ export async function GET(_: NextRequest, context: RouteContext) {
 export async function PUT(request: NextRequest, context: RouteContext) {
   try {
     const supabase = await createClient();
-    const ctx = await getCurrentBusiness();
-
-    if (!ctx?.business) {
-      return NextResponse.json(
-        { error: "Negocio actual no encontrado" },
-        { status: 404 }
-      );
-    }
-
-    const business = ctx.business;
     const { id } = await context.params;
     const body = await request.json();
 
+    const businessId =
+      typeof body.business_id === "string" ? body.business_id.trim() : "";
     const title = typeof body.title === "string" ? body.title.trim() : "";
     const description =
       typeof body.description === "string" ? body.description.trim() : null;
     const status = body.status === "inactive" ? "inactive" : "active";
+
+    if (!businessId) {
+      return NextResponse.json(
+        { error: "El campo business_id es obligatorio" },
+        { status: 400 }
+      );
+    }
 
     if (!title) {
       return NextResponse.json(
@@ -92,7 +86,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
         status,
       })
       .eq("id", id)
-      .eq("business_id", business.id)
+      .eq("business_id", businessId)
       .select("*")
       .maybeSingle();
 
@@ -125,26 +119,24 @@ export async function PUT(request: NextRequest, context: RouteContext) {
   }
 }
 
-export async function DELETE(_: NextRequest, context: RouteContext) {
+export async function DELETE(request: NextRequest, context: RouteContext) {
   try {
     const supabase = await createClient();
-    const ctx = await getCurrentBusiness();
+    const { id } = await context.params;
+    const businessId = request.nextUrl.searchParams.get("business_id");
 
-    if (!ctx?.business) {
+    if (!businessId) {
       return NextResponse.json(
-        { error: "Negocio actual no encontrado" },
-        { status: 404 }
+        { error: "business_id es obligatorio" },
+        { status: 400 }
       );
     }
-
-    const business = ctx.business;
-    const { id } = await context.params;
 
     const { data, error } = await supabase
       .from("api_lab_items")
       .delete()
       .eq("id", id)
-      .eq("business_id", business.id)
+      .eq("business_id", businessId)
       .select("id")
       .maybeSingle();
 
