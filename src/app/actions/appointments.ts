@@ -3,10 +3,61 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { sendPushToBusinessMembers } from "@/lib/notifications/sendPushToBusinessMembers";
 
 const VALID_STATUS = ["pending", "confirmed", "completed", "cancelled"] as const;
 const VALID_SOURCE = ["manual", "ai_voice"] as const;
 const APPOINTMENT_BUFFER_MINUTES = 5;
+
+async function getAppointmentNotificationContext(params: {
+  supabase: Awaited<ReturnType<typeof createClient>>;
+  businessId: string;
+  customerId: string;
+  serviceId: string;
+  staffId?: string;
+}) {
+  const { supabase, businessId, customerId, serviceId, staffId } = params;
+
+  const [{ data: customer }, { data: service }, { data: staffMember }] =
+    await Promise.all([
+      supabase
+        .from("customers")
+        .select("id, name")
+        .eq("business_id", businessId)
+        .eq("id", customerId)
+        .maybeSingle(),
+
+      supabase
+        .from("services")
+        .select("id, name")
+        .eq("business_id", businessId)
+        .eq("id", serviceId)
+        .maybeSingle(),
+
+      staffId
+        ? supabase
+          .from("staff")
+          .select("id, display_name")
+          .eq("business_id", businessId)
+          .eq("id", staffId)
+          .maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
+
+  return {
+    customerName: customer?.name || "Cliente",
+    serviceName: service?.name || "Servicio",
+    staffName: staffMember?.display_name || "Sin staff",
+  };
+}
+
+function formatAppointmentPushDate(value: string) {
+  return new Date(value).toLocaleString("es-HN", {
+    timeZone: "America/Tegucigalpa",
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
 
 function getEndDate(start: Date, durationMinutes: number) {
   return new Date(
@@ -140,21 +191,51 @@ export async function createAppointmentAction(formData: FormData): Promise<void>
     });
   }
 
-  const { error } = await supabase.from("appointments").insert({
-    business_id: businessId,
-    customer_id: customerId,
-    service_id: serviceId,
-    staff_id: staffId || null,
-    appointment_at: appointmentAt,
-    status: "confirmed",
-    source,
-    notes: notes || null,
-  });
+  const { data: insertedAppointment, error } = await supabase
+    .from("appointments")
+    .insert({
+      business_id: businessId,
+      customer_id: customerId,
+      service_id: serviceId,
+      staff_id: staffId || null,
+      appointment_at: appointmentAt,
+      status: "confirmed",
+      source,
+      notes: notes || null,
+    })
+    .select("id, appointment_at, status, source")
+    .single();
 
   if (error) {
     redirect(
       `/dashboard/appointments?error=${encodeURIComponent(error.message)}`
     );
+  }
+
+  try {
+    const context = await getAppointmentNotificationContext({
+      supabase,
+      businessId,
+      customerId,
+      serviceId,
+      staffId,
+    });
+
+    await sendPushToBusinessMembers({
+      businessId,
+      title: "Nueva cita agendada",
+      body: `${context.customerName} · ${context.serviceName} · ${formatAppointmentPushDate(
+        appointmentAt
+      )}`,
+      data: {
+        type: "appointment_created",
+        appointmentId: insertedAppointment?.id,
+        source,
+        status: "confirmed",
+      },
+    });
+  } catch (pushError) {
+    console.error("PUSH CREATE APPOINTMENT ERROR:", pushError);
   }
 
   revalidatePath("/dashboard");
@@ -200,7 +281,7 @@ export async function updateAppointmentAction(formData: FormData): Promise<void>
     });
   }
 
-  const { error } = await supabase
+  const { data: updatedAppointment, error } = await supabase
     .from("appointments")
     .update({
       customer_id: customerId,
@@ -211,12 +292,40 @@ export async function updateAppointmentAction(formData: FormData): Promise<void>
       source,
       notes: notes || null,
     })
-    .eq("id", appointmentId);
+    .eq("id", appointmentId)
+    .select("id, appointment_at, status, source")
+    .single();
 
   if (error) {
     redirect(
       `/dashboard/appointments?error=${encodeURIComponent(error.message)}`
     );
+  }
+  
+  try {
+    const context = await getAppointmentNotificationContext({
+      supabase,
+      businessId,
+      customerId,
+      serviceId,
+      staffId,
+    });
+
+    await sendPushToBusinessMembers({
+      businessId,
+      title: "Cita actualizada",
+      body: `${context.customerName} · ${context.serviceName} · ${formatAppointmentPushDate(
+        appointmentAt
+      )}`,
+      data: {
+        type: "appointment_updated",
+        appointmentId: updatedAppointment?.id,
+        source,
+        status,
+      },
+    });
+  } catch (pushError) {
+    console.error("PUSH UPDATE APPOINTMENT ERROR:", pushError);
   }
 
   revalidatePath("/dashboard");
@@ -241,6 +350,24 @@ export async function updateAppointmentStatusAction(
 
   const supabase = await createClient();
 
+  const { data: existingAppointment, error: existingAppointmentError } =
+    await supabase
+      .from("appointments")
+      .select(`
+      id,
+      business_id,
+      appointment_at,
+      customer_id,
+      service_id,
+      staff_id
+    `)
+      .eq("id", appointmentId)
+      .maybeSingle();
+
+  if (existingAppointmentError || !existingAppointment) {
+    redirect("/dashboard/appointments?error=No+se+pudo+encontrar+la+cita");
+  }
+
   const { error } = await supabase
     .from("appointments")
     .update({ status })
@@ -250,6 +377,29 @@ export async function updateAppointmentStatusAction(
     redirect(
       `/dashboard/appointments?error=${encodeURIComponent(error.message)}`
     );
+  }
+  
+  try {
+    const context = await getAppointmentNotificationContext({
+      supabase,
+      businessId: existingAppointment.business_id,
+      customerId: existingAppointment.customer_id,
+      serviceId: existingAppointment.service_id,
+      staffId: existingAppointment.staff_id || undefined,
+    });
+
+    await sendPushToBusinessMembers({
+      businessId: existingAppointment.business_id,
+      title: "Estado de cita actualizado",
+      body: `${context.customerName} · ${context.serviceName} · Estado: ${status}`,
+      data: {
+        type: "appointment_status_updated",
+        appointmentId,
+        status,
+      },
+    });
+  } catch (pushError) {
+    console.error("PUSH UPDATE STATUS ERROR:", pushError);
   }
 
   revalidatePath("/dashboard");

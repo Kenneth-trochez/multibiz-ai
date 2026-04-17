@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { enforceAiUsagePolicy } from "@/lib/billing/enforceAiUsagePolicy";
+import { sendPushToBusinessMembers } from "@/lib/notifications/sendPushToBusinessMembers";
 import { checkStaffAvailability } from "@/lib/appointments/checkStaffAvailability";
 import {
   ensureAiBookingEnabled,
@@ -241,6 +242,27 @@ export async function POST(request: Request) {
 
     if (insertAppointmentError || !insertedAppointment) {
       throw new Error(insertAppointmentError?.message || "No se pudo crear la cita");
+    } try {
+      await sendPushToBusinessMembers({
+        businessId: ctx.businessId,
+        title: "Nueva cita por IA",
+        body: `${customer.name} · ${service.name} · ${new Date(
+          appointmentAt
+        ).toLocaleString("es-HN", {
+          timeZone: "America/Tegucigalpa",
+          dateStyle: "medium",
+          timeStyle: "short",
+        })}`,
+        data: {
+          type: "appointment_created_ai",
+          appointmentId: insertedAppointment.id,
+          source: "ai_voice",
+          status: insertedAppointment.status,
+          callId: callId || null,
+        },
+      });
+    } catch (pushError) {
+      console.error("PUSH VAPI APPOINTMENT ERROR:", pushError);
     }
 
     return NextResponse.json({
