@@ -3,6 +3,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { scheduleAppointmentNotifications } from "@/lib/notifications/scheduleAppointmentNotifications";
+import { clearAppointmentNotifications } from "@/lib/notifications/clearAppointmentNotifications";
 import { sendPushToBusinessMembers } from "@/lib/notifications/sendPushToBusinessMembers";
 
 const VALID_STATUS = ["pending", "confirmed", "completed", "cancelled"] as const;
@@ -36,11 +38,11 @@ async function getAppointmentNotificationContext(params: {
 
       staffId
         ? supabase
-          .from("staff")
-          .select("id, display_name")
-          .eq("business_id", businessId)
-          .eq("id", staffId)
-          .maybeSingle()
+            .from("staff")
+            .select("id, display_name")
+            .eq("business_id", businessId)
+            .eq("id", staffId)
+            .maybeSingle()
         : Promise.resolve({ data: null }),
     ]);
 
@@ -238,6 +240,21 @@ export async function createAppointmentAction(formData: FormData): Promise<void>
     console.error("PUSH CREATE APPOINTMENT ERROR:", pushError);
   }
 
+  try {
+    if (insertedAppointment?.id) {
+      await scheduleAppointmentNotifications({
+        businessId,
+        appointmentId: insertedAppointment.id,
+        appointmentAt,
+      });
+    }
+  } catch (notificationJobError) {
+    console.error(
+      "SCHEDULE APPOINTMENT NOTIFICATIONS ERROR:",
+      notificationJobError
+    );
+  }
+
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/appointments");
   revalidatePath("/dashboard/balance");
@@ -301,7 +318,7 @@ export async function updateAppointmentAction(formData: FormData): Promise<void>
       `/dashboard/appointments?error=${encodeURIComponent(error.message)}`
     );
   }
-  
+
   try {
     const context = await getAppointmentNotificationContext({
       supabase,
@@ -328,11 +345,28 @@ export async function updateAppointmentAction(formData: FormData): Promise<void>
     console.error("PUSH UPDATE APPOINTMENT ERROR:", pushError);
   }
 
+  try {
+    if (updatedAppointment?.id && status !== "cancelled") {
+      await scheduleAppointmentNotifications({
+        businessId,
+        appointmentId: updatedAppointment.id,
+        appointmentAt,
+      });
+    } else if (updatedAppointment?.id && status === "cancelled") {
+      await clearAppointmentNotifications(updatedAppointment.id);
+    }
+  } catch (notificationJobError) {
+    console.error(
+      "RESCHEDULE APPOINTMENT NOTIFICATIONS ERROR:",
+      notificationJobError
+    );
+  }
+
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/appointments");
   revalidatePath("/dashboard/balance");
 
-  redirect("/dashboard/appointments?success=edited");
+  redirect("/dashboard/appointments?success=updated");
 }
 
 export async function updateAppointmentStatusAction(
@@ -354,13 +388,13 @@ export async function updateAppointmentStatusAction(
     await supabase
       .from("appointments")
       .select(`
-      id,
-      business_id,
-      appointment_at,
-      customer_id,
-      service_id,
-      staff_id
-    `)
+        id,
+        business_id,
+        appointment_at,
+        customer_id,
+        service_id,
+        staff_id
+      `)
       .eq("id", appointmentId)
       .maybeSingle();
 
@@ -378,7 +412,7 @@ export async function updateAppointmentStatusAction(
       `/dashboard/appointments?error=${encodeURIComponent(error.message)}`
     );
   }
-  
+
   try {
     const context = await getAppointmentNotificationContext({
       supabase,
@@ -400,6 +434,17 @@ export async function updateAppointmentStatusAction(
     });
   } catch (pushError) {
     console.error("PUSH UPDATE STATUS ERROR:", pushError);
+  }
+
+  try {
+    if (status === "cancelled") {
+      await clearAppointmentNotifications(appointmentId);
+    }
+  } catch (notificationJobError) {
+    console.error(
+      "CLEAR APPOINTMENT NOTIFICATIONS ERROR:",
+      notificationJobError
+    );
   }
 
   revalidatePath("/dashboard");
@@ -426,6 +471,15 @@ export async function deleteAppointmentAction(formData: FormData): Promise<void>
   if (error) {
     redirect(
       `/dashboard/appointments?error=${encodeURIComponent(error.message)}`
+    );
+  }
+
+  try {
+    await clearAppointmentNotifications(appointmentId);
+  } catch (notificationJobError) {
+    console.error(
+      "DELETE APPOINTMENT NOTIFICATIONS ERROR:",
+      notificationJobError
     );
   }
 
