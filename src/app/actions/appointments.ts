@@ -38,11 +38,11 @@ async function getAppointmentNotificationContext(params: {
 
       staffId
         ? supabase
-            .from("staff")
-            .select("id, display_name")
-            .eq("business_id", businessId)
-            .eq("id", staffId)
-            .maybeSingle()
+          .from("staff")
+          .select("id, display_name")
+          .eq("business_id", businessId)
+          .eq("id", staffId)
+          .maybeSingle()
         : Promise.resolve({ data: null }),
     ]);
 
@@ -63,17 +63,27 @@ function formatAppointmentPushDate(value: string) {
 
 function normalizeAppointmentAtFromLocal(value: string) {
   const trimmed = value.trim();
-
   if (!trimmed) return trimmed;
 
-  // Si ya viene con zona horaria o Z, se respeta
+  // Si ya trae zona horaria, se respeta
   if (/[zZ]|[+-]\d{2}:\d{2}$/.test(trimmed)) {
-    return trimmed;
+    return new Date(trimmed).toISOString();
   }
 
-  // Valor típico de datetime-local: YYYY-MM-DDTHH:mm
-  // Lo normalizamos como hora de Honduras (-06:00)
-  return `${trimmed}:00-06:00`;
+  // datetime-local viene como YYYY-MM-DDTHH:mm
+  const [datePart, timePart] = trimmed.split("T");
+  if (!datePart || !timePart) {
+    throw new Error("appointment_at inválido");
+  }
+
+  const [year, month, day] = datePart.split("-").map(Number);
+  const [hour, minute] = timePart.split(":").map(Number);
+
+  // Honduras = UTC-6
+  // Para guardar en UTC: local + 6 horas
+  const utcDate = new Date(Date.UTC(year, month - 1, day, hour + 6, minute, 0));
+
+  return utcDate.toISOString();
 }
 
 function getEndDate(start: Date, durationMinutes: number) {
