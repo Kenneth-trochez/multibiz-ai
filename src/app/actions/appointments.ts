@@ -61,6 +61,21 @@ function formatAppointmentPushDate(value: string) {
   });
 }
 
+function normalizeAppointmentAtFromLocal(value: string) {
+  const trimmed = value.trim();
+
+  if (!trimmed) return trimmed;
+
+  // Si ya viene con zona horaria o Z, se respeta
+  if (/[zZ]|[+-]\d{2}:\d{2}$/.test(trimmed)) {
+    return trimmed;
+  }
+
+  // Valor típico de datetime-local: YYYY-MM-DDTHH:mm
+  // Lo normalizamos como hora de Honduras (-06:00)
+  return `${trimmed}:00-06:00`;
+}
+
 function getEndDate(start: Date, durationMinutes: number) {
   return new Date(
     start.getTime() + (durationMinutes + APPOINTMENT_BUFFER_MINUTES) * 60 * 1000
@@ -169,7 +184,8 @@ export async function createAppointmentAction(formData: FormData): Promise<void>
   const customerId = String(formData.get("customer_id") || "").trim();
   const serviceId = String(formData.get("service_id") || "").trim();
   const staffId = String(formData.get("staff_id") || "").trim();
-  const appointmentAt = String(formData.get("appointment_at") || "").trim();
+  const rawAppointmentAt = String(formData.get("appointment_at") || "").trim();
+  const appointmentAt = normalizeAppointmentAtFromLocal(rawAppointmentAt);
   const notes = String(formData.get("notes") || "").trim();
   const source = String(formData.get("source") || "manual").trim();
 
@@ -268,7 +284,8 @@ export async function updateAppointmentAction(formData: FormData): Promise<void>
   const customerId = String(formData.get("customer_id") || "").trim();
   const serviceId = String(formData.get("service_id") || "").trim();
   const staffId = String(formData.get("staff_id") || "").trim();
-  const appointmentAt = String(formData.get("appointment_at") || "").trim();
+  const rawAppointmentAt = String(formData.get("appointment_at") || "").trim();
+  const appointmentAt = normalizeAppointmentAtFromLocal(rawAppointmentAt);
   const status = String(formData.get("status") || "").trim();
   const notes = String(formData.get("notes") || "").trim();
   const source = String(formData.get("source") || "manual").trim();
