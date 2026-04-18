@@ -219,6 +219,13 @@ export async function createAppointmentAction(formData: FormData): Promise<void>
     });
   }
 
+  console.log("FORM VALUE:", formData.get("appointment_at"));
+  console.log("RAW APPOINTMENT AT:", rawAppointmentAt);
+  console.log("FINAL APPOINTMENT AT:", appointmentAt);
+  console.log("INSERTING INTO DB:", {
+    appointment_at: appointmentAt,
+  });
+
   const { data: insertedAppointment, error } = await supabase
     .from("appointments")
     .insert({
