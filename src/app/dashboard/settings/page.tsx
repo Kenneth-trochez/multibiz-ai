@@ -27,6 +27,15 @@ const WEEKDAY_OPTIONS = [
   { value: "sunday", label: "Domingo" },
 ];
 
+const TIMEZONE_OPTIONS = [
+  { value: "America/Tegucigalpa", label: "América/Tegucigalpa (Honduras)" },
+  { value: "America/Mexico_City", label: "América/Ciudad de México" },
+  { value: "America/Bogota", label: "América/Bogotá" },
+  { value: "America/New_York", label: "América/New York" },
+  { value: "America/Los_Angeles", label: "América/Los Angeles" },
+  { value: "Europe/Madrid", label: "Europa/Madrid" },
+];
+
 function normalizeTimeValue(value: string | null | undefined, fallback: string) {
   if (!value) return fallback;
   return String(value).slice(0, 5);
@@ -79,7 +88,8 @@ export default async function SettingsPage({
           <div className="mb-6 text-center">
             <h1 className="text-3xl font-bold">Configuración del negocio</h1>
             <p className={`mt-2 text-sm ${theme.textMuted}`}>
-              Personaliza la información visual, general y las metas operativas de tu negocio.
+              Personaliza la información visual, general y las metas operativas
+              de tu negocio.
             </p>
           </div>
 
@@ -116,9 +126,14 @@ export default async function SettingsPage({
                 </p>
               </div>
 
-              <form action={updateBusinessAction} className="grid gap-5 md:grid-cols-2">
+              <form
+                action={updateBusinessAction}
+                className="grid gap-5 md:grid-cols-2"
+              >
                 <div className="md:col-span-2">
-                  <label className={`mb-2 block text-sm font-medium ${theme.label}`}>
+                  <label
+                    className={`mb-2 block text-sm font-medium ${theme.label}`}
+                  >
                     Nombre del negocio
                   </label>
                   <input
@@ -131,7 +146,9 @@ export default async function SettingsPage({
                 </div>
 
                 <div>
-                  <label className={`mb-2 block text-sm font-medium ${theme.label}`}>
+                  <label
+                    className={`mb-2 block text-sm font-medium ${theme.label}`}
+                  >
                     Tipo de negocio
                   </label>
                   <input
@@ -144,7 +161,9 @@ export default async function SettingsPage({
                 </div>
 
                 <div>
-                  <label className={`mb-2 block text-sm font-medium ${theme.label}`}>
+                  <label
+                    className={`mb-2 block text-sm font-medium ${theme.label}`}
+                  >
                     Teléfono
                   </label>
                   <input
@@ -156,7 +175,9 @@ export default async function SettingsPage({
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className={`mb-2 block text-sm font-medium ${theme.label}`}>
+                  <label
+                    className={`mb-2 block text-sm font-medium ${theme.label}`}
+                  >
                     Dirección
                   </label>
                   <input
@@ -168,7 +189,9 @@ export default async function SettingsPage({
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className={`mb-2 block text-sm font-medium ${theme.label}`}>
+                  <label
+                    className={`mb-2 block text-sm font-medium ${theme.label}`}
+                  >
                     Tema
                   </label>
                   <select
@@ -185,7 +208,6 @@ export default async function SettingsPage({
                     <option value="minimal" className={theme.option}>
                       Minimalista claro
                     </option>
-
                     <option value="blush_pop" className={theme.option}>
                       Rosa moderno
                     </option>
@@ -201,7 +223,6 @@ export default async function SettingsPage({
                     <option value="sky_breeze" className={theme.option}>
                       Azul cielo
                     </option>
-
                     <option value="dark" className={theme.option}>
                       Oscuro clásico
                     </option>
@@ -224,7 +245,9 @@ export default async function SettingsPage({
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className={`mb-2 block text-sm font-medium ${theme.label}`}>
+                  <label
+                    className={`mb-2 block text-sm font-medium ${theme.label}`}
+                  >
                     Logo del negocio
                   </label>
                   <input
@@ -237,7 +260,9 @@ export default async function SettingsPage({
 
                 {business.logo_url && (
                   <div className="md:col-span-2">
-                    <p className={`mb-3 text-sm ${theme.textMuted}`}>Logo actual</p>
+                    <p className={`mb-3 text-sm ${theme.textMuted}`}>
+                      Logo actual
+                    </p>
                     <img
                       src={business.logo_url}
                       alt="Logo del negocio"
@@ -261,15 +286,21 @@ export default async function SettingsPage({
               <div className="mb-5">
                 <h2 className="text-2xl font-semibold">Metas del negocio</h2>
                 <p className={`mt-1 text-sm ${theme.textMuted}`}>
-                  Estas metas se usan en el resumen inteligente para mostrar progreso y rendimiento.
+                  Estas metas se usan en el resumen inteligente para mostrar
+                  progreso y rendimiento.
                 </p>
               </div>
 
-              <form action={updateBusinessGoalsAction} className="grid gap-5 md:grid-cols-2">
+              <form
+                action={updateBusinessGoalsAction}
+                className="grid gap-5 md:grid-cols-2"
+              >
                 <input type="hidden" name="businessId" value={business.id} />
 
                 <div>
-                  <label className={`mb-2 block text-sm font-medium ${theme.label}`}>
+                  <label
+                    className={`mb-2 block text-sm font-medium ${theme.label}`}
+                  >
                     Meta de ventas diarias
                   </label>
                   <input
@@ -286,7 +317,9 @@ export default async function SettingsPage({
                 </div>
 
                 <div>
-                  <label className={`mb-2 block text-sm font-medium ${theme.label}`}>
+                  <label
+                    className={`mb-2 block text-sm font-medium ${theme.label}`}
+                  >
                     Meta de ventas mensuales
                   </label>
                   <input
@@ -303,7 +336,9 @@ export default async function SettingsPage({
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className={`mb-2 block text-sm font-medium ${theme.label}`}>
+                  <label
+                    className={`mb-2 block text-sm font-medium ${theme.label}`}
+                  >
                     Meta de citas diarias
                   </label>
                   <input
@@ -315,27 +350,34 @@ export default async function SettingsPage({
                     className={`w-full rounded-2xl border px-4 py-3 outline-none transition ${theme.input}`}
                   />
                   <p className={`mt-2 text-xs ${theme.textMuted}`}>
-                    Esta meta se usa para comparar la carga esperada de citas y el ritmo del negocio.
+                    Esta meta se usa para comparar la carga esperada de citas y
+                    el ritmo del negocio.
                   </p>
                 </div>
 
                 <div className="md:col-span-2 grid gap-4 sm:grid-cols-3">
                   <div className={`rounded-2xl border p-4 ${theme.subtle}`}>
-                    <p className={`text-xs ${theme.textMuted}`}>Ventas diarias actuales</p>
+                    <p className={`text-xs ${theme.textMuted}`}>
+                      Ventas diarias actuales
+                    </p>
                     <p className="mt-1 text-lg font-semibold">
                       L {Number(settings.daily_sales_goal || 0).toFixed(2)}
                     </p>
                   </div>
 
                   <div className={`rounded-2xl border p-4 ${theme.subtle}`}>
-                    <p className={`text-xs ${theme.textMuted}`}>Ventas mensuales actuales</p>
+                    <p className={`text-xs ${theme.textMuted}`}>
+                      Ventas mensuales actuales
+                    </p>
                     <p className="mt-1 text-lg font-semibold">
                       L {Number(settings.monthly_sales_goal || 0).toFixed(2)}
                     </p>
                   </div>
 
                   <div className={`rounded-2xl border p-4 ${theme.subtle}`}>
-                    <p className={`text-xs ${theme.textMuted}`}>Citas diarias actuales</p>
+                    <p className={`text-xs ${theme.textMuted}`}>
+                      Citas diarias actuales
+                    </p>
                     <p className="mt-1 text-lg font-semibold">
                       {Number(settings.daily_appointments_goal || 0)}
                     </p>
@@ -357,15 +399,21 @@ export default async function SettingsPage({
               <div className="mb-5">
                 <h2 className="text-2xl font-semibold">Horario del negocio</h2>
                 <p className={`mt-1 text-sm ${theme.textMuted}`}>
-                  Este horario será usado por la IA para ofrecer espacios de cita reales.
+                  Este horario será usado por la IA para ofrecer espacios de
+                  cita reales.
                 </p>
               </div>
 
-              <form action={updateBusinessScheduleAction} className="grid gap-5 md:grid-cols-2">
+              <form
+                action={updateBusinessScheduleAction}
+                className="grid gap-5 md:grid-cols-2"
+              >
                 <input type="hidden" name="businessId" value={business.id} />
 
                 <div className="md:col-span-2">
-                  <label className={`mb-2 block text-sm font-medium ${theme.label}`}>
+                  <label
+                    className={`mb-2 block text-sm font-medium ${theme.label}`}
+                  >
                     Zona horaria
                   </label>
                   <select
@@ -373,14 +421,22 @@ export default async function SettingsPage({
                     defaultValue={settings.timezone}
                     className={`w-full rounded-2xl border px-4 py-3 outline-none transition ${theme.select}`}
                   >
-                    <option value="America/Tegucigalpa" className={theme.option}>
-                      America/Tegucigalpa
-                    </option>
+                    {TIMEZONE_OPTIONS.map((tz) => (
+                      <option
+                        key={tz.value}
+                        value={tz.value}
+                        className={theme.option}
+                      >
+                        {tz.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
                 <div>
-                  <label className={`mb-2 block text-sm font-medium ${theme.label}`}>
+                  <label
+                    className={`mb-2 block text-sm font-medium ${theme.label}`}
+                  >
                     Hora de apertura
                   </label>
                   <input
@@ -393,7 +449,9 @@ export default async function SettingsPage({
                 </div>
 
                 <div>
-                  <label className={`mb-2 block text-sm font-medium ${theme.label}`}>
+                  <label
+                    className={`mb-2 block text-sm font-medium ${theme.label}`}
+                  >
                     Hora de cierre
                   </label>
                   <input
@@ -406,7 +464,9 @@ export default async function SettingsPage({
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className={`mb-3 block text-sm font-medium ${theme.label}`}>
+                  <label
+                    className={`mb-3 block text-sm font-medium ${theme.label}`}
+                  >
                     Días de atención
                   </label>
 
@@ -430,19 +490,27 @@ export default async function SettingsPage({
 
                 <div className="md:col-span-2 grid gap-4 sm:grid-cols-3">
                   <div className={`rounded-2xl border p-4 ${theme.subtle}`}>
-                    <p className={`text-xs ${theme.textMuted}`}>Zona horaria actual</p>
-                    <p className="mt-1 text-lg font-semibold">{settings.timezone}</p>
+                    <p className={`text-xs ${theme.textMuted}`}>
+                      Zona horaria actual
+                    </p>
+                    <p className="mt-1 text-lg font-semibold">
+                      {settings.timezone}
+                    </p>
                   </div>
 
                   <div className={`rounded-2xl border p-4 ${theme.subtle}`}>
-                    <p className={`text-xs ${theme.textMuted}`}>Apertura actual</p>
+                    <p className={`text-xs ${theme.textMuted}`}>
+                      Apertura actual
+                    </p>
                     <p className="mt-1 text-lg font-semibold">
                       {settings.workday_start_time}
                     </p>
                   </div>
 
                   <div className={`rounded-2xl border p-4 ${theme.subtle}`}>
-                    <p className={`text-xs ${theme.textMuted}`}>Cierre actual</p>
+                    <p className={`text-xs ${theme.textMuted}`}>
+                      Cierre actual
+                    </p>
                     <p className="mt-1 text-lg font-semibold">
                       {settings.workday_end_time}
                     </p>
