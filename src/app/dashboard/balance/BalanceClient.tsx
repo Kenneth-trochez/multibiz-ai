@@ -11,6 +11,7 @@ import {
   Lock,
 } from "lucide-react";
 import * as XLSX from "xlsx";
+import { time } from "console";
 
 type Theme = {
   pageBg: string;
@@ -111,9 +112,9 @@ function formatMoney(value: number) {
   return `L ${value.toFixed(2)}`;
 }
 
-function formatDateTime(dateStr: string) {
+function formatDateTime(dateStr: string, timezone: string) {
   return new Intl.DateTimeFormat("es-HN", {
-    timeZone: "America/Tegucigalpa",
+    timeZone: timezone,
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -193,6 +194,7 @@ export default function BalanceClient({
   totalRevenue,
   canSeeAdvancedBalance,
   canExportBalance,
+  timezone,
 }: {
   theme: Theme;
   rangeLabel: string;
@@ -227,6 +229,7 @@ export default function BalanceClient({
   totalRevenue: number;
   canSeeAdvancedBalance: boolean;
   canExportBalance: boolean;
+  timezone: string;
 }) {
   const [chartPage, setChartPage] = useState(0);
   const [showRecordsModal, setShowRecordsModal] = useState(false);
@@ -307,7 +310,7 @@ export default function BalanceClient({
     ];
 
     const appointmentsData = filteredAppointments.map((apt) => ({
-      Fecha: formatDateTime(apt.appointment_at),
+      Fecha: formatDateTime(apt.appointment_at, timezone),
       Cliente: apt.customer?.name || "Cliente no disponible",
       Staff: apt.staff?.display_name || "Sin asignar",
       Servicio: apt.service?.name || "Sin servicio",
@@ -318,7 +321,7 @@ export default function BalanceClient({
 
     const salesData = filteredSales.map((sale) => ({
       IDVenta: sale.id,
-      Fecha: formatDateTime(sale.sale_at),
+      Fecha: formatDateTime(sale.sale_at, timezone),
       Cliente: sale.customer?.name || "Sin cliente",
       Staff: sale.staff?.display_name || "Sin asignar",
       Teléfono: sale.customer?.phone || "Sin teléfono",
@@ -685,7 +688,7 @@ export default function BalanceClient({
                         <div className={`mt-1 flex flex-wrap gap-3 text-sm ${theme.textMuted}`}>
                           <span>{apt.service?.name || "Sin servicio"}</span>
                           <span>{apt.staff?.display_name || "Sin staff"}</span>
-                          <span>{formatDateTime(apt.appointment_at)}</span>
+                          <span>{formatDateTime(apt.appointment_at, timezone)}</span>
                         </div>
                       </div>
 
@@ -708,7 +711,7 @@ export default function BalanceClient({
                         </p>
                         <div className={`mt-1 flex flex-wrap gap-3 text-sm ${theme.textMuted}`}>
                           <span>{sale.staff?.display_name || "Sin staff"}</span>
-                          <span>{formatDateTime(sale.sale_at)}</span>
+                          <span>{formatDateTime(sale.sale_at, timezone)}</span>
                           <span>Descuento: {formatMoney(Number(sale.discount || 0))}</span>
                         </div>
                       </div>
@@ -865,7 +868,7 @@ export default function BalanceClient({
                           {filteredAppointments.map((apt) => (
                             <tr key={apt.id} className="border-t">
                               <td className="px-4 py-3 text-sm">
-                                {formatDateTime(apt.appointment_at)}
+                                {formatDateTime(apt.appointment_at, timezone)}
                               </td>
                               <td className="px-4 py-3 text-sm font-medium">
                                 {apt.customer?.name || "Cliente no disponible"}
@@ -928,7 +931,7 @@ export default function BalanceClient({
                           {filteredSales.map((sale) => (
                             <tr key={sale.id} className="border-t">
                               <td className="px-4 py-3 text-sm">
-                                {formatDateTime(sale.sale_at)}
+                                {formatDateTime(sale.sale_at, timezone)}
                               </td>
                               <td className="px-4 py-3 text-sm font-medium">
                                 {sale.customer?.name || "Sin cliente"}

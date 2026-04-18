@@ -54,9 +54,9 @@ type SaleItemRecord = {
   } | null;
 };
 
-function getDatePartsInTegucigalpa(date: Date) {
+function getDatePartsInTimezone(date: Date, timezone: string) {
   const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Tegucigalpa",
+    timeZone: timezone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -69,9 +69,9 @@ function getDatePartsInTegucigalpa(date: Date) {
   return { year, month, day };
 }
 
-function getCurrentMonthKey() {
+function getCurrentMonthKey(timezone: string) {
   const now = new Date();
-  const { year, month } = getDatePartsInTegucigalpa(now);
+  const { year, month } = getDatePartsInTimezone(now, timezone);
   return `${year}-${month}`;
 }
 
@@ -94,8 +94,9 @@ function parseMonthKey(monthKey: string) {
   return { year, month };
 }
 
-function getMonthRange(monthKey: string) {
-  const parsed = parseMonthKey(monthKey) || parseMonthKey(getCurrentMonthKey())!;
+function getMonthRange(monthKey: string, timezone: string) {
+  const parsed =
+    parseMonthKey(monthKey) || parseMonthKey(getCurrentMonthKey(timezone))!;
   const year = parsed.year;
   const month = parsed.month;
 
@@ -104,14 +105,16 @@ function getMonthRange(monthKey: string) {
   const nextMonthDate =
     month === 12 ? new Date(year + 1, 0, 1) : new Date(year, month, 1);
 
-  const nextParts = getDatePartsInTegucigalpa(nextMonthDate);
+  const nextParts = getDatePartsInTimezone(nextMonthDate, timezone);
   const endExclusive = `${nextParts.year}-${nextParts.month}-${nextParts.day}T00:00:00`;
 
   const monthLabel = new Intl.DateTimeFormat("es-HN", {
-    timeZone: "America/Tegucigalpa",
+    timeZone: timezone,
     month: "long",
     year: "numeric",
-  }).format(new Date(`${year}-${String(month).padStart(2, "0")}-01T12:00:00`));
+  }).format(
+    new Date(`${year}-${String(month).padStart(2, "0")}-01T12:00:00`)
+  );
 
   const prevMonth =
     month === 1
@@ -134,8 +137,8 @@ function getMonthRange(monthKey: string) {
   };
 }
 
-function getDateKey(dateStr: string) {
-  const { year, month, day } = getDatePartsInTegucigalpa(new Date(dateStr));
+function getDateKey(dateStr: string, timezone: string) {
+  const { year, month, day } = getDatePartsInTimezone(new Date(dateStr), timezone);
   return `${year}-${month}-${day}`;
 }
 
@@ -152,8 +155,16 @@ export default async function BalancePage({
   const supabase = await createClient();
   const plan = await getCurrentPlan();
 
-  const selectedMonth = params.month || getCurrentMonthKey();
-  const range = getMonthRange(selectedMonth);
+  const { data: settings } = await supabase
+    .from("business_settings")
+    .select("timezone")
+    .eq("business_id", business.id)
+    .maybeSingle();
+
+  const timezone = settings?.timezone || "America/Tegucigalpa";
+
+  const selectedMonth = params.month || getCurrentMonthKey(timezone);
+  const range = getMonthRange(selectedMonth, timezone);
 
   const planCode = String(plan?.code || "").toLowerCase();
   const canSeeAdvancedBalance = planCode !== "basic";
@@ -233,7 +244,9 @@ export default async function BalancePage({
       <main className={`min-h-screen p-6 ${theme.pageBg}`}>
         <div className={`rounded-3xl border p-6 ${theme.card}`}>
           Error cargando balance:{" "}
-          {completedError?.message || allAppointmentsError?.message || salesError?.message}
+          {completedError?.message ||
+            allAppointmentsError?.message ||
+            salesError?.message}
         </div>
       </main>
     );
@@ -433,11 +446,11 @@ export default async function BalancePage({
     )}-${String(day).padStart(2, "0")}`;
 
     const appointmentsRevenue = completedAppointments
-      .filter((apt) => getDateKey(apt.appointment_at) === key)
+      .filter((apt) => getDateKey(apt.appointment_at, timezone) === key)
       .reduce((sum, apt) => sum + Number(apt.service?.price || 0), 0);
 
     const salesDayRevenue = sales
-      .filter((sale) => getDateKey(sale.sale_at) === key)
+      .filter((sale) => getDateKey(sale.sale_at, timezone) === key)
       .reduce((sum, sale) => sum + Number(sale.total || 0), 0);
 
     dailyRevenue.push({
@@ -526,6 +539,7 @@ export default async function BalancePage({
           totalRevenue={totalRevenue}
           canSeeAdvancedBalance={canSeeAdvancedBalance}
           canExportBalance={canExportBalance}
+          timezone={timezone}
         />
       </div>
     </main>
