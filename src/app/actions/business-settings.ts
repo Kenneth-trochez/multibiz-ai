@@ -4,7 +4,15 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-const VALID_TIMEZONES = ["America/Tegucigalpa"] as const;
+const VALID_TIMEZONES = [
+  "America/Tegucigalpa",
+  "America/Mexico_City",
+  "America/Bogota",
+  "America/New_York",
+  "America/Los_Angeles",
+  "Europe/Madrid",
+] as const;
+
 const VALID_WORKDAYS = [
   "monday",
   "tuesday",

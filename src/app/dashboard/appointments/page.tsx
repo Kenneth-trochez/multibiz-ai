@@ -47,9 +47,9 @@ type StaffOption = {
   specialty: string | null;
 };
 
-function getTodayInTegucigalpa() {
+function getTodayInTimezone(timezone: string) {
   const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Tegucigalpa",
+    timeZone: timezone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -79,6 +79,7 @@ export default async function AppointmentsPage({
     { data: customers },
     { data: services },
     { data: staff },
+    { data: settings },
   ] = await Promise.all([
     supabase
       .from("appointments")
@@ -115,6 +116,12 @@ export default async function AppointmentsPage({
       .eq("business_id", business.id)
       .eq("active", true)
       .order("display_name", { ascending: true }),
+
+    supabase
+      .from("business_settings")
+      .select("timezone")
+      .eq("business_id", business.id)
+      .maybeSingle(),
   ]);
 
   if (appointmentsError) {
@@ -126,6 +133,8 @@ export default async function AppointmentsPage({
       </main>
     );
   }
+
+  const timezone = settings?.timezone || "America/Tegucigalpa";
 
   const normalizedAppointments: AppointmentRow[] = (appointments || []).map(
     (apt: any) => ({
@@ -180,7 +189,8 @@ export default async function AppointmentsPage({
         services={(services || []) as ServiceOption[]}
         staff={(staff || []) as StaffOption[]}
         theme={theme}
-        today={getTodayInTegucigalpa()}
+        today={getTodayInTimezone(timezone)}
+        timezone={timezone}
       />
     </main>
   );

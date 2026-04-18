@@ -89,20 +89,18 @@ type Theme = {
   headerBg: string;
 };
 
-const TZ = "America/Tegucigalpa";
-
-function formatHour(dateStr: string) {
+function formatHour(dateStr: string, timezone: string) {
   return new Intl.DateTimeFormat("es-HN", {
-    timeZone: TZ,
+    timeZone: timezone,
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
   }).format(new Date(dateStr));
 }
 
-function formatDateTime(dateStr: string) {
+function formatDateTime(dateStr: string, timezone: string) {
   return new Intl.DateTimeFormat("es-HN", {
-    timeZone: TZ,
+    timeZone: timezone,
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -112,9 +110,9 @@ function formatDateTime(dateStr: string) {
   }).format(new Date(dateStr));
 }
 
-function dateKeyInTz(dateStr: string) {
+function dateKeyInTz(dateStr: string, timezone: string) {
   const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: TZ,
+    timeZone: timezone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -127,11 +125,11 @@ function dateKeyInTz(dateStr: string) {
   return `${year}-${month}-${day}`;
 }
 
-function toDateTimeLocalValue(dateStr: string) {
+function toDateTimeLocalValue(dateStr: string, timezone: string) {
   const date = new Date(dateStr);
 
   const formatter = new Intl.DateTimeFormat("sv-SE", {
-    timeZone: TZ,
+    timeZone: timezone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -187,6 +185,7 @@ export default function AppointmentsClient({
   staff,
   theme,
   today,
+  timezone,
 }: {
   businessId: string;
   initialAppointments: AppointmentRow[];
@@ -195,6 +194,7 @@ export default function AppointmentsClient({
   staff: StaffOption[];
   theme: Theme;
   today: string;
+  timezone: string;
 }) {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingAppointment, setEditingAppointment] =
@@ -224,7 +224,7 @@ export default function AppointmentsClient({
       const matchStatus = !filterStatus || apt.status === filterStatus;
       const matchSource = !filterSource || apt.source === filterSource;
       const matchDate =
-        showAllDates || dateKeyInTz(apt.appointment_at) === filterDate;
+        showAllDates || dateKeyInTz(apt.appointment_at, timezone) === filterDate;
 
       return matchSearch && matchStatus && matchSource && matchDate;
     });
@@ -235,6 +235,7 @@ export default function AppointmentsClient({
     filterSource,
     filterDate,
     showAllDates,
+    timezone,
   ]);
 
   return (
@@ -395,8 +396,8 @@ export default function AppointmentsClient({
                     >
                       <td className="px-6 py-4 font-semibold">
                         {showAllDates
-                          ? formatDateTime(apt.appointment_at)
-                          : formatHour(apt.appointment_at)}
+                          ? formatDateTime(apt.appointment_at, timezone)
+                          : formatHour(apt.appointment_at, timezone)}
                       </td>
 
                       <td className="px-6 py-4">
@@ -832,7 +833,8 @@ export default function AppointmentsClient({
                     name="appointment_at"
                     required
                     defaultValue={toDateTimeLocalValue(
-                      editingAppointment.appointment_at
+                      editingAppointment.appointment_at,
+                      timezone
                     )}
                     className={`w-full rounded-xl border py-2.5 pl-10 pr-3 text-sm outline-none ${theme.input}`}
                   />

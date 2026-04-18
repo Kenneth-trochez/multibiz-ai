@@ -38,11 +38,11 @@ async function getAppointmentNotificationContext(params: {
 
       staffId
         ? supabase
-          .from("staff")
-          .select("id, display_name")
-          .eq("business_id", businessId)
-          .eq("id", staffId)
-          .maybeSingle()
+            .from("staff")
+            .select("id, display_name")
+            .eq("business_id", businessId)
+            .eq("id", staffId)
+            .maybeSingle()
         : Promise.resolve({ data: null }),
     ]);
 
@@ -53,24 +53,35 @@ async function getAppointmentNotificationContext(params: {
   };
 }
 
-function formatAppointmentPushDate(value: string) {
+async function getBusinessTimezone(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  businessId: string
+) {
+  const { data } = await supabase
+    .from("business_settings")
+    .select("timezone")
+    .eq("business_id", businessId)
+    .maybeSingle();
+
+  return data?.timezone || "America/Tegucigalpa";
+}
+
+function formatAppointmentPushDate(value: string, timezone: string) {
   return new Date(value).toLocaleString("es-HN", {
-    timeZone: "America/Tegucigalpa",
+    timeZone: timezone,
     dateStyle: "medium",
     timeStyle: "short",
   });
 }
 
-function normalizeAppointmentAtFromLocal(value: string) {
+function normalizeAppointmentAtFromLocal(value: string, timezone: string) {
   const trimmed = value.trim();
   if (!trimmed) return trimmed;
 
-  // Si ya trae zona horaria, se respeta
   if (/[zZ]|[+-]\d{2}:\d{2}$/.test(trimmed)) {
     return new Date(trimmed).toISOString();
   }
 
-  // datetime-local viene como YYYY-MM-DDTHH:mm
   const [datePart, timePart] = trimmed.split("T");
   if (!datePart || !timePart) {
     throw new Error("appointment_at inválido");
@@ -79,9 +90,20 @@ function normalizeAppointmentAtFromLocal(value: string) {
   const [year, month, day] = datePart.split("-").map(Number);
   const [hour, minute] = timePart.split(":").map(Number);
 
-  // Honduras = UTC-6
-  // Para guardar en UTC: local + 6 horas
-  const utcDate = new Date(Date.UTC(year, month - 1, day, hour + 6, minute, 0));
+  const timezoneOffsets: Record<string, number> = {
+    "America/Tegucigalpa": 6,
+    "America/Mexico_City": 6,
+    "America/Bogota": 5,
+    "America/New_York": 4,
+    "America/Los_Angeles": 7,
+    "Europe/Madrid": -2,
+  };
+
+  const utcOffsetHours = timezoneOffsets[timezone] ?? 6;
+
+  const utcDate = new Date(
+    Date.UTC(year, month - 1, day, hour + utcOffsetHours, minute, 0)
+  );
 
   return utcDate.toISOString();
 }
@@ -195,11 +217,10 @@ export async function createAppointmentAction(formData: FormData): Promise<void>
   const serviceId = String(formData.get("service_id") || "").trim();
   const staffId = String(formData.get("staff_id") || "").trim();
   const rawAppointmentAt = String(formData.get("appointment_at") || "").trim();
-  const appointmentAt = normalizeAppointmentAtFromLocal(rawAppointmentAt);
   const notes = String(formData.get("notes") || "").trim();
   const source = String(formData.get("source") || "manual").trim();
 
-  if (!businessId || !customerId || !serviceId || !appointmentAt) {
+  if (!businessId || !customerId || !serviceId || !rawAppointmentAt) {
     redirect("/dashboard/appointments?error=Faltan+datos+obligatorios");
   }
 
@@ -208,6 +229,11 @@ export async function createAppointmentAction(formData: FormData): Promise<void>
   }
 
   const supabase = await createClient();
+  const timezone = await getBusinessTimezone(supabase, businessId);
+  const appointmentAt = normalizeAppointmentAtFromLocal(
+    rawAppointmentAt,
+    timezone
+  );
 
   if (staffId) {
     await validateStaffAvailability({
@@ -218,13 +244,6 @@ export async function createAppointmentAction(formData: FormData): Promise<void>
       appointmentAt,
     });
   }
-
-  console.log("FORM VALUE:", formData.get("appointment_at"));
-  console.log("RAW APPOINTMENT AT:", rawAppointmentAt);
-  console.log("FINAL APPOINTMENT AT:", appointmentAt);
-  console.log("INSERTING INTO DB:", {
-    appointment_at: appointmentAt,
-  });
 
   const { data: insertedAppointment, error } = await supabase
     .from("appointments")
@@ -260,7 +279,8 @@ export async function createAppointmentAction(formData: FormData): Promise<void>
       businessId,
       title: "Nueva cita agendada",
       body: `${context.customerName} · ${context.serviceName} · ${formatAppointmentPushDate(
-        appointmentAt
+        appointmentAt,
+        timezone
       )}`,
       data: {
         type: "appointment_created",
@@ -302,12 +322,11 @@ export async function updateAppointmentAction(formData: FormData): Promise<void>
   const serviceId = String(formData.get("service_id") || "").trim();
   const staffId = String(formData.get("staff_id") || "").trim();
   const rawAppointmentAt = String(formData.get("appointment_at") || "").trim();
-  const appointmentAt = normalizeAppointmentAtFromLocal(rawAppointmentAt);
   const status = String(formData.get("status") || "").trim();
   const notes = String(formData.get("notes") || "").trim();
   const source = String(formData.get("source") || "manual").trim();
 
-  if (!appointmentId || !businessId || !customerId || !serviceId || !appointmentAt) {
+  if (!appointmentId || !businessId || !customerId || !serviceId || !rawAppointmentAt) {
     redirect("/dashboard/appointments?error=Faltan+datos+obligatorios");
   }
 
@@ -320,6 +339,11 @@ export async function updateAppointmentAction(formData: FormData): Promise<void>
   }
 
   const supabase = await createClient();
+  const timezone = await getBusinessTimezone(supabase, businessId);
+  const appointmentAt = normalizeAppointmentAtFromLocal(
+    rawAppointmentAt,
+    timezone
+  );
 
   if (staffId) {
     await validateStaffAvailability({
@@ -366,7 +390,8 @@ export async function updateAppointmentAction(formData: FormData): Promise<void>
       businessId,
       title: "Cita actualizada",
       body: `${context.customerName} · ${context.serviceName} · ${formatAppointmentPushDate(
-        appointmentAt
+        appointmentAt,
+        timezone
       )}`,
       data: {
         type: "appointment_updated",
@@ -436,6 +461,11 @@ export async function updateAppointmentStatusAction(
     redirect("/dashboard/appointments?error=No+se+pudo+encontrar+la+cita");
   }
 
+  const timezone = await getBusinessTimezone(
+    supabase,
+    existingAppointment.business_id
+  );
+
   const { error } = await supabase
     .from("appointments")
     .update({ status })
@@ -459,7 +489,10 @@ export async function updateAppointmentStatusAction(
     await sendPushToBusinessMembers({
       businessId: existingAppointment.business_id,
       title: "Estado de cita actualizado",
-      body: `${context.customerName} · ${context.serviceName} · Estado: ${status}`,
+      body: `${context.customerName} · ${context.serviceName} · Estado: ${status} · ${formatAppointmentPushDate(
+        existingAppointment.appointment_at,
+        timezone
+      )}`,
       data: {
         type: "appointment_status_updated",
         appointmentId,
