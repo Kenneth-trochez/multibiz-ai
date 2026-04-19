@@ -33,17 +33,29 @@ export default async function CustomersPage({
   const from = (currentPage - 1) * pageSize;
   const to = from + pageSize - 1;
 
-  const { count, error: countError } = await supabase
-    .from("customers")
-    .select("*", { count: "exact", head: true })
-    .eq("business_id", business.id);
+  const [
+    { count, error: countError },
+    { data: customers, error },
+    { data: settings },
+  ] = await Promise.all([
+    supabase
+      .from("customers")
+      .select("*", { count: "exact", head: true })
+      .eq("business_id", business.id),
 
-  const { data: customers, error } = await supabase
-    .from("customers")
-    .select("id, name, phone, email, address, notes, created_at")
-    .eq("business_id", business.id)
-    .order("created_at", { ascending: false })
-    .range(from, to);
+    supabase
+      .from("customers")
+      .select("id, name, phone, email, address, notes, created_at")
+      .eq("business_id", business.id)
+      .order("created_at", { ascending: false })
+      .range(from, to),
+
+    supabase
+      .from("business_settings")
+      .select("timezone")
+      .eq("business_id", business.id)
+      .maybeSingle(),
+  ]);
 
   if (error || countError) {
     return (
@@ -57,6 +69,7 @@ export default async function CustomersPage({
 
   const totalCustomers = count || 0;
   const totalPages = Math.max(1, Math.ceil(totalCustomers / pageSize));
+  const timezone = settings?.timezone || "America/Tegucigalpa";
 
   return (
     <main className={`min-h-screen p-6 ${theme.pageBg}`}>
@@ -97,6 +110,7 @@ export default async function CustomersPage({
             <CustomersList
               customers={(customers || []) as Customer[]}
               theme={theme}
+              timezone={timezone}
             />
 
             <div className="flex items-center justify-between">

@@ -41,12 +41,23 @@ type Theme = {
   headerBg: string;
 };
 
+function formatCustomerDate(dateStr: string, timezone: string) {
+  return new Intl.DateTimeFormat("es-HN", {
+    timeZone: timezone,
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(new Date(dateStr));
+}
+
 export default function CustomersList({
   customers,
   theme,
+  timezone,
 }: {
   customers: Customer[];
   theme: Theme;
+  timezone: string;
 }) {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
 
@@ -90,7 +101,7 @@ export default function CustomersList({
                   </div>
 
                   <div className={`shrink-0 text-xs ${theme.textMuted}`}>
-                    {new Date(customer.created_at).toLocaleDateString("es-HN")}
+                    {formatCustomerDate(customer.created_at, timezone)}
                   </div>
                 </div>
               </button>
