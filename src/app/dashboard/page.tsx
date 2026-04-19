@@ -33,9 +33,9 @@ type UpcomingAppointment = {
   } | null;
 };
 
-function getTodayRangeInTegucigalpa() {
+function getTodayRangeInTimezone(timezone: string) {
   const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Tegucigalpa",
+    timeZone: timezone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -53,9 +53,9 @@ function getTodayRangeInTegucigalpa() {
   };
 }
 
-function formatDateTime(dateStr: string) {
+function formatDateTime(dateStr: string, timezone: string) {
   return new Intl.DateTimeFormat("es-HN", {
-    timeZone: "America/Tegucigalpa",
+    timeZone: timezone,
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -99,7 +99,15 @@ export default async function DashboardPage() {
   const { business, role } = ctx;
   const theme = getThemeClasses(business.theme || "warm");
   const supabase = await createClient();
-  const today = getTodayRangeInTegucigalpa();
+
+  const { data: settings } = await supabase
+    .from("business_settings")
+    .select("timezone")
+    .eq("business_id", business.id)
+    .maybeSingle();
+
+  const timezone = settings?.timezone || "America/Tegucigalpa";
+  const today = getTodayRangeInTimezone(timezone);
 
   const [
     { count: customersCount },
@@ -356,7 +364,7 @@ export default async function DashboardPage() {
                           <span>
                             {apt.staff?.display_name || "Sin staff asignado"}
                           </span>
-                          <span>{formatDateTime(apt.appointment_at)}</span>
+                          <span>{formatDateTime(apt.appointment_at, timezone)}</span>
                         </div>
                       </div>
 
