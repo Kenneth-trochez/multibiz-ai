@@ -84,6 +84,20 @@ function cycleLabel(cycle: string | null | undefined) {
   }
 }
 
+function formatDateTime(value: string | null | undefined, timezone: string) {
+  if (!value) return "—";
+
+  return new Intl.DateTimeFormat("es-HN", {
+    timeZone: timezone,
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(new Date(value));
+}
+
 export default async function ProfilePage({
   searchParams,
 }: {
@@ -101,14 +115,21 @@ export default async function ProfilePage({
       ? params.cycle
       : "monthly";
 
-  const [{ data: subscriptionRow }, { data: plans }] = await Promise.all([
+  const [
+    { data: subscriptionRow },
+    { data: plans },
+    { data: settings },
+  ] = await Promise.all([
     supabase
       .from("business_subscriptions")
       .select(`
         id,
         status,
         billing_cycle,
+        current_period_start,
         current_period_end,
+        started_at,
+        created_at,
         plan:subscription_plans(
           id,
           code,
@@ -129,7 +150,15 @@ export default async function ProfilePage({
       .select("id, code, name, description, price_monthly, features, limits, active")
       .eq("active", true)
       .order("price_monthly", { ascending: true }),
+
+    supabase
+      .from("business_settings")
+      .select("timezone")
+      .eq("business_id", business.id)
+      .maybeSingle(),
   ]);
+
+  const timezone = settings?.timezone || "America/Tegucigalpa";
 
   const currentPlan = subscriptionRow?.plan
     ? Array.isArray(subscriptionRow.plan)
@@ -209,6 +238,13 @@ export default async function ProfilePage({
                     {business.business_type || "Negocio"}
                   </p>
                 </div>
+
+                <div>
+                  <p className={`text-xs uppercase tracking-wide ${theme.textMuted}`}>
+                    Zona horaria
+                  </p>
+                  <p className="mt-1 text-sm font-medium">{timezone}</p>
+                </div>
               </div>
             </div>
 
@@ -249,6 +285,13 @@ export default async function ProfilePage({
                 </div>
 
                 <div className={`rounded-2xl border p-4 ${theme.subtle}`}>
+                  <p className={`text-xs ${theme.textMuted}`}>Estado</p>
+                  <p className="mt-1 text-lg font-semibold uppercase">
+                    {subscriptionRow?.status || "inactive"}
+                  </p>
+                </div>
+
+                <div className={`rounded-2xl border p-4 ${theme.subtle}`}>
                   <p className={`text-xs ${theme.textMuted}`}>Precio del ciclo actual</p>
                   <p className="mt-1 text-lg font-semibold">
                     ${getCyclePrice(
@@ -262,6 +305,30 @@ export default async function ProfilePage({
                   <p className={`text-xs ${theme.textMuted}`}>Precio mensual base</p>
                   <p className="mt-1 text-lg font-semibold">
                     ${Number(currentPlan?.price_monthly || 0).toFixed(2)}
+                  </p>
+                </div>
+
+                <div className={`rounded-2xl border p-4 ${theme.subtle}`}>
+                  <p className={`text-xs ${theme.textMuted}`}>Inicio de suscripción</p>
+                  <p className="mt-1 text-sm font-semibold">
+                    {formatDateTime(
+                      subscriptionRow?.started_at || subscriptionRow?.created_at,
+                      timezone
+                    )}
+                  </p>
+                </div>
+
+                <div className={`rounded-2xl border p-4 ${theme.subtle}`}>
+                  <p className={`text-xs ${theme.textMuted}`}>Inicio del período actual</p>
+                  <p className="mt-1 text-sm font-semibold">
+                    {formatDateTime(subscriptionRow?.current_period_start, timezone)}
+                  </p>
+                </div>
+
+                <div className={`rounded-2xl border p-4 ${theme.subtle}`}>
+                  <p className={`text-xs ${theme.textMuted}`}>Fin del período actual</p>
+                  <p className="mt-1 text-sm font-semibold">
+                    {formatDateTime(subscriptionRow?.current_period_end, timezone)}
                   </p>
                 </div>
 
