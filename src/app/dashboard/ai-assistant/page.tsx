@@ -29,18 +29,50 @@ type AiUsageLogRow = {
 
 const LOGS_PER_PAGE = 5;
 
-function formatDateTime(value: string | null) {
+function formatDateTime(value: string | null, timezone: string) {
   if (!value) return "—";
-  return new Date(value).toLocaleString("es-HN");
+
+  return new Intl.DateTimeFormat("es-HN", {
+    timeZone: timezone,
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(new Date(value));
 }
 
-function getMonthRange(date = new Date()) {
-  const start = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
-  const end = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1));
+function getDatePartsInTimezone(date: Date, timezone: string) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+
+  const year = parts.find((p) => p.type === "year")?.value ?? "";
+  const month = parts.find((p) => p.type === "month")?.value ?? "";
+  const day = parts.find((p) => p.type === "day")?.value ?? "";
+
+  return { year, month, day };
+}
+
+function getMonthRange(timezone: string, date = new Date()) {
+  const { year, month } = getDatePartsInTimezone(date, timezone);
+
+  const start = `${year}-${month}-01`;
+
+  const nextMonthDate =
+    Number(month) === 12
+      ? new Date(Number(year) + 1, 0, 1)
+      : new Date(Number(year), Number(month), 1);
+
+  const nextParts = getDatePartsInTimezone(nextMonthDate, timezone);
 
   return {
-    start: start.toISOString().slice(0, 10),
-    end: end.toISOString().slice(0, 10),
+    start,
+    end: `${nextParts.year}-${nextParts.month}-${nextParts.day}`,
   };
 }
 
@@ -78,11 +110,19 @@ export default async function AiAssistantPage({
   const { business } = ctx;
   const theme = getThemeClasses(business.theme || "warm");
 
+  const { data: settings } = await supabase
+    .from("business_settings")
+    .select("timezone, ai_allow_overage")
+    .eq("business_id", business.id)
+    .maybeSingle();
+
+  const timezone = settings?.timezone || "America/Tegucigalpa";
+
   const hasAiAccess = Boolean(plan?.features?.ai_booking);
   const currentPage = Math.max(1, Number(params.page || "1") || 1);
   const searchQuery = String(params.q || "").trim();
 
-  const { start, end } = getMonthRange();
+  const { start, end } = getMonthRange(timezone);
   const from = (currentPage - 1) * LOGS_PER_PAGE;
   const to = from + LOGS_PER_PAGE - 1;
 
@@ -116,7 +156,6 @@ export default async function AiAssistantPage({
   const [
     { data: usageLogs, count: totalLogs },
     { data: allLogsForSummary },
-    { data: businessSettings },
     { data: vapiAssistant },
   ] = await Promise.all([
     filteredLogsQuery
@@ -146,12 +185,6 @@ export default async function AiAssistantPage({
       .lt("usage_date", end),
 
     supabase
-      .from("business_settings")
-      .select("ai_allow_overage")
-      .eq("business_id", business.id)
-      .maybeSingle(),
-
-    supabase
       .from("business_vapi_assistants")
       .select("vapi_assistant_id, vapi_phone_number_id, active")
       .eq("business_id", business.id)
@@ -164,7 +197,7 @@ export default async function AiAssistantPage({
   const includedMinutes = Number(plan?.limits?.ai_monthly_minutes || 0);
   const maxCallMinutes = Number(plan?.limits?.ai_max_call_minutes || 0);
   const overagePrice = Number(plan?.limits?.ai_overage_price || 0);
-  const aiAllowOverage = Boolean(businessSettings?.ai_allow_overage);
+  const aiAllowOverage = Boolean(settings?.ai_allow_overage);
 
   const usedMinutes = Number(
     allLogs.reduce((acc, row) => acc + Number(row.minutes_used || 0), 0)
@@ -395,12 +428,16 @@ export default async function AiAssistantPage({
                         <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-3">
                           <div>
                             <p className={`text-xs ${theme.textMuted}`}>Inicio</p>
-                            <p className="mt-1 font-medium">{formatDateTime(log.started_at)}</p>
+                            <p className="mt-1 font-medium">
+                              {formatDateTime(log.started_at, timezone)}
+                            </p>
                           </div>
 
                           <div>
                             <p className={`text-xs ${theme.textMuted}`}>Fin</p>
-                            <p className="mt-1 font-medium">{formatDateTime(log.ended_at)}</p>
+                            <p className="mt-1 font-medium">
+                              {formatDateTime(log.ended_at, timezone)}
+                            </p>
                           </div>
 
                           <div>
@@ -569,6 +606,11 @@ export default async function AiAssistantPage({
                   <p className="mt-1 font-medium">
                     {vapiAssistant?.active ? "Activo" : "Inactivo"}
                   </p>
+                </div>
+
+                <div className={`rounded-2xl border p-4 ${theme.subtle}`}>
+                  <p className={`text-xs ${theme.textMuted}`}>Zona horaria</p>
+                  <p className="mt-1 font-medium">{timezone}</p>
                 </div>
               </div>
             </section>

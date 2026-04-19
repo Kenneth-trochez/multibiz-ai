@@ -40,9 +40,18 @@ type ChatMessage = {
   content: string;
 };
 
-function formatDateTime(value: string | null) {
+function formatDateTime(value: string | null, timezone: string) {
   if (!value) return "—";
-  return new Date(value).toLocaleString("es-HN");
+
+  return new Intl.DateTimeFormat("es-HN", {
+    timeZone: timezone,
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(new Date(value));
 }
 
 function extractTextFromUnknownContent(content: any): string {
@@ -139,7 +148,6 @@ function normalizeMessages(messages: any[] | null | undefined): ChatMessage[] {
       );
 
       if (!content) return null;
-
       if (role === "system") return null;
 
       return {
@@ -164,6 +172,14 @@ export default async function AiAssistantCallDetailPage({
 
   const { business } = ctx;
   const theme = getThemeClasses(business.theme || "warm");
+
+  const { data: settings } = await supabase
+    .from("business_settings")
+    .select("timezone")
+    .eq("business_id", business.id)
+    .maybeSingle();
+
+  const timezone = settings?.timezone || "America/Tegucigalpa";
 
   const hasAiAccess = Boolean(plan?.features?.ai_booking);
 
@@ -281,12 +297,28 @@ export default async function AiAssistantCallDetailPage({
 
             <div className={`rounded-2xl border p-4 ${theme.subtle}`}>
               <p className={`text-xs ${theme.textMuted}`}>Inicio</p>
-              <p className="mt-1 font-medium">{formatDateTime(log.started_at)}</p>
+              <p className="mt-1 font-medium">
+                {formatDateTime(log.started_at, timezone)}
+              </p>
             </div>
 
             <div className={`rounded-2xl border p-4 ${theme.subtle}`}>
               <p className={`text-xs ${theme.textMuted}`}>Fin</p>
-              <p className="mt-1 font-medium">{formatDateTime(log.ended_at)}</p>
+              <p className="mt-1 font-medium">
+                {formatDateTime(log.ended_at, timezone)}
+              </p>
+            </div>
+
+            <div className={`rounded-2xl border p-4 ${theme.subtle}`}>
+              <p className={`text-xs ${theme.textMuted}`}>Registrado</p>
+              <p className="mt-1 font-medium">
+                {formatDateTime(log.created_at, timezone)}
+              </p>
+            </div>
+
+            <div className={`rounded-2xl border p-4 ${theme.subtle}`}>
+              <p className={`text-xs ${theme.textMuted}`}>Zona horaria</p>
+              <p className="mt-1 font-medium">{timezone}</p>
             </div>
           </div>
         </section>
