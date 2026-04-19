@@ -101,6 +101,7 @@ export default async function SalesPage({
     { data: categories, error: categoriesError },
     { data: customers, error: customersError },
     { data: staff, error: staffError },
+    { data: settings },
   ] = await Promise.all([
     supabase
       .from("sales")
@@ -156,6 +157,12 @@ export default async function SalesPage({
       .eq("business_id", business.id)
       .eq("active", true)
       .order("display_name", { ascending: true }),
+
+    supabase
+      .from("business_settings")
+      .select("timezone")
+      .eq("business_id", business.id)
+      .maybeSingle(),
   ]);
 
   if (salesError || productsError || categoriesError || customersError || staffError) {
@@ -258,6 +265,8 @@ export default async function SalesPage({
       : product.product_categories?.name || null,
   }));
 
+  const timezone = settings?.timezone || "America/Tegucigalpa";
+
   return (
     <main className={`min-h-screen ${theme.pageBg}`}>
       <div className="mx-auto max-w-7xl px-6 pt-6">
@@ -294,6 +303,7 @@ export default async function SalesPage({
         customers={(customers || []) as CustomerOption[]}
         staff={(staff || []) as StaffOption[]}
         theme={theme}
+        timezone={timezone}
       />
     </main>
   );

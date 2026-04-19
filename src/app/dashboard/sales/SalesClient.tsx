@@ -128,9 +128,9 @@ type SaleLine = {
 
 type DiscountType = "fixed" | "percent";
 
-function formatSaleDate(dateStr: string) {
+function formatSaleDate(dateStr: string, timezone: string) {
   return new Intl.DateTimeFormat("es-HN", {
-    timeZone: "America/Tegucigalpa",
+    timeZone: timezone,
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -237,6 +237,7 @@ export default function SalesClient({
   customers,
   staff,
   theme,
+  timezone,
 }: {
   businessId: string;
   sales: SaleRow[];
@@ -245,6 +246,7 @@ export default function SalesClient({
   customers: CustomerOption[];
   staff: StaffOption[];
   theme: Theme;
+  timezone: string;
 }) {
   const [lines, setLines] = useState<SaleLine[]>([makeLine()]);
   const [discountType, setDiscountType] = useState<DiscountType>("fixed");
@@ -423,7 +425,7 @@ export default function SalesClient({
                         Venta · L {sale.total.toFixed(2)}
                       </p>
                       <p className={`mt-1 text-sm ${theme.textMuted}`}>
-                        {formatSaleDate(sale.sale_at)}
+                        {formatSaleDate(sale.sale_at, timezone)}
                       </p>
                       <p className={`mt-1 text-sm ${theme.textMuted}`}>
                         Cliente: {sale.customer?.name || "Sin cliente"} · Staff:{" "}
