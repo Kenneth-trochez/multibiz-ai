@@ -156,6 +156,7 @@ export default function CustomersList({
 
                   <CustomerContactFields
                     theme={theme}
+                    timezone={timezone}
                     initialPhone={selectedCustomer.phone || ""}
                     initialEmail={selectedCustomer.email || ""}
                   />

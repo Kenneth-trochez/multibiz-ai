@@ -8,7 +8,6 @@ import {
   resolveBusinessFromCall,
 } from "@/lib/vapi/resolveBusinessFromCall";
 
-const HONDURAS_UTC_OFFSET = "-06:00";
 const SLOT_INTERVAL_MINUTES = 30;
 
 const WEEKDAY_KEYS = [
@@ -39,14 +38,66 @@ function requireVapiKey(request: Request) {
   return null;
 }
 
-function buildAppointmentIso(date: string, hour: number, minute: number) {
-  const hh = String(hour).padStart(2, "0");
-  const mm = String(minute).padStart(2, "0");
-  return `${date}T${hh}:${mm}:00${HONDURAS_UTC_OFFSET}`;
+function getDateTimePartsInTimezone(date: Date, timezone: string) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+
+  const year = Number(parts.find((p) => p.type === "year")?.value ?? "0");
+  const month = Number(parts.find((p) => p.type === "month")?.value ?? "0");
+  const day = Number(parts.find((p) => p.type === "day")?.value ?? "0");
+  const hour = Number(parts.find((p) => p.type === "hour")?.value ?? "0");
+  const minute = Number(parts.find((p) => p.type === "minute")?.value ?? "0");
+  const second = Number(parts.find((p) => p.type === "second")?.value ?? "0");
+
+  return { year, month, day, hour, minute, second };
 }
 
-function buildRequestedIso(date: string, time: string) {
-  return `${date}T${time}:00${HONDURAS_UTC_OFFSET}`;
+function buildAppointmentIso(
+  date: string,
+  hour: number,
+  minute: number,
+  timezone: string
+) {
+  const hh = String(hour).padStart(2, "0");
+  const mm = String(minute).padStart(2, "0");
+  return buildRequestedIso(date, `${hh}:${mm}`, timezone);
+}
+
+function buildRequestedIso(date: string, time: string, timezone: string) {
+  const [year, month, day] = date.split("-").map(Number);
+  const [hour, minute] = time.split(":").map(Number);
+
+  let guess = new Date(Date.UTC(year, month - 1, day, hour, minute, 0));
+
+  for (let i = 0; i < 3; i += 1) {
+    const local = getDateTimePartsInTimezone(guess, timezone);
+
+    const targetLocalMs = Date.UTC(year, month - 1, day, hour, minute, 0);
+    const currentLocalMs = Date.UTC(
+      local.year,
+      local.month - 1,
+      local.day,
+      local.hour,
+      local.minute,
+      local.second
+    );
+
+    const diffMs = targetLocalMs - currentLocalMs;
+
+    if (diffMs === 0) break;
+
+    guess = new Date(guess.getTime() + diffMs);
+  }
+
+  return guess.toISOString();
 }
 
 function toTimeLabel(hour: number, minute: number) {
@@ -58,9 +109,10 @@ function timeToMinutes(value: string) {
   return hours * 60 + minutes;
 }
 
-function getWeekdayKeyFromDate(date: string) {
-  const jsDate = new Date(`${date}T12:00:00${HONDURAS_UTC_OFFSET}`);
-  return WEEKDAY_KEYS[jsDate.getDay()];
+function getWeekdayKeyFromDate(date: string, timezone: string) {
+  const localNoonIso = buildRequestedIso(date, "12:00", timezone);
+  const jsDate = new Date(localNoonIso);
+  return WEEKDAY_KEYS[jsDate.getUTCDay()];
 }
 
 function isTimeInsideWorkday(params: {
@@ -144,9 +196,6 @@ export async function POST(request: Request) {
     if (staffError) throw new Error("No se pudo leer el staff del negocio");
 
     const timezone = settings?.timezone || "America/Tegucigalpa";
-    if (timezone !== "America/Tegucigalpa") {
-      throw new Error("Por ahora solo se soporta America/Tegucigalpa");
-    }
 
     const workdayStartTime = String(settings?.workday_start_time || "08:00").slice(0, 5);
     const workdayEndTime = String(settings?.workday_end_time || "17:00").slice(0, 5);
@@ -154,7 +203,7 @@ export async function POST(request: Request) {
       ? settings.workdays
       : ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
 
-    const weekdayKey = getWeekdayKeyFromDate(requestedDate);
+    const weekdayKey = getWeekdayKeyFromDate(requestedDate, timezone);
 
     if (!workdays.includes(weekdayKey)) {
       return NextResponse.json({
@@ -164,7 +213,12 @@ export async function POST(request: Request) {
         date: requestedDate,
         reason: "El negocio no atiende ese día",
         usage: usagePolicy,
-        schedule: { timezone, workday_start_time: workdayStartTime, workday_end_time: workdayEndTime, workdays },
+        schedule: {
+          timezone,
+          workday_start_time: workdayStartTime,
+          workday_end_time: workdayEndTime,
+          workdays,
+        },
       });
     }
 
@@ -190,15 +244,20 @@ export async function POST(request: Request) {
           requested: {
             date: requestedDate,
             time: requestedTime,
-            appointment_at: buildRequestedIso(requestedDate, requestedTime),
+            appointment_at: buildRequestedIso(requestedDate, requestedTime, timezone),
           },
           reason: "La hora solicitada está fuera del horario del negocio",
           usage: usagePolicy,
-          schedule: { timezone, workday_start_time: workdayStartTime, workday_end_time: workdayEndTime, workdays },
+          schedule: {
+            timezone,
+            workday_start_time: workdayStartTime,
+            workday_end_time: workdayEndTime,
+            workdays,
+          },
         });
       }
 
-      const appointmentAt = buildRequestedIso(requestedDate, requestedTime);
+      const appointmentAt = buildRequestedIso(requestedDate, requestedTime, timezone);
 
       if (staffId) {
         const availability = await checkStaffAvailability({
@@ -212,7 +271,11 @@ export async function POST(request: Request) {
           ok: true,
           mode: "single_time",
           available: availability.available,
-          requested: { date: requestedDate, time: requestedTime, appointment_at: appointmentAt },
+          requested: {
+            date: requestedDate,
+            time: requestedTime,
+            appointment_at: appointmentAt,
+          },
           usage: usagePolicy,
           service: {
             id: service.id,
@@ -220,7 +283,11 @@ export async function POST(request: Request) {
             duration_minutes: Number(service.duration_minutes || 0),
           },
           staff: selectedStaff[0]
-            ? { id: selectedStaff[0].id, display_name: selectedStaff[0].display_name, specialty: selectedStaff[0].specialty || null }
+            ? {
+                id: selectedStaff[0].id,
+                display_name: selectedStaff[0].display_name,
+                specialty: selectedStaff[0].specialty || null,
+              }
             : null,
           conflict: availability.conflict,
         });
@@ -250,7 +317,11 @@ export async function POST(request: Request) {
         ok: true,
         mode: "single_time_any_staff",
         available: availableStaff.length > 0,
-        requested: { date: requestedDate, time: requestedTime, appointment_at: appointmentAt },
+        requested: {
+          date: requestedDate,
+          time: requestedTime,
+          appointment_at: appointmentAt,
+        },
         usage: usagePolicy,
         service: {
           id: service.id,
@@ -258,7 +329,12 @@ export async function POST(request: Request) {
           duration_minutes: Number(service.duration_minutes || 0),
         },
         availableStaff,
-        schedule: { timezone, workday_start_time: workdayStartTime, workday_end_time: workdayEndTime, workdays },
+        schedule: {
+          timezone,
+          workday_start_time: workdayStartTime,
+          workday_end_time: workdayEndTime,
+          workdays,
+        },
       });
     }
 
@@ -274,7 +350,12 @@ export async function POST(request: Request) {
       ) {
         const hour = Math.floor(totalMinutes / 60);
         const minute = totalMinutes % 60;
-        const appointmentAt = buildAppointmentIso(requestedDate, hour, minute);
+        const appointmentAt = buildAppointmentIso(
+          requestedDate,
+          hour,
+          minute,
+          timezone
+        );
 
         const availability = await checkStaffAvailability({
           businessId: ctx.businessId,
@@ -284,7 +365,10 @@ export async function POST(request: Request) {
         });
 
         if (availability.available) {
-          slots.push({ time: toTimeLabel(hour, minute), appointment_at: appointmentAt });
+          slots.push({
+            time: toTimeLabel(hour, minute),
+            appointment_at: appointmentAt,
+          });
         }
       }
 

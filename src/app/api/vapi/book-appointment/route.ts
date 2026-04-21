@@ -30,18 +30,46 @@ function requireVapiKey(request: Request) {
   return null;
 }
 
-function normalizeHondurasPhone(raw: string): string {
+function normalizePhoneForBusiness(raw: string, timezone: string): string {
   const value = raw.trim();
   if (!value) throw new Error("El teléfono es obligatorio");
 
   let digits = value.replace(/\D/g, "");
-  if (digits.startsWith("504")) digits = digits.slice(3);
 
-  if (digits.length !== 8) {
-    throw new Error("El teléfono debe tener 8 dígitos de Honduras");
+  if (value.startsWith("+")) {
+    if (digits.length < 8 || digits.length > 15) {
+      throw new Error("El teléfono internacional no es válido");
+    }
+
+    return `+${digits}`;
   }
 
-  return `+504 ${digits.slice(0, 4)}-${digits.slice(4)}`;
+  if (value.startsWith("00")) {
+    digits = digits.replace(/^00/, "");
+    if (digits.length < 8 || digits.length > 15) {
+      throw new Error("El teléfono internacional no es válido");
+    }
+
+    return `+${digits}`;
+  }
+
+  if (timezone === "America/Tegucigalpa") {
+    if (digits.startsWith("504")) digits = digits.slice(3);
+
+    if (digits.length !== 8) {
+      throw new Error("El teléfono debe tener 8 dígitos de Honduras o venir con prefijo internacional");
+    }
+
+    return `+504 ${digits.slice(0, 4)}-${digits.slice(4)}`;
+  }
+
+  if (digits.length < 8 || digits.length > 15) {
+    throw new Error(
+      "Para este negocio usa un número con formato internacional, por ejemplo +34123456789"
+    );
+  }
+
+  return `+${digits}`;
 }
 
 function normalizeEmail(raw: string): string | null {
@@ -59,8 +87,11 @@ function validateAppointmentAt(appointmentAt: string) {
   const value = appointmentAt.trim();
   if (!value) throw new Error("appointmentAt es obligatorio");
 
-  if (!/[-+]\d{2}:\d{2}$/.test(value)) {
-    throw new Error("appointmentAt debe incluir offset, ej: 2026-04-09T14:00:00-06:00");
+  const hasTimezone = /([zZ]|[-+]\d{2}:\d{2})$/.test(value);
+  if (!hasTimezone) {
+    throw new Error(
+      "appointmentAt debe incluir zona horaria, ej: 2026-04-09T14:00:00-06:00 o 2026-04-09T20:00:00Z"
+    );
   }
 
   const parsed = new Date(value);
@@ -148,17 +179,34 @@ export async function POST(request: Request) {
 
     const supabase = createAdminClient();
 
-    const { data: service, error: serviceError } = await supabase
-      .from("services")
-      .select("id, name, duration_minutes, active")
-      .eq("business_id", ctx.businessId)
-      .eq("id", serviceId)
-      .eq("active", true)
-      .maybeSingle();
+    const [
+      { data: service, error: serviceError },
+      { data: businessSettings, error: settingsError },
+    ] = await Promise.all([
+      supabase
+        .from("services")
+        .select("id, name, duration_minutes, active")
+        .eq("business_id", ctx.businessId)
+        .eq("id", serviceId)
+        .eq("active", true)
+        .maybeSingle(),
+
+      supabase
+        .from("business_settings")
+        .select("timezone")
+        .eq("business_id", ctx.businessId)
+        .maybeSingle(),
+    ]);
 
     if (serviceError || !service) {
       throw new Error("No se encontró el servicio solicitado");
     }
+
+    if (settingsError) {
+      throw new Error("No se pudo leer la configuración del negocio");
+    }
+
+    const timezone = businessSettings?.timezone || "America/Tegucigalpa";
 
     if (staffId) {
       const { data: staffRow, error: staffError } = await supabase
@@ -185,7 +233,7 @@ export async function POST(request: Request) {
       }
     }
 
-    const phone = normalizeHondurasPhone(rawPhone);
+    const phone = normalizePhoneForBusiness(rawPhone, timezone);
 
     let email: string | null = null;
     try {
@@ -252,7 +300,7 @@ export async function POST(request: Request) {
         body: `${customer.name} · ${service.name} · ${new Date(
           appointmentAt
         ).toLocaleString("es-HN", {
-          timeZone: "America/Tegucigalpa",
+          timeZone: timezone,
           dateStyle: "medium",
           timeStyle: "short",
         })}`,

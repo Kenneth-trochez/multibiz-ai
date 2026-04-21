@@ -161,7 +161,7 @@ export default async function CustomersPage({
                 />
               </div>
 
-              <CustomerContactFields theme={theme} />
+              <CustomerContactFields theme={theme} timezone={timezone} />
 
               <div>
                 <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
