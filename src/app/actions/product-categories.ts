@@ -9,6 +9,23 @@ function revalidateProductPages() {
   revalidatePath("/dashboard/balance");
 }
 
+function redirectWithError(message: string): never {
+  redirect(`/dashboard/products?error=${encodeURIComponent(message)}`);
+}
+
+function mapCategoryError(message: string) {
+  const lower = message.toLowerCase();
+
+  if (
+    lower.includes("product_categories_business_name_unique") ||
+    (lower.includes("duplicate key") && lower.includes("name"))
+  ) {
+    return "Ya existe una categoría con ese nombre en este negocio.";
+  }
+
+  return "No se pudo procesar la categoría. Revisa los datos e intenta de nuevo.";
+}
+
 export async function createProductCategoryAction(
   formData: FormData
 ): Promise<void> {
@@ -16,7 +33,7 @@ export async function createProductCategoryAction(
   const name = String(formData.get("name") || "").trim();
 
   if (!businessId || !name) {
-    redirect("/dashboard/products?error=Negocio+y+nombre+de+categoria+son+obligatorios");
+    redirectWithError("El nombre de la categoría es obligatorio.");
   }
 
   const supabase = await createClient();
@@ -27,7 +44,7 @@ export async function createProductCategoryAction(
   });
 
   if (error) {
-    redirect(`/dashboard/products?error=${encodeURIComponent(error.message)}`);
+    redirectWithError(mapCategoryError(error.message));
   }
 
   revalidateProductPages();
@@ -41,7 +58,7 @@ export async function updateProductCategoryAction(
   const name = String(formData.get("name") || "").trim();
 
   if (!categoryId || !name) {
-    redirect("/dashboard/products?error=Datos+de+categoria+incompletos");
+    redirectWithError("Faltan datos de la categoría.");
   }
 
   const supabase = await createClient();
@@ -55,7 +72,7 @@ export async function updateProductCategoryAction(
     .eq("id", categoryId);
 
   if (error) {
-    redirect(`/dashboard/products?error=${encodeURIComponent(error.message)}`);
+    redirectWithError(mapCategoryError(error.message));
   }
 
   revalidateProductPages();
@@ -68,10 +85,26 @@ export async function deleteProductCategoryAction(
   const categoryId = String(formData.get("categoryId") || "").trim();
 
   if (!categoryId) {
-    redirect("/dashboard/products?error=Categoria+invalida");
+    redirectWithError("Categoría inválida.");
   }
 
   const supabase = await createClient();
+
+  const { count: productsCount, error: relationError } = await supabase
+    .from("products")
+    .select("*", { count: "exact", head: true })
+    .eq("category_id", categoryId);
+
+  if (relationError) {
+    redirectWithError("No se pudo verificar si la categoría tiene productos relacionados.");
+  }
+
+  if ((productsCount || 0) > 0) {
+    const count = productsCount || 0;
+    redirectWithError(
+      `No se puede eliminar esta categoría porque está asignada a ${count} producto${count === 1 ? "" : "s"}. Primero cambia o quita esa categoría de esos productos.`
+    );
+  }
 
   const { error } = await supabase
     .from("product_categories")
@@ -79,7 +112,7 @@ export async function deleteProductCategoryAction(
     .eq("id", categoryId);
 
   if (error) {
-    redirect(`/dashboard/products?error=${encodeURIComponent(error.message)}`);
+    redirectWithError(mapCategoryError(error.message));
   }
 
   revalidateProductPages();

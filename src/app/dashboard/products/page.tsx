@@ -163,6 +163,18 @@ export default async function ProductsPage({
           </p>
         )}
 
+        {params.success === "deactivated" && (
+          <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            Producto desactivado correctamente.
+          </p>
+        )}
+
+        {params.success === "reactivated" && (
+          <p className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+            Producto reactivado correctamente.
+          </p>
+        )}
+
         {params.success === "category_created" && (
           <p className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
             Categoría creada correctamente.
@@ -262,10 +274,15 @@ export default async function ProductsPage({
             </div>
           </section>
 
-          <section className={`h-fit rounded-2xl border p-6 shadow-sm ${theme.card}`}>
-            <h2 className="mb-4 text-xl font-semibold">Nuevo producto</h2>
+          <section className={`rounded-2xl border p-6 shadow-sm ${theme.card}`}>
+            <div>
+              <h2 className="text-xl font-semibold">Nuevo producto</h2>
+              <p className={`mt-1 text-sm ${theme.textMuted}`}>
+                Registra un producto para el inventario del negocio.
+              </p>
+            </div>
 
-            <form action={createProductAction} className="grid gap-4">
+            <form action={createProductAction} className="mt-5 grid gap-4">
               <input type="hidden" name="businessId" value={business.id} />
 
               <div>
@@ -285,15 +302,12 @@ export default async function ProductsPage({
                 </label>
                 <select
                   name="categoryId"
+                  defaultValue=""
                   className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.select}`}
                 >
                   <option value="">Sin categoría</option>
                   {(categories || []).map((category: CategoryRow) => (
-                    <option
-                      key={category.id}
-                      value={category.id}
-                      className={theme.option}
-                    >
+                    <option key={category.id} value={category.id} className={theme.option}>
                       {category.name}
                     </option>
                   ))}
@@ -302,12 +316,11 @@ export default async function ProductsPage({
 
               <div>
                 <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
-                  SKU Código interno único
+                  SKU
                 </label>
                 <input
                   name="sku"
                   className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
-                  placeholder="Opcional"
                 />
               </div>
 
@@ -321,7 +334,6 @@ export default async function ProductsPage({
                     type="number"
                     min="0"
                     step="0.01"
-                    defaultValue="0"
                     className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
                     required
                   />
@@ -336,7 +348,6 @@ export default async function ProductsPage({
                     type="number"
                     min="0"
                     step="1"
-                    defaultValue="0"
                     className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
                     required
                   />
@@ -351,33 +362,20 @@ export default async function ProductsPage({
                   name="description"
                   rows={3}
                   className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
-                  placeholder="Opcional"
                 />
               </div>
 
-              <div className="flex items-center gap-3">
-                <input
-                  id="active_new_product"
-                  type="checkbox"
-                  name="active"
-                  defaultChecked
-                />
-                <label
-                  htmlFor="active_new_product"
-                  className={`text-sm font-medium ${theme.label}`}
-                >
-                  Producto activo
-                </label>
-              </div>
+              <label className="flex items-center gap-3 text-sm">
+                <input type="checkbox" name="active" defaultChecked />
+                <span className={theme.label}>Producto activo</span>
+              </label>
 
-              <div>
-                <button
-                  type="submit"
-                  className={`rounded-xl px-4 py-2 font-medium transition ${theme.buttonPrimary}`}
-                >
-                  Guardar producto
-                </button>
-              </div>
+              <button
+                type="submit"
+                className={`rounded-xl px-4 py-2 font-medium transition ${theme.buttonPrimary}`}
+              >
+                Guardar producto
+              </button>
             </form>
           </section>
         </div>

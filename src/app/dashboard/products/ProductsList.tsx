@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import {
+  deactivateProductAction,
   deleteProductAction,
+  reactivateProductAction,
   updateProductAction,
 } from "../../actions/products";
 
@@ -127,7 +129,7 @@ export default function ProductsList({
                 <div className="min-w-0">
                   <h3 className="text-xl font-semibold">Editar producto</h3>
                   <p className={`mt-1 text-sm ${theme.textMuted}`}>
-                    Modifica la información del producto o elimínalo.
+                    Modifica la información del producto, desactívalo o elimínalo si no tiene historial relacionado.
                   </p>
                 </div>
 
@@ -256,15 +258,56 @@ export default function ProductsList({
                   </div>
                 </form>
 
-                <form action={deleteProductAction} className="mt-4">
-                  <input type="hidden" name="productId" value={selectedProduct.id} />
-                  <button
-                    type="submit"
-                    className={`w-full rounded-xl px-4 py-2 text-sm font-medium transition sm:w-auto ${theme.danger}`}
+                <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                  {selectedProduct.active ? (
+                    <form action={deactivateProductAction}>
+                      <input type="hidden" name="productId" value={selectedProduct.id} />
+                      <button
+                        type="submit"
+                        className={`w-full rounded-xl px-4 py-2 text-sm font-medium transition sm:w-auto ${theme.buttonSecondary}`}
+                      >
+                        Desactivar
+                      </button>
+                    </form>
+                  ) : (
+                    <form action={reactivateProductAction}>
+                      <input type="hidden" name="productId" value={selectedProduct.id} />
+                      <button
+                        type="submit"
+                        className={`w-full rounded-xl px-4 py-2 text-sm font-medium transition sm:w-auto ${theme.buttonPrimary}`}
+                      >
+                        Reactivar
+                      </button>
+                    </form>
+                  )}
+
+                  <form
+                    action={deleteProductAction}
+                    onSubmit={(event) => {
+                      const confirmed = window.confirm(
+                        "¿Deseas eliminar este producto? Solo se eliminará si no tiene historial relacionado."
+                      );
+
+                      if (!confirmed) {
+                        event.preventDefault();
+                      }
+                    }}
                   >
-                    Eliminar
-                  </button>
-                </form>
+                    <input type="hidden" name="productId" value={selectedProduct.id} />
+                    <button
+                      type="submit"
+                      className={`w-full rounded-xl px-4 py-2 text-sm font-medium transition sm:w-auto ${theme.danger}`}
+                    >
+                      Eliminar
+                    </button>
+                  </form>
+                </div>
+
+                {!selectedProduct.active && (
+                  <p className={`mt-4 text-sm ${theme.textMuted}`}>
+                    Este producto está inactivo. Puedes reactivarlo cuando necesites volver a usarlo.
+                  </p>
+                )}
               </div>
             </div>
           </div>
