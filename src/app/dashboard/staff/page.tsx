@@ -336,7 +336,7 @@ export default async function StaffPage({
                 <button
                   type="submit"
                   formAction={createStaffUserAction}
-                  className={`rounded-xl border px-4 py-2 font-medium transition ${theme.buttonSecondary}`}
+                  className={`rounded-xl border px-4 py-2 font-medium transition ${theme.buttonPrimary}`}
                 >
                   Crear cuenta manual
                 </button>
