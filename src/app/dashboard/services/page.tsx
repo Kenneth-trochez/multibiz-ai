@@ -1,16 +1,17 @@
 import { createServiceAction } from "../../actions/services";
 import { requireSectionAccess } from "@/lib/auth/requireSectionAccess";
+import { requirePlanFeature } from "@/lib/billing/requirePlanFeature";
 import { createClient } from "@/lib/supabase/server";
 import { getThemeClasses } from "@/lib/theme/getThemeClasses";
 import Link from "next/link";
 import ServicesList from "./ServicesList";
 
-type Service = {
+type ServiceRow = {
   id: string;
   name: string;
   description: string | null;
-  duration_minutes: number;
   price: number;
+  duration_minutes: number;
   active: boolean;
   created_at: string;
 };
@@ -18,31 +19,46 @@ type Service = {
 export default async function ServicesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; success?: string; page?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    success?: string;
+    page?: string;
+    q?: string;
+  }>;
 }) {
   const params = await searchParams;
   const ctx = await requireSectionAccess("services");
+  await requirePlanFeature("services");
 
   const { business } = ctx;
   const theme = getThemeClasses(business.theme || "warm");
   const supabase = await createClient();
 
   const currentPage = Math.max(1, Number(params.page || "1") || 1);
+  const searchTerm = String(params.q || "").trim();
   const pageSize = 10;
   const from = (currentPage - 1) * pageSize;
   const to = from + pageSize - 1;
 
-  const { count, error: countError } = await supabase
+  let countQuery = supabase
     .from("services")
     .select("*", { count: "exact", head: true })
     .eq("business_id", business.id);
 
-  const { data: services, error } = await supabase
+  let servicesQuery = supabase
     .from("services")
-    .select("id, name, description, duration_minutes, price, active, created_at")
+    .select("id, name, description, price, duration_minutes, active, created_at")
     .eq("business_id", business.id)
-    .order("created_at", { ascending: false })
-    .range(from, to);
+    .order("created_at", { ascending: false });
+
+  if (searchTerm) {
+    const searchFilter = `name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`;
+    countQuery = countQuery.or(searchFilter);
+    servicesQuery = servicesQuery.or(searchFilter);
+  }
+
+  const { count, error: countError } = await countQuery;
+  const { data: services, error } = await servicesQuery.range(from, to);
 
   if (error || countError) {
     return (
@@ -56,6 +72,7 @@ export default async function ServicesPage({
 
   const totalServices = count || 0;
   const totalPages = Math.max(1, Math.ceil(totalServices / pageSize));
+  const extraQuery = searchTerm ? `&q=${encodeURIComponent(searchTerm)}` : "";
 
   return (
     <main className={`min-h-screen p-6 ${theme.pageBg}`}>
@@ -63,7 +80,7 @@ export default async function ServicesPage({
         <div>
           <h1 className="text-3xl font-bold">Servicios</h1>
           <p className={`mt-1 text-sm ${theme.textMuted}`}>
-            Administra los servicios del negocio actual.
+            Administra los servicios ofrecidos por el negocio.
           </p>
         </div>
 
@@ -91,12 +108,49 @@ export default async function ServicesPage({
           </p>
         )}
 
+        {params.success === "deactivated" && (
+          <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            Servicio desactivado correctamente.
+          </p>
+        )}
+
+        {params.success === "reactivated" && (
+          <p className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+            Servicio reactivado correctamente.
+          </p>
+        )}
+
+        <section className={`rounded-2xl border p-4 shadow-sm ${theme.card}`}>
+          <form action="/dashboard/services" className="flex flex-col gap-3 md:flex-row">
+            <input
+              type="text"
+              name="q"
+              defaultValue={searchTerm}
+              placeholder="Buscar por nombre o descripción..."
+              className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+            />
+
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                className={`rounded-xl px-4 py-2 text-sm font-medium transition ${theme.buttonPrimary}`}
+              >
+                Buscar
+              </button>
+
+              <Link
+                href="/dashboard/services"
+                className={`rounded-xl px-4 py-2 text-sm font-medium transition ${theme.buttonSecondary}`}
+              >
+                Limpiar
+              </Link>
+            </div>
+          </form>
+        </section>
+
         <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
           <section className="space-y-4">
-            <ServicesList
-              services={(services || []) as Service[]}
-              theme={theme}
-            />
+            <ServicesList services={(services || []) as ServiceRow[]} theme={theme} />
 
             <div className="flex items-center justify-between">
               <p className={`text-sm ${theme.textMuted}`}>
@@ -105,7 +159,7 @@ export default async function ServicesPage({
 
               <div className="flex items-center gap-2">
                 <Link
-                  href={`/dashboard/services?page=${currentPage - 1}`}
+                  href={`/dashboard/services?page=${currentPage - 1}${extraQuery}`}
                   className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
                     currentPage <= 1
                       ? "pointer-events-none opacity-50"
@@ -116,7 +170,7 @@ export default async function ServicesPage({
                 </Link>
 
                 <Link
-                  href={`/dashboard/services?page=${currentPage + 1}`}
+                  href={`/dashboard/services?page=${currentPage + 1}${extraQuery}`}
                   className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
                     currentPage >= totalPages
                       ? "pointer-events-none opacity-50"
@@ -129,10 +183,15 @@ export default async function ServicesPage({
             </div>
           </section>
 
-          <section className={`h-fit rounded-2xl border p-6 shadow-sm ${theme.card}`}>
-            <h2 className="mb-4 text-xl font-semibold">Nuevo servicio</h2>
+          <section className={`rounded-2xl border p-6 shadow-sm ${theme.card}`}>
+            <div>
+              <h2 className="text-xl font-semibold">Nuevo servicio</h2>
+              <p className={`mt-1 text-sm ${theme.textMuted}`}>
+                Registra un servicio nuevo para el negocio.
+              </p>
+            </div>
 
-            <form action={createServiceAction} className="grid gap-4">
+            <form action={createServiceAction} className="mt-5 grid gap-4">
               <input type="hidden" name="businessId" value={business.id} />
 
               <div>
@@ -157,77 +216,47 @@ export default async function ServicesPage({
                 />
               </div>
 
-              <div>
-                <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
-                  Duración
-                </label>
-
-                <div className="grid grid-cols-2 gap-2">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
+                    Precio
+                  </label>
                   <input
+                    name="price"
                     type="number"
-                    name="duration_hours"
                     min="0"
-                    defaultValue="0"
-                    placeholder="Horas"
-                    className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
-                    required
-                  />
-
-                  <input
-                    type="number"
-                    name="duration_minutes_input"
-                    min="0"
-                    max="59"
-                    defaultValue="30"
-                    placeholder="Minutos"
+                    step="0.01"
                     className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
                     required
                   />
                 </div>
 
-                <p className={`mt-1 text-xs ${theme.textMuted}`}>
-                  Ejemplo: 1 hora 30 minutos.
-                </p>
+                <div>
+                  <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
+                    Duración (minutos)
+                  </label>
+                  <input
+                    name="duration"
+                    type="number"
+                    min="1"
+                    step="1"
+                    className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+                    required
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
-                  Precio
-                </label>
-                <input
-                  type="number"
-                  name="price"
-                  min="0"
-                  step="0.01"
-                  defaultValue="0"
-                  className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
-                  required
-                />
-              </div>
+              <label className="flex items-center gap-3 text-sm">
+                <input type="checkbox" name="active" defaultChecked />
+                <span className={theme.label}>Servicio activo</span>
+              </label>
 
-              <div className="flex items-center gap-3">
-                <input
-                  id="is_active_new_service"
-                  type="checkbox"
-                  name="is_active"
-                  defaultChecked
-                />
-                <label
-                  htmlFor="is_active_new_service"
-                  className={`text-sm font-medium ${theme.label}`}
-                >
-                  Servicio activo
-                </label>
-              </div>
-
-              <div>
-                <button
-                  type="submit"
-                  className={`rounded-xl px-4 py-2 font-medium transition ${theme.buttonPrimary}`}
-                >
-                  Guardar servicio
-                </button>
-              </div>
+              <button
+                type="submit"
+                className={`rounded-xl px-4 py-2 font-medium transition ${theme.buttonPrimary}`}
+              >
+                Guardar servicio
+              </button>
             </form>
           </section>
         </div>

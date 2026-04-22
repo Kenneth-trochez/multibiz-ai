@@ -2,16 +2,18 @@
 
 import { useState } from "react";
 import {
+  deactivateServiceAction,
   deleteServiceAction,
+  reactivateServiceAction,
   updateServiceAction,
 } from "../../actions/services";
 
-type Service = {
+type ServiceRow = {
   id: string;
   name: string;
   description: string | null;
-  duration_minutes: number;
   price: number;
+  duration_minutes: number;
   active: boolean;
   created_at: string;
 };
@@ -40,29 +42,14 @@ type Theme = {
   headerBg: string;
 };
 
-function splitDuration(totalMinutes: number) {
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  return { hours, minutes };
-}
-
-function formatDuration(totalMinutes: number) {
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-
-  if (hours === 0) return `${minutes} min`;
-  if (minutes === 0) return `${hours} h`;
-  return `${hours} h ${minutes} min`;
-}
-
 export default function ServicesList({
   services,
   theme,
 }: {
-  services: Service[];
+  services: ServiceRow[];
   theme: Theme;
 }) {
-  const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [selectedService, setSelectedService] = useState<ServiceRow | null>(null);
 
   return (
     <>
@@ -89,24 +76,20 @@ export default function ServicesList({
               >
                 <div className="flex items-center justify-between gap-4">
                   <div className="min-w-0">
-                    <p className="truncate text-base font-semibold">
-                      {service.name}
-                    </p>
-                    <p className={`truncate text-sm ${theme.textMuted}`}>
-                      {service.description?.trim()
-                        ? service.description
-                        : `${formatDuration(service.duration_minutes)} • L ${Number(
-                            service.price
-                          ).toFixed(2)}`}
-                    </p>
-                  </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="truncate text-base font-semibold">{service.name}</p>
+                      <span className={`rounded-full border px-2 py-1 text-[11px] ${theme.cardSoft}`}>
+                        {service.active ? "Activo" : "Inactivo"}
+                      </span>
+                    </div>
 
-                  <div className="shrink-0 text-right">
-                    <p className="text-sm font-semibold">
-                      L {Number(service.price).toFixed(2)}
+                    <p className={`truncate text-sm ${theme.textMuted}`}>
+                      {service.description?.trim() || "Sin descripción"}
                     </p>
-                    <p className={`text-xs ${theme.textMuted}`}>
-                      {service.active ? "Activo" : "Inactivo"}
+
+                    <p className={`mt-1 truncate text-xs ${theme.textMuted}`}>
+                      {service.duration_minutes} min · L{" "}
+                      {Number(service.price || 0).toFixed(2)}
                     </p>
                   </div>
                 </div>
@@ -117,138 +100,170 @@ export default function ServicesList({
       </section>
 
       {selectedService && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="fixed inset-0 z-50 p-3 sm:p-4">
           <div
-            className={`w-full max-w-2xl rounded-2xl border p-6 shadow-xl ${theme.card}`}
-          >
-            <div className="mb-4 flex items-start justify-between gap-4">
-              <div>
-                <h3 className="text-xl font-semibold">Editar servicio</h3>
-                <p className={`mt-1 text-sm ${theme.textMuted}`}>
-                  Modifica la información del servicio o elimínalo.
-                </p>
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setSelectedService(null)}
+          />
+
+          <div className="relative flex min-h-full items-start justify-center sm:items-center">
+            <div
+              className={`mt-4 w-full max-w-2xl overflow-hidden rounded-2xl border shadow-xl ${theme.card} max-h-[92vh]`}
+            >
+              <div className="flex items-start justify-between gap-3 border-b px-4 py-4 sm:px-6">
+                <div className="min-w-0">
+                  <h3 className="text-xl font-semibold">Editar servicio</h3>
+                  <p className={`mt-1 text-sm ${theme.textMuted}`}>
+                    Modifica la información del servicio, desactívalo o elimínalo si no tiene historial relacionado.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedService(null)}
+                  className={`shrink-0 rounded-xl px-3 py-2 text-sm transition ${theme.buttonSecondary}`}
+                >
+                  Cerrar
+                </button>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setSelectedService(null)}
-                className={`rounded-xl px-3 py-2 text-sm transition ${theme.buttonSecondary}`}
-              >
-                Cerrar
-              </button>
-            </div>
+              <div className="overflow-y-auto px-4 py-4 sm:px-6 sm:py-5 max-h-[calc(92vh-81px)]">
+                <form action={updateServiceAction} className="grid gap-4">
+                  <input type="hidden" name="serviceId" value={selectedService.id} />
 
-            <form action={updateServiceAction} className="grid gap-4 md:grid-cols-2">
-              <input type="hidden" name="serviceId" value={selectedService.id} />
-
-              <div className="md:col-span-2">
-                <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
-                  Nombre
-                </label>
-                <input
-                  name="name"
-                  defaultValue={selectedService.name}
-                  className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
-                  required
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
-                  Descripción
-                </label>
-                <textarea
-                  name="description"
-                  rows={3}
-                  defaultValue={selectedService.description || ""}
-                  className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
-                />
-              </div>
-
-              {(() => {
-                const { hours, minutes } = splitDuration(
-                  selectedService.duration_minutes
-                );
-
-                return (
                   <div>
                     <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
-                      Duración
+                      Nombre
                     </label>
+                    <input
+                      name="name"
+                      defaultValue={selectedService.name}
+                      className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+                      required
+                    />
+                  </div>
 
-                    <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
+                      Descripción
+                    </label>
+                    <textarea
+                      name="description"
+                      rows={3}
+                      defaultValue={selectedService.description || ""}
+                      className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+                    />
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
+                        Precio
+                      </label>
                       <input
+                        name="price"
                         type="number"
-                        name="duration_hours"
                         min="0"
-                        defaultValue={hours}
+                        step="0.01"
+                        defaultValue={selectedService.price}
                         className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
                         required
                       />
+                    </div>
 
+                    <div>
+                      <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
+                        Duración (minutos)
+                      </label>
                       <input
+                        name="duration"
                         type="number"
-                        name="duration_minutes_input"
-                        min="0"
-                        max="59"
-                        defaultValue={minutes}
+                        min="1"
+                        step="1"
+                        defaultValue={selectedService.duration_minutes}
                         className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
                         required
                       />
                     </div>
                   </div>
-                );
-              })()}
 
-              <div>
-                <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
-                  Precio
-                </label>
-                <input
-                  type="number"
-                  name="price"
-                  min="0"
-                  step="0.01"
-                  defaultValue={selectedService.price}
-                  className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
-                  required
-                />
+                  <div className="flex items-center gap-3">
+                    <input
+                      id={`active_${selectedService.id}`}
+                      type="checkbox"
+                      name="active"
+                      defaultChecked={selectedService.active}
+                    />
+                    <label
+                      htmlFor={`active_${selectedService.id}`}
+                      className={`text-sm font-medium ${theme.label}`}
+                    >
+                      Servicio activo
+                    </label>
+                  </div>
+
+                  <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                    <button
+                      type="submit"
+                      className={`rounded-xl px-4 py-2 font-medium transition ${theme.buttonPrimary}`}
+                    >
+                      Guardar cambios
+                    </button>
+                  </div>
+                </form>
+
+                <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                  {selectedService.active ? (
+                    <form action={deactivateServiceAction}>
+                      <input type="hidden" name="serviceId" value={selectedService.id} />
+                      <button
+                        type="submit"
+                        className={`w-full rounded-xl px-4 py-2 text-sm font-medium transition sm:w-auto ${theme.buttonSecondary}`}
+                      >
+                        Desactivar
+                      </button>
+                    </form>
+                  ) : (
+                    <form action={reactivateServiceAction}>
+                      <input type="hidden" name="serviceId" value={selectedService.id} />
+                      <button
+                        type="submit"
+                        className={`w-full rounded-xl px-4 py-2 text-sm font-medium transition sm:w-auto ${theme.buttonPrimary}`}
+                      >
+                        Reactivar
+                      </button>
+                    </form>
+                  )}
+
+                  <form
+                    action={deleteServiceAction}
+                    onSubmit={(event) => {
+                      const confirmed = window.confirm(
+                        "¿Deseas eliminar este servicio? Solo se eliminará si no tiene historial relacionado."
+                      );
+
+                      if (!confirmed) {
+                        event.preventDefault();
+                      }
+                    }}
+                  >
+                    <input type="hidden" name="serviceId" value={selectedService.id} />
+                    <button
+                      type="submit"
+                      className={`w-full rounded-xl px-4 py-2 text-sm font-medium transition sm:w-auto ${theme.danger}`}
+                    >
+                      Eliminar
+                    </button>
+                  </form>
+                </div>
+
+                {!selectedService.active && (
+                  <p className={`mt-4 text-sm ${theme.textMuted}`}>
+                    Este servicio está inactivo. Puedes reactivarlo cuando quieras volver a ofrecerlo.
+                  </p>
+                )}
               </div>
-
-              <div className="md:col-span-2 flex items-center gap-3">
-                <input
-                  id={`active_${selectedService.id}`}
-                  type="checkbox"
-                  name="is_active"
-                  defaultChecked={selectedService.active}
-                />
-                <label
-                  htmlFor={`active_${selectedService.id}`}
-                  className={`text-sm font-medium ${theme.label}`}
-                >
-                  Servicio activo
-                </label>
-              </div>
-
-              <div className="flex flex-wrap gap-3 md:col-span-2">
-                <button
-                  type="submit"
-                  className={`rounded-xl px-4 py-2 font-medium transition ${theme.buttonPrimary}`}
-                >
-                  Guardar cambios
-                </button>
-              </div>
-            </form>
-
-            <form action={deleteServiceAction} className="mt-4">
-              <input type="hidden" name="serviceId" value={selectedService.id} />
-              <button
-                type="submit"
-                className={`rounded-xl px-4 py-2 text-sm font-medium transition ${theme.danger}`}
-              >
-                Eliminar
-              </button>
-            </form>
+            </div>
           </div>
         </div>
       )}
