@@ -170,22 +170,20 @@ export default async function StaffPage({
               <div className="flex items-center gap-2">
                 <Link
                   href={`/dashboard/staff?page=${currentPage - 1}`}
-                  className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
-                    currentPage <= 1
+                  className={`rounded-xl px-4 py-2 text-sm font-medium transition ${currentPage <= 1
                       ? "pointer-events-none opacity-50"
                       : theme.buttonSecondary
-                  }`}
+                    }`}
                 >
                   ← Anterior
                 </Link>
 
                 <Link
                   href={`/dashboard/staff?page=${currentPage + 1}`}
-                  className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
-                    currentPage >= totalPages
+                  className={`rounded-xl px-4 py-2 text-sm font-medium transition ${currentPage >= totalPages
                       ? "pointer-events-none opacity-50"
                       : theme.buttonSecondary
-                  }`}
+                    }`}
                 >
                   Siguiente →
                 </Link>
@@ -328,23 +326,21 @@ export default async function StaffPage({
               <div className="flex flex-wrap gap-3">
                 <button
                   type="submit"
-                  className={`rounded-xl px-4 py-2 font-medium transition ${theme.buttonPrimary}`}
-                >
-                  Guardar miembro
-                </button>
-
-                <button
-                  type="submit"
                   formAction={createStaffUserAction}
-                  className={`rounded-xl border px-4 py-2 font-medium transition ${theme.buttonPrimary}`}
+                  className={`rounded-xl px-4 py-2 font-medium transition ${theme.buttonPrimary}`}
                 >
                   Crear cuenta manual
                 </button>
 
                 <button
-                  type="submit"
-                  formAction={createAndInviteStaffAction}
-                  className={`rounded-xl border px-4 py-2 font-medium transition ${theme.buttonSecondary}`}
+                  type="button"
+                  aria-disabled="true"
+                  title="Guardar e invitar está desactivado por el momento"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    window.alert("Guardar e invitar está desactivado por el momento.");
+                  }}
+                  className={`rounded-xl border px-4 py-2 font-medium opacity-50 cursor-not-allowed transition ${theme.buttonSecondary}`}
                 >
                   Guardar e invitar
                 </button>
