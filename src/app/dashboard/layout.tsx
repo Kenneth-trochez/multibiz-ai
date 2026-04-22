@@ -40,6 +40,109 @@ function getInitials(name: string) {
     .join("");
 }
 
+function getThemeGlow(theme: string) {
+  switch (theme) {
+    case "dark":
+      return {
+        primary: "bg-[#ff7a1a]/18",
+        secondary: "bg-white/8",
+        tertiary: "bg-[#9f7aea]/10",
+      };
+
+    case "elegant":
+      return {
+        primary: "bg-[#b98a63]/18",
+        secondary: "bg-[#f6e7d8]/20",
+        tertiary: "bg-white/18",
+      };
+
+    case "rose_glam":
+      return {
+        primary: "bg-[#ff4fa3]/24",
+        secondary: "bg-[#a855f7]/18",
+        tertiary: "bg-white/10",
+      };
+
+    case "sunset_pop":
+      return {
+        primary: "bg-[#ff7a00]/24",
+        secondary: "bg-[#ff5a36]/18",
+        tertiary: "bg-white/8",
+      };
+
+    case "violet_neon":
+      return {
+        primary: "bg-[#d66bff]/24",
+        secondary: "bg-[#4f9cff]/20",
+        tertiary: "bg-white/10",
+      };
+
+    case "aqua_lux":
+      return {
+        primary: "bg-[#00cfd5]/20",
+        secondary: "bg-[#28c493]/18",
+        tertiary: "bg-white/10",
+      };
+
+    case "ruby_night":
+      return {
+        primary: "bg-[#e11d48]/20",
+        secondary: "bg-[#be185d]/16",
+        tertiary: "bg-white/8",
+      };
+
+    case "blush_pop":
+      return {
+        primary: "bg-[#ec5f95]/14",
+        secondary: "bg-[#f7bfd5]/18",
+        tertiary: "bg-white/16",
+      };
+
+    case "cotton_candy":
+      return {
+        primary: "bg-[#d66bff]/14",
+        secondary: "bg-[#f1d8ff]/18",
+        tertiary: "bg-white/16",
+      };
+
+    case "pearl_rose":
+      return {
+        primary: "bg-[#cc7f95]/14",
+        secondary: "bg-[#f5dde4]/18",
+        tertiary: "bg-white/16",
+      };
+
+    case "mint_day":
+      return {
+        primary: "bg-[#28c493]/14",
+        secondary: "bg-[#cff4e6]/18",
+        tertiary: "bg-white/16",
+      };
+
+    case "sky_breeze":
+      return {
+        primary: "bg-[#4f9cff]/14",
+        secondary: "bg-[#d8eaff]/18",
+        tertiary: "bg-white/16",
+      };
+
+    case "minimal":
+      return {
+        primary: "bg-black/6",
+        secondary: "bg-black/4",
+        tertiary: "bg-white/20",
+      };
+
+    case "warm":
+    default:
+      return {
+        primary: "bg-[#a56a3a]/18",
+        secondary: "bg-[#f1e5d7]/20",
+        tertiary: "bg-white/18",
+      };
+  }
+}
+
 export default async function DashboardLayout({
   children,
 }: {
@@ -52,7 +155,9 @@ export default async function DashboardLayout({
   }
 
   const { business, role } = ctx;
-  const theme = getThemeClasses(business.theme || "warm");
+  const themeKey = business.theme || "warm";
+  const theme = getThemeClasses(themeKey);
+  const glow = getThemeGlow(themeKey);
   const supabase = await createClient();
 
   const {
@@ -183,7 +288,9 @@ export default async function DashboardLayout({
             </p>
           </div>
         </Link>
+
         <br />
+
         <form action={signOutAction}>
           <button
             type="submit"
@@ -197,17 +304,32 @@ export default async function DashboardLayout({
   );
 
   return (
-    <div className={theme.pageBg}>
-      <SidebarShell
-        sidebar={sidebar}
-        sidebarClassName={theme.sidebarBg}
-        headerClassName={theme.headerBg}
-        contentClassName="p-4 md:p-6"
-        buttonClassName={theme.buttonSecondary}
-        title={business.name}
-      >
-        {children}
-      </SidebarShell>
+    <div className={`${theme.pageBg} relative overflow-hidden`}>
+      <div className="pointer-events-none absolute inset-0 z-0">
+        <div
+          className={`absolute -left-24 top-[-50px] h-[340px] w-[340px] rounded-full blur-3xl ${glow.primary}`}
+        />
+        <div
+          className={`absolute right-[8%] top-[10%] h-[420px] w-[420px] rounded-full blur-3xl ${glow.secondary}`}
+        />
+        <div
+          className={`absolute bottom-[-70px] left-[30%] h-[360px] w-[360px] rounded-full blur-3xl ${glow.tertiary}`}
+        />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,transparent_58%,rgba(0,0,0,0.16)_100%)]" />
+      </div>
+
+      <div className="relative z-10">
+        <SidebarShell
+          sidebar={sidebar}
+          sidebarClassName={theme.sidebarBg}
+          headerClassName={theme.headerBg}
+          contentClassName="p-4 md:p-6"
+          buttonClassName={theme.buttonSecondary}
+          title={business.name}
+        >
+          {children}
+        </SidebarShell>
+      </div>
     </div>
   );
 }
