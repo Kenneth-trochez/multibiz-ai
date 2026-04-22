@@ -171,8 +171,8 @@ export default async function StaffPage({
                 <Link
                   href={`/dashboard/staff?page=${currentPage - 1}`}
                   className={`rounded-xl px-4 py-2 text-sm font-medium transition ${currentPage <= 1
-                      ? "pointer-events-none opacity-50"
-                      : theme.buttonSecondary
+                    ? "pointer-events-none opacity-50"
+                    : theme.buttonSecondary
                     }`}
                 >
                   ← Anterior
@@ -181,8 +181,8 @@ export default async function StaffPage({
                 <Link
                   href={`/dashboard/staff?page=${currentPage + 1}`}
                   className={`rounded-xl px-4 py-2 text-sm font-medium transition ${currentPage >= totalPages
-                      ? "pointer-events-none opacity-50"
-                      : theme.buttonSecondary
+                    ? "pointer-events-none opacity-50"
+                    : theme.buttonSecondary
                     }`}
                 >
                   Siguiente →
@@ -327,7 +327,7 @@ export default async function StaffPage({
                 <button
                   type="submit"
                   formAction={createStaffUserAction}
-                  className={`rounded-xl px-4 py-2 font-medium transition ${theme.buttonPrimary}`}
+                  className={`rounded-xl border px-4 py-2 font-medium transition ${theme.buttonSecondary}`}
                 >
                   Crear cuenta manual
                 </button>
