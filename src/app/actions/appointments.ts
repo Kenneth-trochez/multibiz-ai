@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { scheduleAppointmentNotifications } from "@/lib/notifications/scheduleAppointmentNotifications";
 import { clearAppointmentNotifications } from "@/lib/notifications/clearAppointmentNotifications";
 import { sendPushToBusinessMembers } from "@/lib/notifications/sendPushToBusinessMembers";
+import { createAppointmentCore } from "@/lib/appointments/createAppointmentService";
 
 const VALID_STATUS = ["pending", "confirmed", "completed", "cancelled"] as const;
 const VALID_SOURCE = ["manual", "ai_voice"] as const;
@@ -311,91 +312,22 @@ export async function createAppointmentAction(formData: FormData): Promise<void>
   const notes = String(formData.get("notes") || "").trim();
   const source = String(formData.get("source") || "manual").trim();
 
-  if (!businessId || !customerId || !serviceId || !rawAppointmentAt) {
-    redirect("/dashboard/appointments?error=Faltan+datos+obligatorios");
-  }
-
-  if (!VALID_SOURCE.includes(source as (typeof VALID_SOURCE)[number])) {
-    redirect("/dashboard/appointments?error=Origen+de+cita+invalido");
-  }
-
-  const supabase = await createClient();
-  const timezone = await getBusinessTimezone(supabase, businessId);
-  const appointmentAt = normalizeAppointmentAtFromLocal(
-    rawAppointmentAt,
-    timezone
-  );
-
-  if (staffId) {
-    await validateStaffAvailability({
-      supabase,
-      businessId,
-      staffId,
-      serviceId,
-      appointmentAt,
-    });
-  }
-
-  const { data: insertedAppointment, error } = await supabase
-    .from("appointments")
-    .insert({
-      business_id: businessId,
-      customer_id: customerId,
-      service_id: serviceId,
-      staff_id: staffId || null,
-      appointment_at: appointmentAt,
-      status: "confirmed",
-      source,
-      notes: notes || null,
-    })
-    .select("id, appointment_at, status, source")
-    .single();
-
-  if (error) {
-    redirect(
-      `/dashboard/appointments?error=${encodeURIComponent(error.message)}`
-    );
-  }
-
   try {
-    const context = await getAppointmentNotificationContext({
-      supabase,
+    await createAppointmentCore({
       businessId,
       customerId,
       serviceId,
-      staffId,
+      staffId: staffId || null,
+      appointmentAt: rawAppointmentAt,
+      notes: notes || null,
+      source,
     });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "No se pudo crear la cita";
 
-    await sendPushToBusinessMembers({
-      businessId,
-      title: "Nueva cita agendada",
-      body: `${context.customerName} · ${context.serviceName} · ${formatAppointmentPushDate(
-        appointmentAt,
-        timezone
-      )}`,
-      data: {
-        type: "appointment_created",
-        appointmentId: insertedAppointment?.id,
-        source,
-        status: "confirmed",
-      },
-    });
-  } catch (pushError) {
-    console.error("PUSH CREATE APPOINTMENT ERROR:", pushError);
-  }
-
-  try {
-    if (insertedAppointment?.id) {
-      await scheduleAppointmentNotifications({
-        businessId,
-        appointmentId: insertedAppointment.id,
-        appointmentAt,
-      });
-    }
-  } catch (notificationJobError) {
-    console.error(
-      "SCHEDULE APPOINTMENT NOTIFICATIONS ERROR:",
-      notificationJobError
+    redirect(
+      `/dashboard/appointments?error=${encodeURIComponent(message)}`
     );
   }
 
