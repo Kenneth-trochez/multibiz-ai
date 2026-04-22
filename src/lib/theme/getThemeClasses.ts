@@ -3,7 +3,7 @@ export function getThemeClasses(theme: string) {
         case "dark":
             return {
                 pageBg:
-                    "min-h-screen bg-[radial-gradient(circle_at_15%_15%,rgba(255,115,0,0.10),transparent_0,transparent_28%),radial-gradient(circle_at_85%_18%,rgba(255,255,255,0.05),transparent_0,transparent_22%),radial-gradient(circle_at_50%_100%,rgba(255,255,255,0.03),transparent_0,transparent_30%),linear-gradient(180deg,#141414_0%,#181818_38%,#121212_100%)] text-white",
+                    "min-h-screen bg-[radial-gradient(circle_at_18%_16%,rgba(255,140,60,0.14),transparent_0,transparent_24%),radial-gradient(circle_at_78%_76%,rgba(255,255,255,0.05),transparent_0,transparent_28%),radial-gradient(circle_at_56%_34%,rgba(255,255,255,0.06),transparent_0,transparent_20%),linear-gradient(180deg,#0d0d0f_0%,#09090b_100%)] text-white",
                 sidebarBg: "bg-[#111111]/88 border-[#2b2b2b] backdrop-blur-2xl supports-[backdrop-filter]:bg-[#111111]/78",
                 sidebarCard: "bg-white/[0.06] border border-white/[0.09] shadow-[0_10px_30px_rgba(0,0,0,0.28)] backdrop-blur-xl",
                 card: "bg-white/[0.055] border border-white/[0.08] shadow-[0_14px_40px_rgba(0,0,0,0.32)] backdrop-blur-xl",
@@ -33,8 +33,8 @@ export function getThemeClasses(theme: string) {
         case "elegant":
             return {
                 pageBg:
-                    "min-h-screen bg-[radial-gradient(circle_at_12%_10%,rgba(107,79,58,0.10),transparent_0,transparent_24%),radial-gradient(circle_at_90%_12%,rgba(255,255,255,0.45),transparent_0,transparent_26%),linear-gradient(180deg,#f7f1ea_0%,#f4efe8_42%,#efe7dd_100%)] text-[#2b211b]",
-                sidebarBg: "bg-[#fffaf5]/84 border-[#e7d8c8] backdrop-blur-2xl",
+                    "min-h-screen bg-[radial-gradient(circle_at_18%_18%,rgba(107,79,58,0.20),transparent_0,transparent_28%),radial-gradient(circle_at_78%_78%,rgba(214,190,166,0.10),transparent_0,transparent_30%),radial-gradient(circle_at_50%_34%,rgba(255,255,255,0.06),transparent_0,transparent_18%),linear-gradient(180deg,#16110d_0%,#0c0907_100%)] text-white",
+                sidebarBg: "bg-[#fffaf5]/84 border-[#e7d8c7] backdrop-blur-2xl",
                 sidebarCard: "bg-white/70 border border-white/60 shadow-[0_12px_30px_rgba(107,79,58,0.08)] backdrop-blur-xl",
                 card: "bg-white/66 border border-white/58 shadow-[0_16px_36px_rgba(107,79,58,0.10)] backdrop-blur-xl",
                 cardSoft: "bg-white/78 border border-white/65 shadow-[0_12px_26px_rgba(107,79,58,0.07)] backdrop-blur-xl",
@@ -43,8 +43,8 @@ export function getThemeClasses(theme: string) {
                     "bg-white/78 border-white/58 text-[#2b211b] placeholder:text-[#7a6858] backdrop-blur-md focus:border-[#d4c0ad] focus:bg-white/88",
                 select: "bg-white/88 border-[#d8c7b7] text-[#2b211b]",
                 option: "bg-white text-[#2b211b]",
-                textMuted: "text-[#756456]",
-                label: "text-[#3e3027]",
+                textMuted: "text-[#d5c1af]",
+                label: "text-white",
                 hover: "hover:bg-[#f4e9dd]",
                 active: "bg-[#6b4f3a] text-white shadow-[0_12px_28px_rgba(107,79,58,0.18)]",
                 accent: "bg-[#6b4f3a] text-white shadow-[0_12px_28px_rgba(107,79,58,0.18)]",
@@ -93,7 +93,7 @@ export function getThemeClasses(theme: string) {
         case "rose_glam":
             return {
                 pageBg:
-                    "min-h-screen bg-[radial-gradient(circle_at_12%_12%,rgba(255,82,168,0.18),transparent_0,transparent_24%),radial-gradient(circle_at_88%_18%,rgba(168,85,247,0.16),transparent_0,transparent_28%),radial-gradient(circle_at_50%_100%,rgba(255,255,255,0.04),transparent_0,transparent_34%),linear-gradient(180deg,#140d14_0%,#171019_44%,#120b13_100%)] text-white",
+                    "min-h-screen bg-[radial-gradient(circle_at_18%_20%,rgba(255,79,163,0.22),transparent_0,transparent_28%),radial-gradient(circle_at_80%_78%,rgba(168,85,247,0.18),transparent_0,transparent_30%),radial-gradient(circle_at_52%_34%,rgba(255,255,255,0.08),transparent_0,transparent_18%),linear-gradient(180deg,#120b12_0%,#0d0710_100%)] text-white",
                 sidebarBg: "bg-[#140f17]/86 border-[#352339] backdrop-blur-2xl",
                 sidebarCard: "bg-white/[0.075] border border-white/[0.11] shadow-[0_12px_30px_rgba(0,0,0,0.30)] backdrop-blur-xl",
                 card: "bg-white/[0.075] border border-white/[0.11] shadow-[0_16px_40px_rgba(0,0,0,0.34)] backdrop-blur-xl",
@@ -123,7 +123,7 @@ export function getThemeClasses(theme: string) {
         case "sunset_pop":
             return {
                 pageBg:
-                    "min-h-screen bg-[radial-gradient(circle_at_15%_15%,rgba(255,128,0,0.18),transparent_0,transparent_24%),radial-gradient(circle_at_86%_18%,rgba(255,84,0,0.14),transparent_0,transparent_28%),radial-gradient(circle_at_50%_100%,rgba(255,255,255,0.03),transparent_0,transparent_30%),linear-gradient(180deg,#101014_0%,#131316_42%,#0c0d10_100%)] text-white",
+                    "min-h-screen bg-[radial-gradient(circle_at_18%_18%,rgba(255,122,0,0.22),transparent_0,transparent_28%),radial-gradient(circle_at_78%_78%,rgba(255,84,0,0.16),transparent_0,transparent_30%),radial-gradient(circle_at_52%_34%,rgba(255,244,237,0.06),transparent_0,transparent_18%),linear-gradient(180deg,#100c0a_0%,#080708_100%)] text-white",
                 sidebarBg: "bg-[#111216]/86 border-[#2d2b2a] backdrop-blur-2xl",
                 sidebarCard: "bg-white/[0.065] border border-white/[0.10] shadow-[0_12px_28px_rgba(0,0,0,0.30)] backdrop-blur-xl",
                 card: "bg-white/[0.065] border border-white/[0.10] shadow-[0_16px_38px_rgba(0,0,0,0.34)] backdrop-blur-xl",
@@ -153,7 +153,7 @@ export function getThemeClasses(theme: string) {
         case "violet_neon":
             return {
                 pageBg:
-                    "min-h-screen bg-[radial-gradient(circle_at_14%_14%,rgba(139,92,246,0.20),transparent_0,transparent_24%),radial-gradient(circle_at_86%_18%,rgba(59,130,246,0.16),transparent_0,transparent_30%),radial-gradient(circle_at_50%_100%,rgba(255,255,255,0.03),transparent_0,transparent_30%),linear-gradient(180deg,#0d1020_0%,#111427_42%,#0a0d1a_100%)] text-white",
+                    "min-h-screen bg-[radial-gradient(circle_at_22%_18%,rgba(214,107,255,0.22),transparent_0,transparent_28%),radial-gradient(circle_at_75%_80%,rgba(79,156,255,0.20),transparent_0,transparent_30%),radial-gradient(circle_at_52%_36%,rgba(255,255,255,0.08),transparent_0,transparent_18%),linear-gradient(180deg,#090d1a_0%,#060912_100%)] text-white",
                 sidebarBg: "bg-[#11142a]/86 border-[#292e54] backdrop-blur-2xl",
                 sidebarCard: "bg-white/[0.075] border border-white/[0.11] shadow-[0_12px_30px_rgba(0,0,0,0.30)] backdrop-blur-xl",
                 card: "bg-white/[0.075] border border-white/[0.11] shadow-[0_16px_40px_rgba(0,0,0,0.34)] backdrop-blur-xl",
@@ -183,7 +183,7 @@ export function getThemeClasses(theme: string) {
         case "aqua_lux":
             return {
                 pageBg:
-                    "min-h-screen bg-[radial-gradient(circle_at_15%_14%,rgba(0,229,255,0.16),transparent_0,transparent_22%),radial-gradient(circle_at_85%_18%,rgba(45,212,191,0.14),transparent_0,transparent_28%),radial-gradient(circle_at_50%_100%,rgba(255,255,255,0.03),transparent_0,transparent_30%),linear-gradient(180deg,#09161a_0%,#0c1b20_42%,#071216_100%)] text-white",
+                    "min-h-screen bg-[radial-gradient(circle_at_18%_18%,rgba(0,207,213,0.18),transparent_0,transparent_26%),radial-gradient(circle_at_78%_80%,rgba(40,196,147,0.16),transparent_0,transparent_30%),radial-gradient(circle_at_54%_34%,rgba(255,255,255,0.07),transparent_0,transparent_18%),linear-gradient(180deg,#071317_0%,#040b0d_100%)] text-white",
                 sidebarBg: "bg-[#0d1c20]/86 border-[#23424a] backdrop-blur-2xl",
                 sidebarCard: "bg-white/[0.075] border border-white/[0.11] shadow-[0_12px_30px_rgba(0,0,0,0.30)] backdrop-blur-xl",
                 card: "bg-white/[0.075] border border-white/[0.11] shadow-[0_16px_40px_rgba(0,0,0,0.34)] backdrop-blur-xl",
@@ -213,7 +213,7 @@ export function getThemeClasses(theme: string) {
         case "ruby_night":
             return {
                 pageBg:
-                    "min-h-screen bg-[radial-gradient(circle_at_15%_14%,rgba(225,29,72,0.16),transparent_0,transparent_22%),radial-gradient(circle_at_86%_18%,rgba(190,24,93,0.14),transparent_0,transparent_28%),radial-gradient(circle_at_50%_100%,rgba(255,255,255,0.03),transparent_0,transparent_30%),linear-gradient(180deg,#140b10_0%,#170d12_44%,#10080d_100%)] text-white",
+                    "min-h-screen bg-[radial-gradient(circle_at_18%_18%,rgba(225,29,72,0.18),transparent_0,transparent_26%),radial-gradient(circle_at_80%_80%,rgba(190,24,93,0.15),transparent_0,transparent_30%),radial-gradient(circle_at_52%_34%,rgba(255,255,255,0.06),transparent_0,transparent_18%),linear-gradient(180deg,#12080d_0%,#080407_100%)] text-white",
                 sidebarBg: "bg-[#180e14]/86 border-[#3e2031] backdrop-blur-2xl",
                 sidebarCard: "bg-white/[0.075] border border-white/[0.11] shadow-[0_12px_30px_rgba(0,0,0,0.30)] backdrop-blur-xl",
                 card: "bg-white/[0.075] border border-white/[0.11] shadow-[0_16px_40px_rgba(0,0,0,0.34)] backdrop-blur-xl",
@@ -394,7 +394,7 @@ export function getThemeClasses(theme: string) {
         default:
             return {
                 pageBg:
-                    "min-h-screen bg-[radial-gradient(circle_at_12%_10%,rgba(165,106,58,0.10),transparent_0,transparent_22%),radial-gradient(circle_at_88%_14%,rgba(255,255,255,0.42),transparent_0,transparent_28%),linear-gradient(180deg,#fbf6ef_0%,#f6f1e8_44%,#efe6da_100%)] text-[#2f241d]",
+                    "min-h-screen bg-[radial-gradient(circle_at_18%_18%,rgba(165,106,58,0.20),transparent_0,transparent_28%),radial-gradient(circle_at_78%_78%,rgba(224,200,176,0.10),transparent_0,transparent_30%),radial-gradient(circle_at_50%_34%,rgba(255,255,255,0.06),transparent_0,transparent_18%),linear-gradient(180deg,#17110d_0%,#0d0907_100%)] text-white",
                 sidebarBg: "bg-[#fffaf3]/84 border-[#e7d8c7] backdrop-blur-2xl",
                 sidebarCard: "bg-white/72 border border-white/58 shadow-[0_12px_30px_rgba(165,106,58,0.08)] backdrop-blur-xl",
                 card: "bg-white/66 border border-white/56 shadow-[0_16px_38px_rgba(165,106,58,0.10)] backdrop-blur-xl",
@@ -404,8 +404,8 @@ export function getThemeClasses(theme: string) {
                     "bg-white/78 border-white/58 text-[#2f241d] placeholder:text-[#6b5b4d] backdrop-blur-md focus:border-[#d9c6b2] focus:bg-white/88",
                 select: "bg-white border-[#d9c6b2] text-[#2f241d]",
                 option: "bg-white text-[#2f241d]",
-                textMuted: "text-[#6a5a4d]",
-                label: "text-[#3f3128]",
+                textMuted: "text-[#d6c4b4]",
+                label: "text-white",
                 hover: "hover:bg-[#f3e8dc]",
                 active: "bg-[#a56a3a] text-white shadow-[0_12px_28px_rgba(165,106,58,0.18)]",
                 accent: "bg-[#a56a3a] text-white shadow-[0_12px_28px_rgba(165,106,58,0.18)]",
