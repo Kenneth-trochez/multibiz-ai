@@ -334,12 +334,8 @@ export default async function StaffPage({
 
                 <button
                   type="button"
-                  aria-disabled="true"
+                  disabled
                   title="Guardar e invitar está desactivado por el momento"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    window.alert("Guardar e invitar está desactivado por el momento.");
-                  }}
                   className={`rounded-xl border px-4 py-2 font-medium opacity-50 cursor-not-allowed transition ${theme.buttonSecondary}`}
                 >
                   Guardar e invitar
