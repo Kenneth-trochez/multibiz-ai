@@ -4,61 +4,36 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-const EMAIL_REGEX =
-  /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function normalizeHondurasPhone(raw: string): string | null {
-  const value = raw.trim();
-
-  if (!value) return null;
-
-  let digits = value.replace(/\D/g, "");
-
-  if (digits.startsWith("504")) {
-    digits = digits.slice(3);
-  }
-
-  if (digits.length !== 8) {
-    throw new Error("El teléfono debe tener 8 dígitos de Honduras");
-  }
-
-  return `+504 ${digits.slice(0, 4)}-${digits.slice(4)}`;
+function revalidateCustomerPages() {
+  revalidatePath("/dashboard/customers");
+  revalidatePath("/dashboard/appointments");
+  revalidatePath("/dashboard/sales");
 }
 
-function normalizeEmail(raw: string): string | null {
-  const value = raw.trim().toLowerCase();
+function redirectWithError(message: string): never {
+  redirect(`/dashboard/customers?error=${encodeURIComponent(message)}`);
+}
 
-  if (!value) return null;
+function mapCustomerError(message: string) {
+  const lower = message.toLowerCase();
 
-  if (!EMAIL_REGEX.test(value)) {
-    throw new Error("El correo ingresado no es válido");
+  if (lower.includes("violates foreign key constraint") && lower.includes("appointments_customer_id_fkey")) {
+    return "Este cliente no puede eliminarse porque tiene citas registradas. Puedes desactivarlo para dejar de usarlo sin perder el historial.";
   }
 
-  return value;
+  return "No se pudo procesar el cliente. Revisa los datos e intenta de nuevo.";
 }
 
 export async function createCustomerAction(formData: FormData): Promise<void> {
   const businessId = String(formData.get("businessId") || "").trim();
   const name = String(formData.get("name") || "").trim();
-  const rawPhone = String(formData.get("phone") || "").trim();
-  const rawEmail = String(formData.get("email") || "").trim();
+  const phone = String(formData.get("phone") || "").trim();
+  const email = String(formData.get("email") || "").trim();
   const address = String(formData.get("address") || "").trim();
   const notes = String(formData.get("notes") || "").trim();
 
   if (!businessId || !name) {
-    redirect("/dashboard/customers?error=Nombre+y+negocio+son+obligatorios");
-  }
-
-  let phone: string | null = null;
-  let email: string | null = null;
-
-  try {
-    phone = normalizeHondurasPhone(rawPhone);
-    email = normalizeEmail(rawEmail);
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Datos inválidos";
-    redirect(`/dashboard/customers?error=${encodeURIComponent(message)}`);
+    redirectWithError("El nombre del cliente es obligatorio.");
   }
 
   const supabase = await createClient();
@@ -66,44 +41,33 @@ export async function createCustomerAction(formData: FormData): Promise<void> {
   const { error } = await supabase.from("customers").insert({
     business_id: businessId,
     name,
-    phone,
-    email,
+    phone: phone || null,
+    email: email || null,
     address: address || null,
     notes: notes || null,
+    active: true,
   });
 
   if (error) {
-    redirect(
-      `/dashboard/customers?error=${encodeURIComponent(error.message)}`
-    );
+    redirectWithError(mapCustomerError(error.message));
   }
 
-  revalidatePath("/dashboard/customers");
+  revalidateCustomerPages();
   redirect("/dashboard/customers?success=created");
 }
 
 export async function updateCustomerAction(formData: FormData): Promise<void> {
   const customerId = String(formData.get("customerId") || "").trim();
   const name = String(formData.get("name") || "").trim();
-  const rawPhone = String(formData.get("phone") || "").trim();
-  const rawEmail = String(formData.get("email") || "").trim();
+  const phone = String(formData.get("phone") || "").trim();
+  const email = String(formData.get("email") || "").trim();
   const address = String(formData.get("address") || "").trim();
   const notes = String(formData.get("notes") || "").trim();
+  const activeValue = String(formData.get("active") || "");
+  const active = activeValue === "on" || activeValue === "true";
 
   if (!customerId || !name) {
-    redirect("/dashboard/customers?error=Datos+incompletos");
-  }
-
-  let phone: string | null = null;
-  let email: string | null = null;
-
-  try {
-    phone = normalizeHondurasPhone(rawPhone);
-    email = normalizeEmail(rawEmail);
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Datos inválidos";
-    redirect(`/dashboard/customers?error=${encodeURIComponent(message)}`);
+    redirectWithError("Faltan datos del cliente.");
   }
 
   const supabase = await createClient();
@@ -112,31 +76,119 @@ export async function updateCustomerAction(formData: FormData): Promise<void> {
     .from("customers")
     .update({
       name,
-      phone,
-      email,
+      phone: phone || null,
+      email: email || null,
       address: address || null,
       notes: notes || null,
+      active,
+      updated_at: new Date().toISOString(),
     })
     .eq("id", customerId);
 
   if (error) {
-    redirect(
-      `/dashboard/customers?error=${encodeURIComponent(error.message)}`
-    );
+    redirectWithError(mapCustomerError(error.message));
   }
 
-  revalidatePath("/dashboard/customers");
+  revalidateCustomerPages();
   redirect("/dashboard/customers?success=updated");
+}
+
+export async function deactivateCustomerAction(formData: FormData): Promise<void> {
+  const customerId = String(formData.get("customerId") || "").trim();
+
+  if (!customerId) {
+    redirectWithError("Cliente inválido.");
+  }
+
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("customers")
+    .update({
+      active: false,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", customerId);
+
+  if (error) {
+    redirectWithError("No se pudo desactivar el cliente.");
+  }
+
+  revalidateCustomerPages();
+  redirect("/dashboard/customers?success=deactivated");
+}
+
+export async function reactivateCustomerAction(formData: FormData): Promise<void> {
+  const customerId = String(formData.get("customerId") || "").trim();
+
+  if (!customerId) {
+    redirectWithError("Cliente inválido.");
+  }
+
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("customers")
+    .update({
+      active: true,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", customerId);
+
+  if (error) {
+    redirectWithError("No se pudo reactivar el cliente.");
+  }
+
+  revalidateCustomerPages();
+  redirect("/dashboard/customers?success=reactivated");
 }
 
 export async function deleteCustomerAction(formData: FormData): Promise<void> {
   const customerId = String(formData.get("customerId") || "").trim();
 
   if (!customerId) {
-    redirect("/dashboard/customers?error=Cliente+invalido");
+    redirectWithError("Cliente inválido.");
   }
 
   const supabase = await createClient();
+
+  const [{ count: appointmentsCount, error: appointmentsError }, { count: salesCount, error: salesError }] =
+    await Promise.all([
+      supabase
+        .from("appointments")
+        .select("*", { count: "exact", head: true })
+        .eq("customer_id", customerId),
+
+      supabase
+        .from("sales")
+        .select("*", { count: "exact", head: true })
+        .eq("customer_id", customerId),
+    ]);
+
+  if (appointmentsError || salesError) {
+    redirectWithError("No se pudo verificar si el cliente tiene historial relacionado.");
+  }
+
+  const appointmentsTotal = appointmentsCount || 0;
+  const salesTotal = salesCount || 0;
+
+  if (appointmentsTotal > 0 || salesTotal > 0) {
+    const parts: string[] = [];
+
+    if (appointmentsTotal > 0) {
+      parts.push(`${appointmentsTotal} cita${appointmentsTotal === 1 ? "" : "s"}`);
+    }
+
+    if (salesTotal > 0) {
+      parts.push(`${salesTotal} venta${salesTotal === 1 ? "" : "s"}`);
+    }
+
+    redirectWithError(
+      `Este cliente no puede eliminarse porque tiene historial relacionado (${parts.join(
+        " y "
+      )}). Puedes desactivarlo para dejar de usarlo sin perder ese historial.`
+    );
+  }
 
   const { error } = await supabase
     .from("customers")
@@ -144,11 +196,9 @@ export async function deleteCustomerAction(formData: FormData): Promise<void> {
     .eq("id", customerId);
 
   if (error) {
-    redirect(
-      `/dashboard/customers?error=${encodeURIComponent(error.message)}`
-    );
+    redirectWithError(mapCustomerError(error.message));
   }
 
-  revalidatePath("/dashboard/customers");
+  revalidateCustomerPages();
   redirect("/dashboard/customers?success=deleted");
 }

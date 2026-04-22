@@ -2,18 +2,20 @@
 
 import { useState } from "react";
 import {
+  deactivateCustomerAction,
   deleteCustomerAction,
+  reactivateCustomerAction,
   updateCustomerAction,
 } from "../../actions/customers";
-import CustomerContactFields from "./CustomerContactFields";
 
-type Customer = {
+type CustomerRow = {
   id: string;
   name: string;
   phone: string | null;
   email: string | null;
   address: string | null;
   notes: string | null;
+  active: boolean;
   created_at: string;
 };
 
@@ -41,25 +43,14 @@ type Theme = {
   headerBg: string;
 };
 
-function formatCustomerDate(dateStr: string, timezone: string) {
-  return new Intl.DateTimeFormat("es-HN", {
-    timeZone: timezone,
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(new Date(dateStr));
-}
-
 export default function CustomersList({
   customers,
   theme,
-  timezone,
 }: {
-  customers: Customer[];
+  customers: CustomerRow[];
   theme: Theme;
-  timezone: string;
 }) {
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<CustomerRow | null>(null);
 
   return (
     <>
@@ -86,22 +77,20 @@ export default function CustomersList({
               >
                 <div className="flex items-center justify-between gap-4">
                   <div className="min-w-0">
-                    <p className="truncate text-base font-semibold">{customer.name}</p>
-                    <p className={`truncate text-sm ${theme.textMuted}`}>
-                      {customer.address?.trim()
-                        ? customer.address
-                        : customer.notes?.trim()
-                          ? customer.notes
-                          : customer.email?.trim()
-                            ? customer.email
-                            : customer.phone?.trim()
-                              ? customer.phone
-                              : "Sin descripción"}
-                    </p>
-                  </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="truncate text-base font-semibold">{customer.name}</p>
+                      <span className={`rounded-full border px-2 py-1 text-[11px] ${theme.cardSoft}`}>
+                        {customer.active ? "Activo" : "Inactivo"}
+                      </span>
+                    </div>
 
-                  <div className={`shrink-0 text-xs ${theme.textMuted}`}>
-                    {formatCustomerDate(customer.created_at, timezone)}
+                    <p className={`truncate text-sm ${theme.textMuted}`}>
+                      {customer.phone?.trim() ? customer.phone : "Sin teléfono"}
+                    </p>
+
+                    <p className={`mt-1 truncate text-xs ${theme.textMuted}`}>
+                      {customer.email?.trim() ? customer.email : "Sin correo"}
+                    </p>
                   </div>
                 </div>
               </button>
@@ -125,7 +114,7 @@ export default function CustomersList({
                 <div className="min-w-0">
                   <h3 className="text-xl font-semibold">Editar cliente</h3>
                   <p className={`mt-1 text-sm ${theme.textMuted}`}>
-                    Modifica la información del cliente o elimínalo.
+                    Modifica la información del cliente, desactívalo o elimínalo si no tiene historial relacionado.
                   </p>
                 </div>
 
@@ -142,7 +131,7 @@ export default function CustomersList({
                 <form action={updateCustomerAction} className="grid gap-4 md:grid-cols-2">
                   <input type="hidden" name="customerId" value={selectedCustomer.id} />
 
-                  <div>
+                  <div className="md:col-span-2">
                     <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
                       Nombre
                     </label>
@@ -154,14 +143,30 @@ export default function CustomersList({
                     />
                   </div>
 
-                  <CustomerContactFields
-                    theme={theme}
-                    timezone={timezone}
-                    initialPhone={selectedCustomer.phone || ""}
-                    initialEmail={selectedCustomer.email || ""}
-                  />
+                  <div>
+                    <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
+                      Teléfono
+                    </label>
+                    <input
+                      name="phone"
+                      defaultValue={selectedCustomer.phone || ""}
+                      className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+                    />
+                  </div>
 
                   <div>
+                    <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
+                      Correo
+                    </label>
+                    <input
+                      name="email"
+                      type="email"
+                      defaultValue={selectedCustomer.email || ""}
+                      className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
                     <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
                       Dirección
                     </label>
@@ -169,7 +174,6 @@ export default function CustomersList({
                       name="address"
                       defaultValue={selectedCustomer.address || ""}
                       className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
-                      placeholder="Opcional"
                     />
                   </div>
 
@@ -179,13 +183,28 @@ export default function CustomersList({
                     </label>
                     <textarea
                       name="notes"
-                      rows={4}
+                      rows={3}
                       defaultValue={selectedCustomer.notes || ""}
                       className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
                     />
                   </div>
 
-                  <div className="flex flex-wrap gap-3 md:col-span-2">
+                  <div className="md:col-span-2 flex items-center gap-3">
+                    <input
+                      id={`active_${selectedCustomer.id}`}
+                      type="checkbox"
+                      name="active"
+                      defaultChecked={selectedCustomer.active}
+                    />
+                    <label
+                      htmlFor={`active_${selectedCustomer.id}`}
+                      className={`text-sm font-medium ${theme.label}`}
+                    >
+                      Cliente activo
+                    </label>
+                  </div>
+
+                  <div className="flex flex-col gap-3 md:col-span-2 sm:flex-row sm:flex-wrap">
                     <button
                       type="submit"
                       className={`rounded-xl px-4 py-2 font-medium transition ${theme.buttonPrimary}`}
@@ -195,15 +214,56 @@ export default function CustomersList({
                   </div>
                 </form>
 
-                <form action={deleteCustomerAction} className="mt-4">
-                  <input type="hidden" name="customerId" value={selectedCustomer.id} />
-                  <button
-                    type="submit"
-                    className={`w-full rounded-xl px-4 py-2 text-sm font-medium transition sm:w-auto ${theme.danger}`}
+                <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                  {selectedCustomer.active ? (
+                    <form action={deactivateCustomerAction}>
+                      <input type="hidden" name="customerId" value={selectedCustomer.id} />
+                      <button
+                        type="submit"
+                        className={`w-full rounded-xl px-4 py-2 text-sm font-medium transition sm:w-auto ${theme.buttonSecondary}`}
+                      >
+                        Desactivar
+                      </button>
+                    </form>
+                  ) : (
+                    <form action={reactivateCustomerAction}>
+                      <input type="hidden" name="customerId" value={selectedCustomer.id} />
+                      <button
+                        type="submit"
+                        className={`w-full rounded-xl px-4 py-2 text-sm font-medium transition sm:w-auto ${theme.buttonPrimary}`}
+                      >
+                        Reactivar
+                      </button>
+                    </form>
+                  )}
+
+                  <form
+                    action={deleteCustomerAction}
+                    onSubmit={(event) => {
+                      const confirmed = window.confirm(
+                        "¿Deseas eliminar este cliente? Solo se eliminará si no tiene historial relacionado."
+                      );
+
+                      if (!confirmed) {
+                        event.preventDefault();
+                      }
+                    }}
                   >
-                    Eliminar
-                  </button>
-                </form>
+                    <input type="hidden" name="customerId" value={selectedCustomer.id} />
+                    <button
+                      type="submit"
+                      className={`w-full rounded-xl px-4 py-2 text-sm font-medium transition sm:w-auto ${theme.danger}`}
+                    >
+                      Eliminar
+                    </button>
+                  </form>
+                </div>
+
+                {!selectedCustomer.active && (
+                  <p className={`mt-4 text-sm ${theme.textMuted}`}>
+                    Este cliente está inactivo. Puedes reactivarlo cuando vuelva a atenderse en el negocio.
+                  </p>
+                )}
               </div>
             </div>
           </div>

@@ -1,61 +1,65 @@
 import { createCustomerAction } from "../../actions/customers";
 import { requireSectionAccess } from "@/lib/auth/requireSectionAccess";
+import { requirePlanFeature } from "@/lib/billing/requirePlanFeature";
 import { createClient } from "@/lib/supabase/server";
 import { getThemeClasses } from "@/lib/theme/getThemeClasses";
-import CustomersList from "./CustomersList";
-import CustomerContactFields from "./CustomerContactFields";
 import Link from "next/link";
+import CustomersList from "./CustomersList";
 
-type Customer = {
+type CustomerRow = {
   id: string;
   name: string;
   phone: string | null;
   email: string | null;
   address: string | null;
   notes: string | null;
+  active: boolean;
   created_at: string;
 };
 
 export default async function CustomersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; success?: string; page?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    success?: string;
+    page?: string;
+    q?: string;
+  }>;
 }) {
   const params = await searchParams;
   const ctx = await requireSectionAccess("customers");
+  await requirePlanFeature("customers");
 
   const { business } = ctx;
   const theme = getThemeClasses(business.theme || "warm");
   const supabase = await createClient();
 
   const currentPage = Math.max(1, Number(params.page || "1") || 1);
+  const searchTerm = String(params.q || "").trim();
   const pageSize = 10;
   const from = (currentPage - 1) * pageSize;
   const to = from + pageSize - 1;
 
-  const [
-    { count, error: countError },
-    { data: customers, error },
-    { data: settings },
-  ] = await Promise.all([
-    supabase
-      .from("customers")
-      .select("*", { count: "exact", head: true })
-      .eq("business_id", business.id),
+  let countQuery = supabase
+    .from("customers")
+    .select("*", { count: "exact", head: true })
+    .eq("business_id", business.id);
 
-    supabase
-      .from("customers")
-      .select("id, name, phone, email, address, notes, created_at")
-      .eq("business_id", business.id)
-      .order("created_at", { ascending: false })
-      .range(from, to),
+  let customersQuery = supabase
+    .from("customers")
+    .select("id, name, phone, email, address, notes, active, created_at")
+    .eq("business_id", business.id)
+    .order("created_at", { ascending: false });
 
-    supabase
-      .from("business_settings")
-      .select("timezone")
-      .eq("business_id", business.id)
-      .maybeSingle(),
-  ]);
+  if (searchTerm) {
+    const searchFilter = `name.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,address.ilike.%${searchTerm}%`;
+    countQuery = countQuery.or(searchFilter);
+    customersQuery = customersQuery.or(searchFilter);
+  }
+
+  const { count, error: countError } = await countQuery;
+  const { data: customers, error } = await customersQuery.range(from, to);
 
   if (error || countError) {
     return (
@@ -69,7 +73,7 @@ export default async function CustomersPage({
 
   const totalCustomers = count || 0;
   const totalPages = Math.max(1, Math.ceil(totalCustomers / pageSize));
-  const timezone = settings?.timezone || "America/Tegucigalpa";
+  const extraQuery = searchTerm ? `&q=${encodeURIComponent(searchTerm)}` : "";
 
   return (
     <main className={`min-h-screen p-6 ${theme.pageBg}`}>
@@ -77,7 +81,7 @@ export default async function CustomersPage({
         <div>
           <h1 className="text-3xl font-bold">Clientes</h1>
           <p className={`mt-1 text-sm ${theme.textMuted}`}>
-            Administra los clientes del negocio actual.
+            Administra la cartera de clientes del negocio actual.
           </p>
         </div>
 
@@ -105,13 +109,49 @@ export default async function CustomersPage({
           </p>
         )}
 
+        {params.success === "deactivated" && (
+          <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            Cliente desactivado correctamente.
+          </p>
+        )}
+
+        {params.success === "reactivated" && (
+          <p className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+            Cliente reactivado correctamente.
+          </p>
+        )}
+
+        <section className={`rounded-2xl border p-4 shadow-sm ${theme.card}`}>
+          <form action="/dashboard/customers" className="flex flex-col gap-3 md:flex-row">
+            <input
+              type="text"
+              name="q"
+              defaultValue={searchTerm}
+              placeholder="Buscar por nombre, teléfono, correo o dirección..."
+              className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+            />
+
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                className={`rounded-xl px-4 py-2 text-sm font-medium transition ${theme.buttonPrimary}`}
+              >
+                Buscar
+              </button>
+
+              <Link
+                href="/dashboard/customers"
+                className={`rounded-xl px-4 py-2 text-sm font-medium transition ${theme.buttonSecondary}`}
+              >
+                Limpiar
+              </Link>
+            </div>
+          </form>
+        </section>
+
         <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
           <section className="space-y-4">
-            <CustomersList
-              customers={(customers || []) as Customer[]}
-              theme={theme}
-              timezone={timezone}
-            />
+            <CustomersList customers={(customers || []) as CustomerRow[]} theme={theme} />
 
             <div className="flex items-center justify-between">
               <p className={`text-sm ${theme.textMuted}`}>
@@ -120,7 +160,7 @@ export default async function CustomersPage({
 
               <div className="flex items-center gap-2">
                 <Link
-                  href={`/dashboard/customers?page=${currentPage - 1}`}
+                  href={`/dashboard/customers?page=${currentPage - 1}${extraQuery}`}
                   className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
                     currentPage <= 1
                       ? "pointer-events-none opacity-50"
@@ -131,7 +171,7 @@ export default async function CustomersPage({
                 </Link>
 
                 <Link
-                  href={`/dashboard/customers?page=${currentPage + 1}`}
+                  href={`/dashboard/customers?page=${currentPage + 1}${extraQuery}`}
                   className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
                     currentPage >= totalPages
                       ? "pointer-events-none opacity-50"
@@ -144,10 +184,15 @@ export default async function CustomersPage({
             </div>
           </section>
 
-          <section className={`h-fit rounded-2xl border p-6 shadow-sm ${theme.card}`}>
-            <h2 className="mb-4 text-xl font-semibold">Nuevo cliente</h2>
+          <section className={`rounded-2xl border p-6 shadow-sm ${theme.card}`}>
+            <div>
+              <h2 className="text-xl font-semibold">Nuevo cliente</h2>
+              <p className={`mt-1 text-sm ${theme.textMuted}`}>
+                Registra un nuevo cliente para el negocio.
+              </p>
+            </div>
 
-            <form action={createCustomerAction} className="grid gap-4">
+            <form action={createCustomerAction} className="mt-5 grid gap-4">
               <input type="hidden" name="businessId" value={business.id} />
 
               <div>
@@ -161,7 +206,26 @@ export default async function CustomersPage({
                 />
               </div>
 
-              <CustomerContactFields theme={theme} timezone={timezone} />
+              <div>
+                <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
+                  Teléfono
+                </label>
+                <input
+                  name="phone"
+                  className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+                />
+              </div>
+
+              <div>
+                <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
+                  Correo
+                </label>
+                <input
+                  name="email"
+                  type="email"
+                  className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+                />
+              </div>
 
               <div>
                 <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
@@ -170,7 +234,6 @@ export default async function CustomersPage({
                 <input
                   name="address"
                   className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
-                  placeholder="Opcional"
                 />
               </div>
 
@@ -180,19 +243,17 @@ export default async function CustomersPage({
                 </label>
                 <textarea
                   name="notes"
-                  rows={4}
+                  rows={3}
                   className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
                 />
               </div>
 
-              <div>
-                <button
-                  type="submit"
-                  className={`rounded-xl px-4 py-2 font-medium transition ${theme.buttonPrimary}`}
-                >
-                  Guardar cliente
-                </button>
-              </div>
+              <button
+                type="submit"
+                className={`rounded-xl px-4 py-2 font-medium transition ${theme.buttonPrimary}`}
+              >
+                Guardar cliente
+              </button>
             </form>
           </section>
         </div>
