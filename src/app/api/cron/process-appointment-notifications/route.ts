@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendPushToBusinessMembers } from "@/lib/notifications/sendPushToBusinessMembers";
 
-function formatAppointmentDate(value: string) {
+function formatAppointmentDate(value: string, timezone: string) {
   return new Date(value).toLocaleString("es-HN", {
-    timeZone: "America/Tegucigalpa",
+    timeZone: timezone,
     dateStyle: "medium",
     timeStyle: "short",
   });
@@ -65,6 +65,12 @@ export async function GET(request: Request) {
             id,
             name
           )
+        ),
+        businesses:business_id (
+          id,
+          business_settings (
+            timezone
+          )
         )
       `)
       .eq("status", "pending")
@@ -84,6 +90,16 @@ export async function GET(request: Request) {
         const appointment = Array.isArray(job.appointments)
           ? job.appointments[0]
           : job.appointments;
+
+        const business = Array.isArray(job.businesses)
+          ? job.businesses[0]
+          : job.businesses;
+
+        const settings = Array.isArray(business?.business_settings)
+          ? business?.business_settings[0]
+          : business?.business_settings;
+
+        const timezone = settings?.timezone || "America/Tegucigalpa";
 
         if (!appointment || appointment.status === "cancelled") {
           await supabase
@@ -110,7 +126,7 @@ export async function GET(request: Request) {
           title: "Recordatorio de cita",
           body: `${customer?.name || "Cliente"} · ${service?.name || "Servicio"} · ${getReminderLabel(
             job.notification_type
-          )} (${formatAppointmentDate(appointment.appointment_at)})`,
+          )} (${formatAppointmentDate(appointment.appointment_at, timezone)})`,
           data: {
             type: job.notification_type,
             appointmentId: appointment.id,
