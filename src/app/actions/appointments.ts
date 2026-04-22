@@ -38,11 +38,11 @@ async function getAppointmentNotificationContext(params: {
 
       staffId
         ? supabase
-            .from("staff")
-            .select("id, display_name")
-            .eq("business_id", businessId)
-            .eq("id", staffId)
-            .maybeSingle()
+          .from("staff")
+          .select("id, display_name")
+          .eq("business_id", businessId)
+          .eq("id", staffId)
+          .maybeSingle()
         : Promise.resolve({ data: null }),
     ]);
 
@@ -74,10 +74,104 @@ function formatAppointmentPushDate(value: string, timezone: string) {
   });
 }
 
+type TimezoneDateParts = {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  second: number;
+};
+
+function getPartsInTimezone(date: Date, timezone: string): TimezoneDateParts {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+
+  const get = (type: string) =>
+    Number(parts.find((part) => part.type === type)?.value || 0);
+
+  return {
+    year: get("year"),
+    month: get("month"),
+    day: get("day"),
+    hour: get("hour"),
+    minute: get("minute"),
+    second: get("second"),
+  };
+}
+
+function zonedDateTimeToUtc(
+  input: {
+    year: number;
+    month: number;
+    day: number;
+    hour?: number;
+    minute?: number;
+    second?: number;
+  },
+  timezone: string
+) {
+  const desired = {
+    year: input.year,
+    month: input.month,
+    day: input.day,
+    hour: input.hour ?? 0,
+    minute: input.minute ?? 0,
+    second: input.second ?? 0,
+  };
+
+  let utcGuess = new Date(
+    Date.UTC(
+      desired.year,
+      desired.month - 1,
+      desired.day,
+      desired.hour,
+      desired.minute,
+      desired.second
+    )
+  );
+
+  for (let i = 0; i < 2; i++) {
+    const zoned = getPartsInTimezone(utcGuess, timezone);
+
+    const zonedAsUtc = Date.UTC(
+      zoned.year,
+      zoned.month - 1,
+      zoned.day,
+      zoned.hour,
+      zoned.minute,
+      zoned.second
+    );
+
+    const desiredAsUtc = Date.UTC(
+      desired.year,
+      desired.month - 1,
+      desired.day,
+      desired.hour,
+      desired.minute,
+      desired.second
+    );
+
+    const diff = desiredAsUtc - zonedAsUtc;
+    utcGuess = new Date(utcGuess.getTime() + diff);
+  }
+
+  return utcGuess;
+}
+
 function normalizeAppointmentAtFromLocal(value: string, timezone: string) {
   const trimmed = value.trim();
   if (!trimmed) return trimmed;
 
+  // Si ya trae offset o Z, se respeta tal cual.
   if (/[zZ]|[+-]\d{2}:\d{2}$/.test(trimmed)) {
     return new Date(trimmed).toISOString();
   }
@@ -88,21 +182,18 @@ function normalizeAppointmentAtFromLocal(value: string, timezone: string) {
   }
 
   const [year, month, day] = datePart.split("-").map(Number);
-  const [hour, minute] = timePart.split(":").map(Number);
+  const [hour, minute, secondRaw] = timePart.split(":").map(Number);
 
-  const timezoneOffsets: Record<string, number> = {
-    "America/Tegucigalpa": 6,
-    "America/Mexico_City": 6,
-    "America/Bogota": 5,
-    "America/New_York": 4,
-    "America/Los_Angeles": 7,
-    "Europe/Madrid": -2,
-  };
-
-  const utcOffsetHours = timezoneOffsets[timezone] ?? 6;
-
-  const utcDate = new Date(
-    Date.UTC(year, month - 1, day, hour + utcOffsetHours, minute, 0)
+  const utcDate = zonedDateTimeToUtc(
+    {
+      year,
+      month,
+      day,
+      hour: hour || 0,
+      minute: minute || 0,
+      second: secondRaw || 0,
+    },
+    timezone
   );
 
   return utcDate.toISOString();
