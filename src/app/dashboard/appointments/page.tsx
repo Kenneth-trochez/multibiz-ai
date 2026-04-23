@@ -126,7 +126,7 @@ export default async function AppointmentsPage({
 
   if (appointmentsError) {
     return (
-      <main className={`min-h-screen p-6 ${theme.pageBg}`}>
+      <main className="min-h-full">
         <div className={`rounded-2xl border p-6 ${theme.card}`}>
           Error cargando citas: {appointmentsError.message}
         </div>
