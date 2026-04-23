@@ -155,7 +155,7 @@ export default async function AppointmentsPage({
   );
 
   return (
-    <main className={theme.pageBg}>
+    <main className="min-h-full">
       <div className="mx-auto max-w-7xl px-6 pt-6">
         {params.error && (
           <p className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
