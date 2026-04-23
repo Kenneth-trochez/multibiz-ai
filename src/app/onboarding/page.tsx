@@ -16,7 +16,7 @@ export default async function OnboardingPage({
   }
 
   return (
-    <main className="min-h-screen bg-[#f6f1e8] text-[#2f241d]">
+    <main className="min-h-full">
       <div className="mx-auto flex min-h-screen max-w-6xl items-center px-4 py-10 sm:px-6 lg:px-8">
         <div className="grid w-full gap-8 lg:grid-cols-[1.1fr_0.9fr]">
           <section className="flex flex-col justify-center">

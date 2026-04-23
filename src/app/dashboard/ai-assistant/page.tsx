@@ -295,7 +295,7 @@ export default async function AiAssistantPage({
   }
 
   return (
-    <main className={`min-h-screen ${theme.pageBg}`}>
+    <main className="min-h-full">
       <div className="mx-auto max-w-7xl space-y-6 p-4 md:p-6">
         <section className={`rounded-[28px] border p-6 md:p-8 ${theme.card}`}>
           <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">

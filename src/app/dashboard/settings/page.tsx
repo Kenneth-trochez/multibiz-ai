@@ -82,7 +82,7 @@ export default async function SettingsPage({
   };
 
   return (
-    <main className={theme.pageBg}>
+    <main className="min-h-full">
       <div className="mx-auto max-w-5xl space-y-6 px-4 py-8 md:px-6">
         <section className={`rounded-[28px] p-6 md:p-8 ${theme.glassCard}`}>
           <div className="mb-6 text-center">

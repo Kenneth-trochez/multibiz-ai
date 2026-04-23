@@ -253,7 +253,7 @@ export default async function DashboardPage() {
   ].filter((item) => item.visible);
 
   return (
-    <main className={theme.pageBg}>
+    <main className="min-h-full">
       <div className="mx-auto max-w-7xl space-y-6 p-4 md:p-6">
         <section className={`rounded-3xl border p-6 shadow-sm ${theme.card}`}>
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">

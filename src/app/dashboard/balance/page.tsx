@@ -508,7 +508,7 @@ export default async function BalancePage({
   ];
 
   return (
-    <main className={theme.pageBg}>
+    <main className="min-h-full">
       <div className="mx-auto max-w-7xl space-y-6 p-4 md:p-6">
         <BalanceClient
           theme={theme}

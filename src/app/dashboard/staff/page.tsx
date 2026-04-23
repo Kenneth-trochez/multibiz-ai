@@ -109,7 +109,7 @@ export default async function StaffPage({
   }));
 
   return (
-    <main className={`min-h-screen p-6 ${theme.pageBg}`}>
+    <main className="min-h-full">
       <div className="mx-auto max-w-7xl space-y-6">
         <div>
           <h1 className="text-3xl font-bold">Staff</h1>

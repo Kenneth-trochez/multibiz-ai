@@ -98,7 +98,7 @@ export default async function CheckoutSessionPage({
   ] as const;
 
   return (
-    <main className={`min-h-screen ${theme.pageBg}`}>
+    <main className="min-h-full">
       <div className="mx-auto max-w-4xl space-y-6 p-4 md:p-6">
         <section className={`rounded-[28px] border p-6 md:p-8 ${theme.card}`}>
           <p className={`text-sm ${theme.textMuted}`}>Checkout preparado</p>
