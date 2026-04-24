@@ -44,88 +44,88 @@ function getThemeGlow(theme: string) {
   switch (theme) {
     case "dark":
       return {
-        primary: "bg-[#ff7a1a]/18",
-        secondary: "bg-white/8",
-        tertiary: "bg-[#9f7aea]/10",
+        primary: "bg-[#ff7a1a]/35",
+        secondary: "bg-white/14",
+        tertiary: "bg-[#9f7aea]/20",
       };
     case "elegant":
       return {
-        primary: "bg-[#b98a63]/18",
-        secondary: "bg-[#f6e7d8]/20",
-        tertiary: "bg-white/18",
+        primary: "bg-[#b98a63]/32",
+        secondary: "bg-[#f6e7d8]/30",
+        tertiary: "bg-white/22",
       };
     case "rose_glam":
       return {
-        primary: "bg-[#ff4fa3]/24",
-        secondary: "bg-[#a855f7]/18",
-        tertiary: "bg-white/10",
+        primary: "bg-[#ff4fa3]/40",
+        secondary: "bg-[#a855f7]/32",
+        tertiary: "bg-white/16",
       };
     case "sunset_pop":
       return {
-        primary: "bg-[#ff7a00]/24",
-        secondary: "bg-[#ff5a36]/18",
-        tertiary: "bg-white/8",
+        primary: "bg-[#ff7a00]/40",
+        secondary: "bg-[#ff5a36]/30",
+        tertiary: "bg-white/14",
       };
     case "violet_neon":
       return {
-        primary: "bg-[#d66bff]/24",
-        secondary: "bg-[#4f9cff]/20",
-        tertiary: "bg-white/10",
+        primary: "bg-[#d66bff]/40",
+        secondary: "bg-[#4f9cff]/32",
+        tertiary: "bg-white/16",
       };
     case "aqua_lux":
       return {
-        primary: "bg-[#00cfd5]/20",
-        secondary: "bg-[#28c493]/18",
-        tertiary: "bg-white/10",
+        primary: "bg-[#00cfd5]/36",
+        secondary: "bg-[#28c493]/30",
+        tertiary: "bg-white/16",
       };
     case "ruby_night":
       return {
-        primary: "bg-[#e11d48]/20",
-        secondary: "bg-[#be185d]/16",
-        tertiary: "bg-white/8",
+        primary: "bg-[#e11d48]/36",
+        secondary: "bg-[#be185d]/28",
+        tertiary: "bg-white/12",
       };
     case "blush_pop":
       return {
-        primary: "bg-[#ec5f95]/14",
-        secondary: "bg-[#f7bfd5]/18",
-        tertiary: "bg-white/16",
+        primary: "bg-[#ec5f95]/28",
+        secondary: "bg-[#f7bfd5]/30",
+        tertiary: "bg-white/22",
       };
     case "cotton_candy":
       return {
-        primary: "bg-[#d66bff]/14",
-        secondary: "bg-[#f1d8ff]/18",
-        tertiary: "bg-white/16",
+        primary: "bg-[#d66bff]/28",
+        secondary: "bg-[#f1d8ff]/30",
+        tertiary: "bg-white/22",
       };
     case "pearl_rose":
       return {
-        primary: "bg-[#cc7f95]/14",
-        secondary: "bg-[#f5dde4]/18",
-        tertiary: "bg-white/16",
+        primary: "bg-[#cc7f95]/28",
+        secondary: "bg-[#f5dde4]/30",
+        tertiary: "bg-white/22",
       };
     case "mint_day":
       return {
-        primary: "bg-[#28c493]/14",
-        secondary: "bg-[#cff4e6]/18",
-        tertiary: "bg-white/16",
+        primary: "bg-[#28c493]/28",
+        secondary: "bg-[#cff4e6]/30",
+        tertiary: "bg-white/22",
       };
     case "sky_breeze":
       return {
-        primary: "bg-[#4f9cff]/14",
-        secondary: "bg-[#d8eaff]/18",
-        tertiary: "bg-white/16",
+        primary: "bg-[#4f9cff]/28",
+        secondary: "bg-[#d8eaff]/30",
+        tertiary: "bg-white/22",
       };
     case "minimal":
       return {
-        primary: "bg-black/6",
-        secondary: "bg-black/4",
-        tertiary: "bg-white/20",
+        primary: "bg-black/10",
+        secondary: "bg-black/8",
+        tertiary: "bg-white/26",
       };
     case "warm":
     default:
       return {
-        primary: "bg-[#a56a3a]/18",
-        secondary: "bg-[#f1e5d7]/20",
-        tertiary: "bg-white/18",
+        primary: "bg-[#a56a3a]/32",
+        secondary: "bg-[#f1e5d7]/30",
+        tertiary: "bg-white/22",
       };
   }
 }
@@ -237,18 +237,18 @@ export default async function DashboardLayout({
       <style>{`
         @keyframes blob-1 {
           0%, 100% { transform: translate(0px, 0px) scale(1); }
-          33% { transform: translate(40px, -30px) scale(1.1); }
-          66% { transform: translate(-20px, 20px) scale(0.95); }
+          33% { transform: translate(60px, -45px) scale(1.15); }
+          66% { transform: translate(-35px, 30px) scale(0.92); }
         }
         @keyframes blob-2 {
           0%, 100% { transform: translate(0px, 0px) scale(1); }
-          33% { transform: translate(-50px, 30px) scale(1.08); }
-          66% { transform: translate(35px, -25px) scale(1.05); }
+          33% { transform: translate(-70px, 45px) scale(1.12); }
+          66% { transform: translate(50px, -40px) scale(1.08); }
         }
         @keyframes blob-3 {
           0%, 100% { transform: translate(0px, 0px) scale(1); }
-          33% { transform: translate(30px, 40px) scale(0.95); }
-          66% { transform: translate(-40px, -20px) scale(1.1); }
+          33% { transform: translate(45px, 60px) scale(0.92); }
+          66% { transform: translate(-55px, -30px) scale(1.15); }
         }
         .blob-1 { animation: blob-1 9s ease-in-out infinite; }
         .blob-2 { animation: blob-2 13s ease-in-out infinite; }
@@ -257,13 +257,13 @@ export default async function DashboardLayout({
 
       <div className="pointer-events-none absolute inset-0 z-0">
         <div
-          className={`blob-1 absolute -left-24 top-[-50px] h-[340px] w-[340px] rounded-full blur-3xl ${glow.primary}`}
+          className={`blob-1 absolute -left-32 top-[-80px] h-[500px] w-[500px] rounded-full blur-3xl ${glow.primary}`}
         />
         <div
-          className={`blob-2 absolute right-[8%] top-[10%] h-[420px] w-[420px] rounded-full blur-3xl ${glow.secondary}`}
+          className={`blob-2 absolute right-[4%] top-[8%] h-[580px] w-[580px] rounded-full blur-3xl ${glow.secondary}`}
         />
         <div
-          className={`blob-3 absolute bottom-[-70px] left-[30%] h-[360px] w-[360px] rounded-full blur-3xl ${glow.tertiary}`}
+          className={`blob-3 absolute bottom-[-100px] left-[25%] h-[520px] w-[520px] rounded-full blur-3xl ${glow.tertiary}`}
         />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,transparent_58%,rgba(0,0,0,0.16)_100%)]" />
       </div>
