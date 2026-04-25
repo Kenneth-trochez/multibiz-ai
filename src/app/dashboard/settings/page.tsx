@@ -62,27 +62,27 @@ export default async function SettingsPage({
     .eq("business_id", business.id)
     .maybeSingle();
 
-const settings: BusinessSettingsRow = {
-  daily_sales_goal: Number(businessSettings?.daily_sales_goal || 3000),
-  monthly_sales_goal: Number(businessSettings?.monthly_sales_goal || 60000),
-  daily_appointments_goal: Number(
-    businessSettings?.daily_appointments_goal || 8
-  ),
-  timezone: businessSettings?.timezone || "America/Tegucigalpa",
-  workday_start_time: normalizeTimeValue(
-    businessSettings?.workday_start_time,
-    "08:00"
-  ),
-  workday_end_time: normalizeTimeValue(
-    businessSettings?.workday_end_time,
-    "17:00"
-  ),
-  workdays: Array.isArray(businessSettings?.workdays)
-    ? businessSettings.workdays
-    : ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday"],
-};
+  const settings: BusinessSettingsRow = {
+    daily_sales_goal: Number(businessSettings?.daily_sales_goal || 3000),
+    monthly_sales_goal: Number(businessSettings?.monthly_sales_goal || 60000),
+    daily_appointments_goal: Number(
+      businessSettings?.daily_appointments_goal || 8
+    ),
+    timezone: businessSettings?.timezone || "America/Tegucigalpa",
+    workday_start_time: normalizeTimeValue(
+      businessSettings?.workday_start_time,
+      "08:00"
+    ),
+    workday_end_time: normalizeTimeValue(
+      businessSettings?.workday_end_time,
+      "17:00"
+    ),
+    workdays: Array.isArray(businessSettings?.workdays)
+      ? businessSettings.workdays
+      : ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday"],
+  };
 
-const timezone = settings.timezone;
+  const timezone = settings.timezone;
 
   return (
     <main className="min-h-full">
@@ -131,6 +131,7 @@ const timezone = settings.timezone;
 
               <form
                 action={updateBusinessAction}
+                encType="multipart/form-data"
                 className="grid gap-5 md:grid-cols-2"
               >
                 <div className="md:col-span-2">
