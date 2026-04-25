@@ -5,9 +5,12 @@ import { getThemeClasses } from "@/lib/theme/getThemeClasses";
 import { formatMoneyByTimezone } from "@/lib/money/currency";
 import BalanceClient from "./BalanceClient";
 
-type CompletedAppointment = {
+type AppointmentRecord = {
   id: string;
   appointment_at: string;
+  status: string;
+  notes: string | null;
+  source: string | null;
   customer: {
     id: string;
     name: string;
@@ -53,6 +56,31 @@ type SaleItemRecord = {
     name: string;
     sku: string | null;
   } | null;
+};
+
+type AiUsageLogRecord = {
+  id: string;
+  call_id: string;
+  assistant_id: string | null;
+  usage_date: string;
+  started_at: string | null;
+  ended_at: string | null;
+  duration_seconds: number;
+  minutes_used: number;
+  overage_minutes: number;
+  billing_status: string;
+  source: string;
+  created_at: string;
+};
+
+type AiCallDetailRecord = {
+  id: string;
+  call_id: string;
+  assistant_id: string | null;
+  transcript: string | null;
+  summary: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 function getDatePartsInTimezone(date: Date, timezone: string) {
@@ -131,6 +159,8 @@ function getMonthRange(monthKey: string, timezone: string) {
     key: `${year}-${String(month).padStart(2, "0")}`,
     start,
     endExclusive,
+    startDate: start.slice(0, 10),
+    endDate: endExclusive.slice(0, 10),
     label: monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1),
     prevMonth,
     nextMonth,
@@ -172,35 +202,31 @@ export default async function BalancePage({
   const canExportBalance = planCode !== "basic";
 
   const [
-    { data: completedAppointmentsRaw, error: completedError },
     { data: allAppointmentsRaw, error: allAppointmentsError },
     { data: salesRaw, error: salesError },
     { count: customersCount },
     { count: servicesCount },
     { count: staffCount },
     { count: productsCount },
+    { data: aiUsageLogsRaw, error: aiUsageLogsError },
+    { data: aiCallDetailsRaw, error: aiCallDetailsError },
   ] = await Promise.all([
     supabase
       .from("appointments")
       .select(`
         id,
         appointment_at,
+        status,
+        notes,
+        source,
         customer:customers!appointments_customer_id_fkey(id,name,phone),
         service:services!appointments_service_id_fkey(id,name,price),
         staff:staff!appointments_staff_id_fkey(id,display_name)
       `)
       .eq("business_id", business.id)
-      .eq("status", "completed")
       .gte("appointment_at", range.start)
       .lt("appointment_at", range.endExclusive)
       .order("appointment_at", { ascending: false }),
-
-    supabase
-      .from("appointments")
-      .select("id,status,appointment_at")
-      .eq("business_id", business.id)
-      .gte("appointment_at", range.start)
-      .lt("appointment_at", range.endExclusive),
 
     supabase
       .from("sales")
@@ -238,34 +264,79 @@ export default async function BalancePage({
       .from("products")
       .select("*", { count: "exact", head: true })
       .eq("business_id", business.id),
+
+    supabase
+      .from("ai_usage_logs")
+      .select(`
+        id,
+        call_id,
+        assistant_id,
+        usage_date,
+        started_at,
+        ended_at,
+        duration_seconds,
+        minutes_used,
+        overage_minutes,
+        billing_status,
+        source,
+        created_at
+      `)
+      .eq("business_id", business.id)
+      .gte("usage_date", range.startDate)
+      .lt("usage_date", range.endDate)
+      .order("usage_date", { ascending: false }),
+
+    supabase
+      .from("ai_call_details")
+      .select(`
+        id,
+        call_id,
+        assistant_id,
+        transcript,
+        summary,
+        created_at,
+        updated_at
+      `)
+      .eq("business_id", business.id)
+      .gte("created_at", range.start)
+      .lt("created_at", range.endExclusive)
+      .order("created_at", { ascending: false }),
   ]);
 
-  if (completedError || allAppointmentsError || salesError) {
+  if (allAppointmentsError || salesError || aiUsageLogsError || aiCallDetailsError) {
     return (
       <main className={`min-h-screen p-6 ${theme.pageBg}`}>
         <div className={`rounded-3xl border p-6 ${theme.card}`}>
           Error cargando balance:{" "}
-          {completedError?.message ||
-            allAppointmentsError?.message ||
-            salesError?.message}
+          {allAppointmentsError?.message ||
+            salesError?.message ||
+            aiUsageLogsError?.message ||
+            aiCallDetailsError?.message}
         </div>
       </main>
     );
   }
 
-  const completedAppointments: CompletedAppointment[] = (
-    completedAppointmentsRaw || []
-  ).map((apt: any) => ({
-    id: apt.id,
-    appointment_at: apt.appointment_at,
-    customer: Array.isArray(apt.customer)
-      ? apt.customer[0] || null
-      : apt.customer || null,
-    service: Array.isArray(apt.service)
-      ? apt.service[0] || null
-      : apt.service || null,
-    staff: Array.isArray(apt.staff) ? apt.staff[0] || null : apt.staff || null,
-  }));
+  const allAppointments: AppointmentRecord[] = (allAppointmentsRaw || []).map(
+    (apt: any) => ({
+      id: apt.id,
+      appointment_at: apt.appointment_at,
+      status: apt.status,
+      notes: apt.notes,
+      source: apt.source,
+      customer: Array.isArray(apt.customer)
+        ? apt.customer[0] || null
+        : apt.customer || null,
+      service: Array.isArray(apt.service)
+        ? apt.service[0] || null
+        : apt.service || null,
+      staff: Array.isArray(apt.staff) ? apt.staff[0] || null : apt.staff || null,
+    })
+  );
+
+  const completedAppointments = allAppointments.filter(
+    (apt) => apt.status === "completed"
+  );
 
   const sales: SaleRecord[] = (salesRaw || []).map((sale: any) => ({
     id: sale.id,
@@ -319,7 +390,32 @@ export default async function BalancePage({
     }));
   }
 
-  const allAppointments = allAppointmentsRaw || [];
+  const aiUsageLogs: AiUsageLogRecord[] = (aiUsageLogsRaw || []).map((log: any) => ({
+    id: log.id,
+    call_id: log.call_id,
+    assistant_id: log.assistant_id,
+    usage_date: log.usage_date,
+    started_at: log.started_at,
+    ended_at: log.ended_at,
+    duration_seconds: Number(log.duration_seconds || 0),
+    minutes_used: Number(log.minutes_used || 0),
+    overage_minutes: Number(log.overage_minutes || 0),
+    billing_status: log.billing_status,
+    source: log.source,
+    created_at: log.created_at,
+  }));
+
+  const aiCallDetails: AiCallDetailRecord[] = (aiCallDetailsRaw || []).map(
+    (call: any) => ({
+      id: call.id,
+      call_id: call.call_id,
+      assistant_id: call.assistant_id,
+      transcript: call.transcript,
+      summary: call.summary,
+      created_at: call.created_at,
+      updated_at: call.updated_at,
+    })
+  );
 
   const appointmentRevenue = completedAppointments.reduce(
     (sum, apt) => sum + Number(apt.service?.price || 0),
@@ -528,9 +624,12 @@ export default async function BalancePage({
           maxStaffRevenue={maxStaffRevenue}
           topProducts={topProducts}
           maxProductRevenue={maxProductRevenue}
+          allAppointments={allAppointments}
           completedAppointments={completedAppointments}
           sales={sales}
           saleItems={saleItems}
+          aiUsageLogs={aiUsageLogs}
+          aiCallDetails={aiCallDetails}
           customersCount={customersCount || 0}
           servicesCount={servicesCount || 0}
           staffCount={staffCount || 0}

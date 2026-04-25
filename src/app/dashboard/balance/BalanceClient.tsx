@@ -58,9 +58,12 @@ type RankedItem = {
   revenue: number;
 };
 
-type CompletedAppointment = {
+type AppointmentRecord = {
   id: string;
   appointment_at: string;
+  status: string;
+  notes: string | null;
+  source: string | null;
   customer: {
     id: string;
     name: string;
@@ -106,6 +109,31 @@ type SaleItemRecord = {
     name: string;
     sku: string | null;
   } | null;
+};
+
+type AiUsageLogRecord = {
+  id: string;
+  call_id: string;
+  assistant_id: string | null;
+  usage_date: string;
+  started_at: string | null;
+  ended_at: string | null;
+  duration_seconds: number;
+  minutes_used: number;
+  overage_minutes: number;
+  billing_status: string;
+  source: string;
+  created_at: string;
+};
+
+type AiCallDetailRecord = {
+  id: string;
+  call_id: string;
+  assistant_id: string | null;
+  transcript: string | null;
+  summary: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 function formatMoney(value: number | string | null | undefined, timezone: string) {
@@ -182,9 +210,12 @@ export default function BalanceClient({
   maxStaffRevenue,
   topProducts,
   maxProductRevenue,
+  allAppointments,
   completedAppointments,
   sales,
   saleItems,
+  aiUsageLogs,
+  aiCallDetails,
   customersCount,
   servicesCount,
   staffCount,
@@ -217,9 +248,12 @@ export default function BalanceClient({
   maxStaffRevenue: number;
   topProducts: RankedItem[];
   maxProductRevenue: number;
-  completedAppointments: CompletedAppointment[];
+  allAppointments: AppointmentRecord[];
+  completedAppointments: AppointmentRecord[];
   sales: SaleRecord[];
   saleItems: SaleItemRecord[];
+  aiUsageLogs: AiUsageLogRecord[];
+  aiCallDetails: AiCallDetailRecord[];
   customersCount: number;
   servicesCount: number;
   staffCount: number;
@@ -234,6 +268,7 @@ export default function BalanceClient({
   const [chartPage, setChartPage] = useState(0);
   const [showRecordsModal, setShowRecordsModal] = useState(false);
   const [recordsSearch, setRecordsSearch] = useState("");
+  const [includeAiLogsInExport, setIncludeAiLogsInExport] = useState(false);
 
   const pageSize = 5;
   const totalChartPages = Math.max(1, Math.ceil(dailyRevenue.length / pageSize));
@@ -297,6 +332,9 @@ export default function BalanceClient({
     const summaryData = [
       {
         Periodo: rangeLabel,
+        Mes: currentMonthKey,
+        ZonaHoraria: timezone,
+        MonedaMostrada: formatMoney(1, timezone).replace("1.00", "").trim(),
         IngresosTotales: totalRevenue,
         IngresosCitas: appointmentRevenue,
         IngresosVentas: salesRevenue,
@@ -304,22 +342,37 @@ export default function BalanceClient({
         ServiciosConfigurados: servicesCount,
         StaffRegistrado: staffCount,
         ProductosRegistrados: productsCount,
+        CitasTotalesDelMes: allAppointments.length,
         CitasCompletadas: completedAppointments.length,
         VentasRegistradas: sales.length,
+        LogsUsoIA: aiUsageLogs.length,
+        ConversacionesIA: aiCallDetails.length,
+        ExportadoEn: formatDateTime(new Date().toISOString(), timezone),
       },
     ];
 
-    const appointmentsData = filteredAppointments.map((apt) => ({
+    const dailyRevenueData = dailyRevenue.map((day) => ({
+      Dia: day.key,
+      IngresosCitas: Number(day.appointmentsRevenue || 0),
+      IngresosVentas: Number(day.salesRevenue || 0),
+      IngresosTotales: Number(day.totalRevenue || 0),
+    }));
+
+    const appointmentsData = allAppointments.map((apt) => ({
+      IDCita: apt.id,
       Fecha: formatDateTime(apt.appointment_at, timezone),
+      Estado: apt.status,
+      Origen: apt.source || "manual",
       Cliente: apt.customer?.name || "Cliente no disponible",
       Staff: apt.staff?.display_name || "Sin asignar",
       Servicio: apt.service?.name || "Sin servicio",
       Teléfono: apt.customer?.phone || "Sin teléfono",
       Monto: Number(apt.service?.price || 0),
+      Notas: apt.notes || "",
       Tipo: "Cita",
     }));
 
-    const salesData = filteredSales.map((sale) => ({
+    const salesData = sales.map((sale) => ({
       IDVenta: sale.id,
       Fecha: formatDateTime(sale.sale_at, timezone),
       Cliente: sale.customer?.name || "Sin cliente",
@@ -332,7 +385,8 @@ export default function BalanceClient({
       Tipo: "Venta",
     }));
 
-    const saleItemsData = filteredSaleItems.map((item) => ({
+    const saleItemsData = saleItems.map((item) => ({
+      IDItem: item.id,
       IDVenta: item.sale_id,
       Producto: item.product?.name || "Sin producto",
       SKU: item.product?.sku || "",
@@ -341,63 +395,79 @@ export default function BalanceClient({
       TotalLinea: Number(item.line_total || 0),
     }));
 
+    const topServicesData = topServices.map((service, index) => ({
+      Ranking: index + 1,
+      Servicio: service.name,
+      Citas: service.count,
+      Ingresos: Number(service.revenue || 0),
+    }));
+
+    const topStaffData = topStaff.map((staff, index) => ({
+      Ranking: index + 1,
+      Staff: staff.name,
+      Citas: staff.count,
+      Ingresos: Number(staff.revenue || 0),
+    }));
+
+    const topProductsData = topProducts.map((product, index) => ({
+      Ranking: index + 1,
+      Producto: product.name,
+      Unidades: product.count,
+      Ingresos: Number(product.revenue || 0),
+    }));
+
+    const aiUsageData = aiUsageLogs.map((log) => ({
+      ID: log.id,
+      CallID: log.call_id,
+      AssistantID: log.assistant_id || "",
+      FechaUso: log.usage_date,
+      Inicio: log.started_at ? formatDateTime(log.started_at, timezone) : "",
+      Fin: log.ended_at ? formatDateTime(log.ended_at, timezone) : "",
+      DuracionSegundos: Number(log.duration_seconds || 0),
+      MinutosUsados: Number(log.minutes_used || 0),
+      MinutosExcedentes: Number(log.overage_minutes || 0),
+      EstadoFacturacion: log.billing_status,
+      Fuente: log.source,
+      CreadoEn: formatDateTime(log.created_at, timezone),
+    }));
+
+    const aiConversationsData = aiCallDetails.map((call) => ({
+      ID: call.id,
+      CallID: call.call_id,
+      AssistantID: call.assistant_id || "",
+      Fecha: formatDateTime(call.created_at, timezone),
+      Resumen: call.summary || "",
+      Transcripcion: call.transcript || "",
+    }));
+
     const wb = XLSX.utils.book_new();
 
-    const wsSummary = XLSX.utils.json_to_sheet(summaryData);
-    wsSummary["!cols"] = [
-      { wch: 22 },
-      { wch: 18 },
-      { wch: 18 },
-      { wch: 18 },
-      { wch: 20 },
-      { wch: 20 },
-      { wch: 18 },
-      { wch: 20 },
-      { wch: 18 },
-      { wch: 18 },
-    ];
+    function appendSheet(name: string, rows: Record<string, any>[], widths: number[]) {
+      const ws = XLSX.utils.json_to_sheet(rows.length > 0 ? rows : [{}]);
+      ws["!cols"] = widths.map((wch) => ({ wch }));
+      XLSX.utils.book_append_sheet(wb, ws, name);
+    }
 
-    const wsAppointments = XLSX.utils.json_to_sheet(appointmentsData);
-    wsAppointments["!cols"] = [
-      { wch: 20 },
-      { wch: 28 },
-      { wch: 24 },
-      { wch: 24 },
-      { wch: 18 },
-      { wch: 14 },
-      { wch: 12 },
-    ];
+    appendSheet("Resumen", summaryData, [
+      22, 12, 24, 16, 18, 18, 18, 20, 22, 18, 20, 18, 18, 18, 14, 16, 20,
+    ]);
 
-    const wsSales = XLSX.utils.json_to_sheet(salesData);
-    wsSales["!cols"] = [
-      { wch: 38 },
-      { wch: 20 },
-      { wch: 28 },
-      { wch: 24 },
-      { wch: 18 },
-      { wch: 14 },
-      { wch: 14 },
-      { wch: 14 },
-      { wch: 28 },
-      { wch: 12 },
-    ];
+    appendSheet("IngresosPorDia", dailyRevenueData, [16, 18, 18, 18]);
+    appendSheet("CitasTodas", appointmentsData, [
+      38, 20, 16, 16, 28, 24, 24, 18, 14, 36, 12,
+    ]);
+    appendSheet("Ventas", salesData, [38, 20, 28, 24, 18, 14, 14, 14, 28, 12]);
+    appendSheet("ItemsVenta", saleItemsData, [38, 38, 28, 18, 12, 16, 16]);
+    appendSheet("TopServicios", topServicesData, [12, 28, 14, 16]);
+    appendSheet("TopStaff", topStaffData, [12, 28, 14, 16]);
+    appendSheet("TopProductos", topProductsData, [12, 28, 14, 16]);
 
-    const wsSaleItems = XLSX.utils.json_to_sheet(saleItemsData);
-    wsSaleItems["!cols"] = [
-      { wch: 38 },
-      { wch: 28 },
-      { wch: 18 },
-      { wch: 12 },
-      { wch: 16 },
-      { wch: 16 },
-    ];
+    if (includeAiLogsInExport) {
+      appendSheet("UsoIA", aiUsageData, [38, 32, 32, 14, 20, 20, 18, 16, 18, 20, 18, 20]);
+      appendSheet("ConversacionesIA", aiConversationsData, [38, 32, 32, 20, 60, 90]);
+    }
 
-    XLSX.utils.book_append_sheet(wb, wsSummary, "Resumen");
-    XLSX.utils.book_append_sheet(wb, wsAppointments, "Citas");
-    XLSX.utils.book_append_sheet(wb, wsSales, "Ventas");
-    XLSX.utils.book_append_sheet(wb, wsSaleItems, "ItemsVenta");
-
-    XLSX.writeFile(wb, `balance-consolidado-${currentMonthKey}.xlsx`);
+    XLSX.writeFile(wb, `respaldo-balance-${currentMonthKey}.xlsx`);
   };
 
   return (
@@ -804,14 +874,27 @@ export default function BalanceClient({
                 ) : null}
 
                 {canExportBalance ? (
-                  <button
-                    type="button"
-                    onClick={exportRecords}
-                    className={`inline-flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-medium transition ${theme.buttonPrimary}`}
-                  >
-                    <Download className="h-4 w-4" />
-                    Exportar a Excel
-                  </button>
+                  <>
+                    <label
+                      className={`inline-flex items-center gap-2 rounded-2xl border px-3 py-2 text-sm ${theme.cardSoft}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={includeAiLogsInExport}
+                        onChange={(e) => setIncludeAiLogsInExport(e.target.checked)}
+                      />
+                      Incluir logs IA
+                    </label>
+
+                    <button
+                      type="button"
+                      onClick={exportRecords}
+                      className={`inline-flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-medium transition ${theme.buttonPrimary}`}
+                    >
+                      <Download className="h-4 w-4" />
+                      Exportar a Excel
+                    </button>
+                  </>
                 ) : (
                   <div className={`inline-flex items-center gap-2 rounded-2xl border px-4 py-2.5 text-sm font-medium opacity-80 ${theme.cardSoft}`}>
                     <Lock className="h-4 w-4" />
