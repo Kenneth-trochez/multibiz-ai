@@ -6,20 +6,30 @@ import { usePathname } from "next/navigation";
 type SidebarShellProps = {
   children: React.ReactNode;
   sidebar: React.ReactNode;
+  businessName: string;
+  businessType: string;
+  businessLogoUrl: string | null;
+  businessInitials: string;
   sidebarClassName?: string;
   headerClassName?: string;
   contentClassName?: string;
   buttonClassName?: string;
+  sidebarCardClassName?: string;
   title?: string;
 };
 
 export default function SidebarShell({
   children,
   sidebar,
+  businessName,
+  businessType,
+  businessLogoUrl,
+  businessInitials,
   sidebarClassName = "",
   headerClassName = "",
   contentClassName = "",
   buttonClassName = "",
+  sidebarCardClassName = "",
   title = "Dashboard",
 }: SidebarShellProps) {
   const pathname = usePathname();
@@ -66,20 +76,45 @@ export default function SidebarShell({
         ].join(" ")}
       >
         <div className="flex h-full flex-col overflow-hidden overscroll-contain">
-          <div className="flex justify-end p-3 lg:hidden">
-            <button
-              type="button"
-              onClick={() => setIsMobileOpen(false)}
-              className={[
-                "rounded-xl border px-3 py-2 text-sm font-medium transition",
-                buttonClassName,
-              ].join(" ")}
-            >
-              Cerrar
-            </button>
+
+          {/* HEADER NEGOCIO + botón cerrar en móvil */}
+          <div className="shrink-0 border-b px-5 py-5">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                {businessLogoUrl ? (
+                  <img
+                    src={businessLogoUrl}
+                    alt={businessName}
+                    className="h-12 w-12 rounded-2xl border object-cover"
+                  />
+                ) : (
+                  <div className={`flex h-12 w-12 items-center justify-center rounded-2xl border text-sm font-bold ${sidebarCardClassName}`}>
+                    {businessInitials}
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold">{businessName}</p>
+                  <p className="truncate text-xs opacity-60">{businessType}</p>
+                </div>
+              </div>
+
+              {/* Botón cerrar — solo móvil */}
+              <button
+                type="button"
+                onClick={() => setIsMobileOpen(false)}
+                className={[
+                  "lg:hidden rounded-xl border px-3 py-2 text-sm font-medium transition",
+                  buttonClassName,
+                ].join(" ")}
+              >
+                ✕
+              </button>
+            </div>
           </div>
 
+          {/* NAV + CUENTA — viene del layout */}
           {sidebar}
+
         </div>
       </aside>
 
@@ -125,7 +160,9 @@ export default function SidebarShell({
           </div>
         </header>
 
-        <main className={`pt-[73px] ${contentClassName}`}>{children}</main>
+        <main className="pt-[73px]">
+          <div className={contentClassName}>{children}</div>
+        </main>
       </div>
     </div>
   );
