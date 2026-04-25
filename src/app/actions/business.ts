@@ -23,35 +23,9 @@ export async function updateBusinessAction(formData: FormData): Promise<void> {
   const phone = clean(formData.get("phone"));
   const address = clean(formData.get("address"));
   const theme = clean(formData.get("theme")) || "warm";
-  const logo = formData.get("logo") as File | null;
 
   if (!name) {
     redirect("/dashboard/settings?error=El+nombre+del+negocio+es+obligatorio");
-  }
-
-  let logo_url = ctx.business.logo_url || null;
-
-  if (logo && logo.size > 0) {
-    const fileExt = logo.name.split(".").pop() || "png";
-    const filePath = `${ctx.business.id}/logo-${Date.now()}.${fileExt}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from("business-assets")
-      .upload(filePath, logo, {
-        upsert: true,
-      });
-
-    if (uploadError) {
-      redirect(
-        `/dashboard/settings?error=${encodeURIComponent(uploadError.message)}`
-      );
-    }
-
-    const { data: publicUrlData } = supabase.storage
-      .from("business-assets")
-      .getPublicUrl(filePath);
-
-    logo_url = publicUrlData.publicUrl;
   }
 
   const { error } = await supabase
@@ -62,7 +36,7 @@ export async function updateBusinessAction(formData: FormData): Promise<void> {
       phone: phone || null,
       address: address || null,
       theme,
-      logo_url,
+      // logo_url ya no se toca aquí
     })
     .eq("id", ctx.business.id);
 

@@ -3,6 +3,7 @@ import { getThemeClasses } from "@/lib/theme/getThemeClasses";
 import { formatMoneyByTimezone } from "@/lib/money/currency";
 import { createClient } from "@/lib/supabase/server";
 import { updateBusinessAction } from "../../actions/business";
+import LogoUploader from "../components/LogoUploader";
 import {
   updateBusinessGoalsAction,
   updateBusinessScheduleAction,
@@ -131,7 +132,6 @@ export default async function SettingsPage({
 
               <form
                 action={updateBusinessAction}
-                encType="multipart/form-data"
                 className="grid gap-5 md:grid-cols-2"
               >
                 <div className="md:col-span-2">
@@ -248,32 +248,14 @@ export default async function SettingsPage({
                   </select>
                 </div>
 
-                <div className="md:col-span-2">
-                  <label
-                    className={`mb-2 block text-sm font-medium ${theme.label}`}
-                  >
-                    Logo del negocio
-                  </label>
-                  <input
-                    type="file"
-                    name="logo"
-                    accept="image/*"
-                    className={`w-full rounded-2xl border px-4 py-3 outline-none transition file:mr-4 file:rounded-xl file:border-0 file:px-4 file:py-2 file:font-medium ${theme.input}`}
-                  />
-                </div>
-
-                {business.logo_url && (
-                  <div className="md:col-span-2">
-                    <p className={`mb-3 text-sm ${theme.textMuted}`}>
-                      Logo actual
-                    </p>
-                    <img
-                      src={business.logo_url}
-                      alt="Logo del negocio"
-                      className="h-24 w-24 rounded-2xl border object-cover"
-                    />
-                  </div>
-                )}
+                <LogoUploader
+                  businessId={business.id}
+                  currentLogoUrl={business.logo_url}
+                  themeInput={theme.input}
+                  themeTextMuted={theme.textMuted}
+                  themeButtonPrimary={theme.buttonPrimary}
+                  themeCard={theme.card}
+                />
 
                 <div className="md:col-span-2 flex justify-center pt-2">
                   <button
