@@ -57,8 +57,21 @@ export default async function ServicesPage({
     servicesQuery = servicesQuery.or(searchFilter);
   }
 
-  const { count, error: countError } = await countQuery;
-  const { data: services, error } = await servicesQuery.range(from, to);
+  const [settingsResult, countResult, servicesResult] = await Promise.all([
+    supabase
+      .from("business_settings")
+      .select("timezone")
+      .eq("business_id", business.id)
+      .maybeSingle(),
+    countQuery,
+    servicesQuery.range(from, to),
+  ]);
+
+  const timezone = settingsResult.data?.timezone || "America/Tegucigalpa";
+  const count = countResult.count;
+  const countError = countResult.error;
+  const services = servicesResult.data;
+  const error = servicesResult.error;
 
   if (error || countError) {
     return (
@@ -150,7 +163,11 @@ export default async function ServicesPage({
 
         <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
           <section className="space-y-4">
-            <ServicesList services={(services || []) as ServiceRow[]} theme={theme} />
+            <ServicesList
+              services={(services || []) as ServiceRow[]}
+              theme={theme}
+              timezone={timezone}
+            />
 
             <div className="flex items-center justify-between">
               <p className={`text-sm ${theme.textMuted}`}>

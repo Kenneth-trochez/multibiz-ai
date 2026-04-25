@@ -1,5 +1,6 @@
 import { requireSectionAccess } from "@/lib/auth/requireSectionAccess";
 import { getThemeClasses } from "@/lib/theme/getThemeClasses";
+import { formatMoneyByTimezone } from "@/lib/money/currency";
 import { createClient } from "@/lib/supabase/server";
 import { updateBusinessAction } from "../../actions/business";
 import {
@@ -61,25 +62,27 @@ export default async function SettingsPage({
     .eq("business_id", business.id)
     .maybeSingle();
 
-  const settings: BusinessSettingsRow = {
-    daily_sales_goal: Number(businessSettings?.daily_sales_goal || 3000),
-    monthly_sales_goal: Number(businessSettings?.monthly_sales_goal || 60000),
-    daily_appointments_goal: Number(
-      businessSettings?.daily_appointments_goal || 8
-    ),
-    timezone: businessSettings?.timezone || "America/Tegucigalpa",
-    workday_start_time: normalizeTimeValue(
-      businessSettings?.workday_start_time,
-      "08:00"
-    ),
-    workday_end_time: normalizeTimeValue(
-      businessSettings?.workday_end_time,
-      "17:00"
-    ),
-    workdays: Array.isArray(businessSettings?.workdays)
-      ? businessSettings.workdays
-      : ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday"],
-  };
+const settings: BusinessSettingsRow = {
+  daily_sales_goal: Number(businessSettings?.daily_sales_goal || 3000),
+  monthly_sales_goal: Number(businessSettings?.monthly_sales_goal || 60000),
+  daily_appointments_goal: Number(
+    businessSettings?.daily_appointments_goal || 8
+  ),
+  timezone: businessSettings?.timezone || "America/Tegucigalpa",
+  workday_start_time: normalizeTimeValue(
+    businessSettings?.workday_start_time,
+    "08:00"
+  ),
+  workday_end_time: normalizeTimeValue(
+    businessSettings?.workday_end_time,
+    "17:00"
+  ),
+  workdays: Array.isArray(businessSettings?.workdays)
+    ? businessSettings.workdays
+    : ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday"],
+};
+
+const timezone = settings.timezone;
 
   return (
     <main className="min-h-full">
@@ -312,7 +315,7 @@ export default async function SettingsPage({
                     className={`w-full rounded-2xl border px-4 py-3 outline-none transition ${theme.input}`}
                   />
                   <p className={`mt-2 text-xs ${theme.textMuted}`}>
-                    Ejemplo: 3000 significa que esperas vender L 3,000 por día.
+                    Ejemplo: 3000 significa que esperas vender el equivalente a tu moneda por día.
                   </p>
                 </div>
 
@@ -331,7 +334,7 @@ export default async function SettingsPage({
                     className={`w-full rounded-2xl border px-4 py-3 outline-none transition ${theme.input}`}
                   />
                   <p className={`mt-2 text-xs ${theme.textMuted}`}>
-                    Ejemplo: 60000 significa una meta mensual de L 60,000.
+                    Ejemplo: 60000 significa una meta mensual en tu moneda.
                   </p>
                 </div>
 
@@ -361,7 +364,7 @@ export default async function SettingsPage({
                       Ventas diarias actuales
                     </p>
                     <p className="mt-1 text-lg font-semibold">
-                      L {Number(settings.daily_sales_goal || 0).toFixed(2)}
+                      {formatMoneyByTimezone(settings.daily_sales_goal, timezone)}
                     </p>
                   </div>
 
@@ -370,7 +373,7 @@ export default async function SettingsPage({
                       Ventas mensuales actuales
                     </p>
                     <p className="mt-1 text-lg font-semibold">
-                      L {Number(settings.monthly_sales_goal || 0).toFixed(2)}
+                      {formatMoneyByTimezone(settings.monthly_sales_goal, timezone)}
                     </p>
                   </div>
 

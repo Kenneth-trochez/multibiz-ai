@@ -20,6 +20,7 @@ import {
   updateAppointmentAction,
   updateAppointmentStatusAction,
 } from "../../actions/appointments";
+import { formatMoneyByTimezone } from "@/lib/money/currency";
 
 type AppointmentRow = {
   id: string;
@@ -618,7 +619,7 @@ export default function AppointmentsClient({
                       >
                         {service.name}
                         {service.price != null
-                          ? ` — L ${Number(service.price).toFixed(2)}`
+                          ? ` — ${formatMoneyByTimezone(service.price, timezone)}`
                           : ""}
                       </option>
                     ))}
@@ -810,7 +811,7 @@ export default function AppointmentsClient({
                       >
                         {service.name}
                         {service.price != null
-                          ? ` — L ${Number(service.price).toFixed(2)}`
+                          ? ` — ${formatMoneyByTimezone(service.price, timezone)}`
                           : ""}
                       </option>
                     ))}

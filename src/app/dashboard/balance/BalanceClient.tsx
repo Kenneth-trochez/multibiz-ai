@@ -11,7 +11,7 @@ import {
   Lock,
 } from "lucide-react";
 import * as XLSX from "xlsx";
-import { time } from "console";
+import { formatMoneyByTimezone } from "@/lib/money/currency";
 
 type Theme = {
   pageBg: string;
@@ -108,8 +108,8 @@ type SaleItemRecord = {
   } | null;
 };
 
-function formatMoney(value: number) {
-  return `L ${value.toFixed(2)}`;
+function formatMoney(value: number | string | null | undefined, timezone: string) {
+  return formatMoneyByTimezone(value, timezone);
 }
 
 function formatDateTime(dateStr: string, timezone: string) {
@@ -511,7 +511,7 @@ export default function BalanceClient({
                 <div className="mb-1 flex items-center justify-between text-sm">
                   <span>Día {day.label}</span>
                   <span className={theme.textMuted}>
-                    {formatMoney(day.totalRevenue)} · Citas {formatMoney(day.appointmentsRevenue)} · Ventas {formatMoney(day.salesRevenue)}
+                    {formatMoney(day.totalRevenue, timezone)} · Citas {formatMoney(day.appointmentsRevenue, timezone)} · Ventas {formatMoney(day.salesRevenue, timezone)}
                   </span>
                 </div>
                 <div className={`h-3 overflow-hidden rounded-full ${theme.subtle}`}>
@@ -581,7 +581,7 @@ export default function BalanceClient({
                       <div className="mb-1 flex items-center justify-between text-sm">
                         <span>{service.name}</span>
                         <span className={theme.textMuted}>
-                          {formatMoney(service.revenue)} · {service.count} cita(s)
+                          {formatMoney(service.revenue, timezone)} · {service.count} cita(s)
                         </span>
                       </div>
                       <div className={`h-3 overflow-hidden rounded-full ${theme.subtle}`}>
@@ -615,7 +615,7 @@ export default function BalanceClient({
                       <div className="mb-1 flex items-center justify-between text-sm">
                         <span>{member.name}</span>
                         <span className={theme.textMuted}>
-                          {formatMoney(member.revenue)} · {member.count} cita(s)
+                          {formatMoney(member.revenue, timezone)} · {member.count} cita(s)
                         </span>
                       </div>
                       <div className={`h-3 overflow-hidden rounded-full ${theme.subtle}`}>
@@ -649,7 +649,7 @@ export default function BalanceClient({
                       <div className="mb-1 flex items-center justify-between text-sm">
                         <span>{product.name}</span>
                         <span className={theme.textMuted}>
-                          {formatMoney(product.revenue)} · {product.count} unidad(es)
+                          {formatMoney(product.revenue, timezone)} · {product.count} unidad(es)
                         </span>
                       </div>
                       <div className={`h-3 overflow-hidden rounded-full ${theme.subtle}`}>
@@ -693,7 +693,7 @@ export default function BalanceClient({
                       </div>
 
                       <div className="text-sm font-semibold">
-                        {formatMoney(Number(apt.service?.price || 0))}
+                        {formatMoney(Number(apt.service?.price || 0), timezone)}
                       </div>
                     </div>
                   </div>
@@ -712,12 +712,12 @@ export default function BalanceClient({
                         <div className={`mt-1 flex flex-wrap gap-3 text-sm ${theme.textMuted}`}>
                           <span>{sale.staff?.display_name || "Sin staff"}</span>
                           <span>{formatDateTime(sale.sale_at, timezone)}</span>
-                          <span>Descuento: {formatMoney(Number(sale.discount || 0))}</span>
+                          <span>Descuento: {formatMoney(Number(sale.discount || 0), timezone)}</span>
                         </div>
                       </div>
 
                       <div className="text-sm font-semibold">
-                        {formatMoney(Number(sale.total || 0))}
+                        {formatMoney(Number(sale.total || 0), timezone)}
                       </div>
                     </div>
                   </div>
@@ -739,9 +739,9 @@ export default function BalanceClient({
                   { label: "Servicios configurados", value: servicesCount || 0 },
                   { label: "Productos registrados", value: productsCount || 0 },
                   { label: "Miembros de staff", value: staffCount || 0 },
-                  { label: "Ingresos por citas", value: formatMoney(appointmentRevenue) },
-                  { label: "Ingresos por ventas", value: formatMoney(salesRevenue) },
-                  { label: "Ingresos del período", value: formatMoney(totalRevenue) },
+                  { label: "Ingresos por citas", value: formatMoney(appointmentRevenue, timezone) },
+                  { label: "Ingresos por ventas", value: formatMoney(salesRevenue, timezone) },
+                  { label: "Ingresos del período", value: formatMoney(totalRevenue, timezone) },
                 ].map((item) => (
                   <div
                     key={item.label}
@@ -883,7 +883,7 @@ export default function BalanceClient({
                                 {apt.customer?.phone || "Sin teléfono"}
                               </td>
                               <td className="px-4 py-3 text-right text-sm font-semibold">
-                                {formatMoney(Number(apt.service?.price || 0))}
+                                {formatMoney(Number(apt.service?.price || 0), timezone)}
                               </td>
                             </tr>
                           ))}
@@ -943,13 +943,13 @@ export default function BalanceClient({
                                 {sale.customer?.phone || "Sin teléfono"}
                               </td>
                               <td className="px-4 py-3 text-right text-sm">
-                                {formatMoney(Number(sale.subtotal || 0))}
+                                {formatMoney(Number(sale.subtotal || 0), timezone)}
                               </td>
                               <td className="px-4 py-3 text-right text-sm">
-                                {formatMoney(Number(sale.discount || 0))}
+                                {formatMoney(Number(sale.discount || 0), timezone)}
                               </td>
                               <td className="px-4 py-3 text-right text-sm font-semibold">
-                                {formatMoney(Number(sale.total || 0))}
+                                {formatMoney(Number(sale.total || 0), timezone)}
                               </td>
                             </tr>
                           ))}

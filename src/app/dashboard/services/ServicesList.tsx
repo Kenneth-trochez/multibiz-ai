@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { formatMoneyByTimezone } from "@/lib/money/currency";
 import {
   deactivateServiceAction,
   deleteServiceAction,
@@ -45,9 +46,11 @@ type Theme = {
 export default function ServicesList({
   services,
   theme,
+  timezone,
 }: {
   services: ServiceRow[];
   theme: Theme;
+  timezone: string;
 }) {
   const [selectedService, setSelectedService] = useState<ServiceRow | null>(null);
 
@@ -88,8 +91,8 @@ export default function ServicesList({
                     </p>
 
                     <p className={`mt-1 truncate text-xs ${theme.textMuted}`}>
-                      {service.duration_minutes} min · L{" "}
-                      {Number(service.price || 0).toFixed(2)}
+                      {service.duration_minutes} min ·{" "}
+                      {formatMoneyByTimezone(service.price, timezone)}
                     </p>
                   </div>
                 </div>

@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { formatMoneyByTimezone } from "@/lib/money/currency";
 
 export type AssistantAnswer = {
   matched: boolean;
@@ -51,8 +52,8 @@ function getUtcRangeForTegucigalpaDay(ymd: string) {
   };
 }
 
-function formatMoney(value: number) {
-  return `L ${Number(value || 0).toFixed(2)}`;
+function formatMoney(value: number, timezone?: string | null) {
+  return formatMoneyByTimezone(value, timezone);
 }
 
 function formatDate(dateStr: string) {
@@ -137,6 +138,13 @@ export async function getBusinessAssistantAnswer(
   question: string
 ): Promise<AssistantAnswer> {
   const supabase = await createClient();
+  const { data: businessSettings } = await supabase
+    .from("business_settings")
+    .select("timezone")
+    .eq("business_id", businessId)
+    .maybeSingle();
+  const timezone = businessSettings?.timezone || "America/Tegucigalpa";
+
   const intent = detectIntent(question);
   const { ymd: todayYmd } = getDatePartsInTegucigalpa();
 
@@ -184,7 +192,7 @@ export async function getBusinessAssistantAnswer(
     return {
       matched: true,
       title: "Resumen de ventas",
-      answer: `Has registrado ${(sales || []).length} venta(s) ${label}, con un total de ${formatMoney(totalSales)}.`,
+      answer: `Has registrado ${(sales || []).length} venta(s) ${label}, con un total de ${formatMoney(totalSales, timezone)}.`,
       suggestions: [
         "¿Cuál es mi producto más vendido?",
         "¿Qué staff genera más ingresos?",
@@ -266,7 +274,7 @@ export async function getBusinessAssistantAnswer(
     return {
       matched: true,
       title: "Producto más vendido",
-      answer: `Tu producto más vendido es "${top.name}", con ${top.quantity} unidad(es) vendidas y ${formatMoney(top.revenue)} en ingresos.`,
+      answer: `Tu producto más vendido es "${top.name}", con ${top.quantity} unidad(es) vendidas y ${formatMoney(top.revenue, timezone)} en ingresos.`,
       suggestions: [
         "¿Cuánto vendí esta semana?",
         "¿Qué productos tienen stock bajo?",
@@ -325,7 +333,7 @@ export async function getBusinessAssistantAnswer(
     return {
       matched: true,
       title: "Staff con más ingresos",
-      answer: `"${top.name}" es el staff con más ingresos registrados, con ${top.salesCount} venta(s) y ${formatMoney(top.revenue)} acumulados.`,
+      answer: `"${top.name}" es el staff con más ingresos registrados, con ${top.salesCount} venta(s) y ${formatMoney(top.revenue, timezone)} acumulados.`,
       suggestions: [
         "¿Cuánto vendí este mes?",
         "¿Cuál es mi producto más vendido?",

@@ -16,6 +16,7 @@ import {
   updateSaleAction,
   deleteSaleAction,
 } from "../../actions/sales";
+import { formatMoneyByTimezone } from "@/lib/money/currency";
 
 type SaleItemRow = {
   id: string;
@@ -248,6 +249,9 @@ export default function SalesClient({
   theme: Theme;
   timezone: string;
 }) {
+  const formatMoney = (value: number | string | null | undefined) =>
+    formatMoneyByTimezone(value, timezone);
+
   const [lines, setLines] = useState<SaleLine[]>([makeLine()]);
   const [discountType, setDiscountType] = useState<DiscountType>("fixed");
   const [discountValue, setDiscountValue] = useState("0");
@@ -355,7 +359,7 @@ export default function SalesClient({
             <p className={`text-sm ${theme.textMuted}`}>Subtotal actual</p>
             <Receipt className="h-5 w-5" />
           </div>
-          <p className="text-3xl font-bold">L {preview.subtotal.toFixed(2)}</p>
+          <p className="text-3xl font-bold">{formatMoney(preview.subtotal)}</p>
         </div>
 
         <div className={`rounded-2xl border p-5 shadow-sm ${theme.card}`}>
@@ -363,7 +367,7 @@ export default function SalesClient({
             <p className={`text-sm ${theme.textMuted}`}>Descuento aplicado</p>
             <DollarSign className="h-5 w-5" />
           </div>
-          <p className="text-3xl font-bold">L {preview.discountAmount.toFixed(2)}</p>
+          <p className="text-3xl font-bold">{formatMoney(preview.discountAmount)}</p>
         </div>
 
         <div className={`rounded-2xl border p-5 shadow-sm ${theme.card}`}>
@@ -371,7 +375,7 @@ export default function SalesClient({
             <p className={`text-sm ${theme.textMuted}`}>ISV calculado</p>
             <Percent className="h-5 w-5" />
           </div>
-          <p className="text-3xl font-bold">L {preview.taxAmount.toFixed(2)}</p>
+          <p className="text-3xl font-bold">{formatMoney(preview.taxAmount)}</p>
         </div>
 
         <div className={`rounded-2xl border p-5 shadow-sm ${theme.card}`}>
@@ -379,7 +383,7 @@ export default function SalesClient({
             <p className={`text-sm ${theme.textMuted}`}>Total</p>
             <ShoppingCart className="h-5 w-5" />
           </div>
-          <p className="text-3xl font-bold">L {preview.total.toFixed(2)}</p>
+          <p className="text-3xl font-bold">{formatMoney(preview.total)}</p>
         </div>
       </div>
 
@@ -422,7 +426,7 @@ export default function SalesClient({
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="min-w-0">
                       <p className="text-base font-semibold">
-                        Venta · L {sale.total.toFixed(2)}
+                        Venta · {formatMoney(sale.total)}
                       </p>
                       <p className={`mt-1 text-sm ${theme.textMuted}`}>
                         {formatSaleDate(sale.sale_at, timezone)}
@@ -433,9 +437,7 @@ export default function SalesClient({
                       </p>
                       <p className={`mt-1 text-xs ${theme.textMuted}`}>
                         Items: {sale.items_count} · Subtotal: L{" "}
-                        {sale.subtotal.toFixed(2)} · Descuento: L{" "}
-                        {sale.discount.toFixed(2)} · ISV: L{" "}
-                        {sale.tax_amount.toFixed(2)}
+                        {formatMoney(sale.subtotal)} · Descuento: {formatMoney(sale.discount)} · ISV: {formatMoney(sale.tax_amount)}
                       </p>
                       <p className={`mt-1 text-xs ${theme.textMuted}`}>
                         Tipo descuento:{" "}
@@ -661,9 +663,7 @@ export default function SalesClient({
                                 ? ` — ${product.category_name}`
                                 : ""}
                               {product.sku ? ` — ${product.sku}` : ""}
-                              {` — L ${Number(product.price || 0).toFixed(
-                                2
-                              )} — Stock ${product.stock}`}
+                              {` — ${formatMoney(product.price)} — Stock ${product.stock}`}
                             </option>
                           ))}
                         </select>
@@ -671,7 +671,7 @@ export default function SalesClient({
                         {selectedProduct && (
                           <p className={`mt-2 text-xs ${theme.textMuted}`}>
                             Categoría: {selectedProduct.category_name || "Sin categoría"} ·
-                            Precio: L {Number(selectedProduct.price || 0).toFixed(2)} ·
+                            Precio: {formatMoney(selectedProduct.price)} ·
                             Stock: {selectedProduct.stock}
                           </p>
                         )}
@@ -802,19 +802,19 @@ export default function SalesClient({
             <div className="rounded-2xl border p-4">
               <p className="text-sm font-medium">Resumen de venta</p>
               <div className={`mt-2 space-y-1 text-sm ${theme.textMuted}`}>
-                <p>Subtotal: L {preview.subtotal.toFixed(2)}</p>
+                <p>Subtotal: {formatMoney(preview.subtotal)}</p>
                 <p>
-                  Descuento aplicado: L {preview.discountAmount.toFixed(2)} (
+                  Descuento aplicado: {formatMoney(preview.discountAmount)} (
                   {discountType === "percent"
                     ? `${preview.discountValue.toFixed(2)}%`
-                    : `L ${preview.discountValue.toFixed(2)}`}
+                    : formatMoney(preview.discountValue)}
                   )
                 </p>
-                <p>Base gravable: L {preview.taxableBase.toFixed(2)}</p>
+                <p>Base gravable: {formatMoney(preview.taxableBase)}</p>
                 <p>
-                  ISV: L {preview.taxAmount.toFixed(2)} ({preview.taxPercent.toFixed(2)}%)
+                  ISV: {formatMoney(preview.taxAmount)} ({preview.taxPercent.toFixed(2)}%)
                 </p>
-                <p className="font-semibold">Total: L {preview.total.toFixed(2)}</p>
+                <p className="font-semibold">Total: {formatMoney(preview.total)}</p>
               </div>
             </div>
 
@@ -1017,9 +1017,7 @@ export default function SalesClient({
                                       ? ` — ${product.category_name}`
                                       : ""}
                                     {product.sku ? ` — ${product.sku}` : ""}
-                                    {` — L ${Number(product.price || 0).toFixed(
-                                      2
-                                    )} — Stock ${product.stock}`}
+                                    {` — ${formatMoney(product.price)} — Stock ${product.stock}`}
                                   </option>
                                 ))}
                               </select>
@@ -1027,7 +1025,7 @@ export default function SalesClient({
                               {selectedProduct && (
                                 <p className={`mt-2 text-xs ${theme.textMuted}`}>
                                   Categoría: {selectedProduct.category_name || "Sin categoría"} ·
-                                  Precio: L {Number(selectedProduct.price || 0).toFixed(2)} ·
+                                  Precio: {formatMoney(selectedProduct.price)} ·
                                   Stock: {selectedProduct.stock}
                                 </p>
                               )}
@@ -1161,21 +1159,21 @@ export default function SalesClient({
                   <div className="rounded-2xl border p-4">
                     <p className="text-sm font-medium">Resumen actualizado</p>
                     <div className={`mt-2 space-y-1 text-sm ${theme.textMuted}`}>
-                      <p>Subtotal: L {editPreview.subtotal.toFixed(2)}</p>
+                      <p>Subtotal: {formatMoney(editPreview.subtotal)}</p>
                       <p>
-                        Descuento aplicado: L {editPreview.discountAmount.toFixed(2)} (
+                        Descuento aplicado: {formatMoney(editPreview.discountAmount)} (
                         {editDiscountType === "percent"
                           ? `${editPreview.discountValue.toFixed(2)}%`
-                          : `L ${editPreview.discountValue.toFixed(2)}`}
+                          : formatMoney(editPreview.discountValue)}
                         )
                       </p>
-                      <p>Base gravable: L {editPreview.taxableBase.toFixed(2)}</p>
+                      <p>Base gravable: {formatMoney(editPreview.taxableBase)}</p>
                       <p>
-                        ISV: L {editPreview.taxAmount.toFixed(2)} (
+                        ISV: {formatMoney(editPreview.taxAmount)} (
                         {editPreview.taxPercent.toFixed(2)}%)
                       </p>
                       <p className="font-semibold">
-                        Total: L {editPreview.total.toFixed(2)}
+                        Total: {formatMoney(editPreview.total)}
                       </p>
                     </div>
                   </div>

@@ -45,6 +45,14 @@ export default async function ProductsPage({
   const theme = getThemeClasses(business.theme || "warm");
   const supabase = await createClient();
 
+  const { data: settings } = await supabase
+    .from("business_settings")
+    .select("timezone")
+    .eq("business_id", business.id)
+    .maybeSingle();
+
+  const timezone = settings?.timezone || "America/Tegucigalpa";
+
   const currentPage = Math.max(1, Number(params.page || "1") || 1);
   const selectedCategory = String(params.category || "").trim();
   const searchTerm = String(params.q || "").trim();
@@ -241,6 +249,7 @@ export default async function ProductsPage({
               products={products}
               categories={(categories || []) as CategoryRow[]}
               theme={theme}
+              timezone={timezone}
             />
 
             <div className="flex items-center justify-between">

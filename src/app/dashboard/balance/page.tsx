@@ -2,6 +2,7 @@ import { requireSectionAccess } from "@/lib/auth/requireSectionAccess";
 import { getCurrentPlan } from "@/lib/billing/getCurrentPlan";
 import { createClient } from "@/lib/supabase/server";
 import { getThemeClasses } from "@/lib/theme/getThemeClasses";
+import { formatMoneyByTimezone } from "@/lib/money/currency";
 import BalanceClient from "./BalanceClient";
 
 type CompletedAppointment = {
@@ -471,19 +472,19 @@ export default async function BalancePage({
   const metricCards = [
     {
       title: "Ingresos totales",
-      value: `L ${totalRevenue.toFixed(2)}`,
+      value: formatMoneyByTimezone(totalRevenue, timezone),
       subtitle: `${range.label} · citas + ventas`,
       icon: "money" as const,
     },
     {
       title: "Ingresos por citas",
-      value: `L ${appointmentRevenue.toFixed(2)}`,
+      value: formatMoneyByTimezone(appointmentRevenue, timezone),
       subtitle: `${completedCount} cita(s) completada(s)`,
       icon: "calendar" as const,
     },
     {
       title: "Ingresos por ventas",
-      value: `L ${salesRevenue.toFixed(2)}`,
+      value: formatMoneyByTimezone(salesRevenue, timezone),
       subtitle: `${salesCount} venta(s) registrada(s)`,
       icon: "sales" as const,
     },
@@ -495,13 +496,13 @@ export default async function BalancePage({
     },
     {
       title: "Ticket promedio citas",
-      value: `L ${averageTicketAppointments.toFixed(2)}`,
+      value: formatMoneyByTimezone(averageTicketAppointments, timezone),
       subtitle: "Promedio por cita completada",
       icon: "briefcase" as const,
     },
     {
       title: "Ticket promedio ventas",
-      value: `L ${averageTicketSales.toFixed(2)}`,
+      value: formatMoneyByTimezone(averageTicketSales, timezone),
       subtitle: "Promedio por venta registrada",
       icon: "sales" as const,
     },

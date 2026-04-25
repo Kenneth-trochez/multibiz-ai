@@ -29,11 +29,8 @@ export default function SidebarShell({
 
   useEffect(() => {
     setMounted(true);
-
     const saved = window.localStorage.getItem("dashboard-sidebar-collapsed");
-    if (saved === "true") {
-      setIsDesktopCollapsed(true);
-    }
+    if (saved === "true") setIsDesktopCollapsed(true);
   }, []);
 
   useEffect(() => {
@@ -50,6 +47,7 @@ export default function SidebarShell({
 
   return (
     <div className="min-h-screen">
+
       {isMobileOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/50 lg:hidden"
@@ -59,14 +57,15 @@ export default function SidebarShell({
 
       <aside
         className={[
-          "fixed inset-y-0 left-0 z-50 w-72 transform border-r transition-transform duration-300 lg:z-30",
+          "fixed inset-y-0 left-0 z-50 w-72 border-r transition-transform duration-300 lg:z-30",
+          "isolate",
           "lg:translate-x-0",
           isMobileOpen ? "translate-x-0" : "-translate-x-full",
           isDesktopCollapsed ? "lg:hidden" : "lg:block",
           sidebarClassName,
         ].join(" ")}
       >
-        <div className="h-full overflow-y-auto">
+        <div className="flex h-full flex-col overflow-hidden overscroll-contain">
           <div className="flex justify-end p-3 lg:hidden">
             <button
               type="button"
@@ -92,7 +91,8 @@ export default function SidebarShell({
       >
         <header
           className={[
-            "sticky top-0 z-20 flex items-center justify-between border-b px-4 py-4 backdrop-blur",
+            "fixed top-0 left-0 right-0 z-20 flex items-center justify-between border-b px-4 py-4 backdrop-blur transition-all duration-300",
+            isDesktopCollapsed ? "lg:left-0" : "lg:left-72",
             headerClassName,
           ].join(" ")}
         >
@@ -121,13 +121,11 @@ export default function SidebarShell({
               {isDesktopCollapsed ? "☰" : "✕"}
             </button>
 
-            <div>
-              <h1 className="text-lg font-semibold">{title}</h1>
-            </div>
+            <h1 className="text-lg font-semibold">{title}</h1>
           </div>
         </header>
 
-        <main className={contentClassName}>{children}</main>
+        <main className={`pt-[73px] ${contentClassName}`}>{children}</main>
       </div>
     </div>
   );

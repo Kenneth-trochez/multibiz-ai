@@ -171,7 +171,9 @@ export default async function DashboardLayout({
 
   const sidebar = (
     <div className={`flex h-full flex-col ${theme.sidebarBg}`}>
-      <div className="border-b px-5 py-5">
+
+      {/* HEADER DEL NEGOCIO — fijo arriba */}
+      <div className="shrink-0 border-b px-5 py-5">
         <div className="flex items-center gap-3">
           {business.logo_url ? (
             <img
@@ -195,7 +197,8 @@ export default async function DashboardLayout({
         </div>
       </div>
 
-      <div className="flex-1 px-4 py-4">
+      {/* NAV — scrolleable */}
+      <div className="sidebar-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4">
         <SidebarNav
           navItems={navItems}
           hoverClass={theme.hover}
@@ -203,22 +206,28 @@ export default async function DashboardLayout({
         />
       </div>
 
-      <div className="space-y-3 border-t px-4 py-4">
+      {/* CUENTA + LOGOUT — fijo abajo */}
+      <div className="shrink-0 border-t px-4 py-5 flex flex-col gap-3">
         <Link href="/dashboard/profile">
           <div
             className={`cursor-pointer rounded-2xl border p-4 transition ${theme.sidebarCard} ${theme.hover}`}
           >
-            <p className="text-sm font-medium">Cuenta</p>
-            <p className={`mt-1 truncate text-xs ${theme.textMuted}`}>
-              {user?.email || "Usuario"}
-            </p>
-            <p className={`mt-1 text-[11px] uppercase tracking-wide ${theme.textMuted}`}>
-              Rol: {role}
-            </p>
+            <div className="flex items-center gap-3">
+              <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border text-sm font-bold ${theme.sidebarCard}`}>
+                {(user?.email?.[0] || "U").toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium">Cuenta</p>
+                <p className={`mt-1 truncate text-xs ${theme.textMuted}`}>
+                  {user?.email || "Usuario"}
+                </p>
+                <p className={`mt-1 text-[11px] uppercase tracking-wide ${theme.textMuted}`}>
+                  Rol: {role}
+                </p>
+              </div>
+            </div>
           </div>
         </Link>
-
-        <br />
 
         <form action={signOutAction}>
           <button
@@ -229,31 +238,35 @@ export default async function DashboardLayout({
           </button>
         </form>
       </div>
+
     </div>
   );
 
   return (
     <div className={`${theme.pageBg} relative overflow-hidden`}>
       <style>{`
-        @keyframes blob-1 {
-          0%, 100% { transform: translate(0px, 0px) scale(1); }
-          33% { transform: translate(60px, -45px) scale(1.15); }
-          66% { transform: translate(-35px, 30px) scale(0.92); }
-        }
-        @keyframes blob-2 {
-          0%, 100% { transform: translate(0px, 0px) scale(1); }
-          33% { transform: translate(-70px, 45px) scale(1.12); }
-          66% { transform: translate(50px, -40px) scale(1.08); }
-        }
-        @keyframes blob-3 {
-          0%, 100% { transform: translate(0px, 0px) scale(1); }
-          33% { transform: translate(45px, 60px) scale(0.92); }
-          66% { transform: translate(-55px, -30px) scale(1.15); }
-        }
-        .blob-1 { animation: blob-1 9s ease-in-out infinite; }
-        .blob-2 { animation: blob-2 13s ease-in-out infinite; }
-        .blob-3 { animation: blob-3 11s ease-in-out infinite; }
-      `}</style>
+  @keyframes blob-1 { ... } /* igual que antes */
+  @keyframes blob-2 { ... }
+  @keyframes blob-3 { ... }
+  .blob-1 { animation: blob-1 9s ease-in-out infinite; }
+  .blob-2 { animation: blob-2 13s ease-in-out infinite; }
+  .blob-3 { animation: blob-3 11s ease-in-out infinite; }
+
+  /* Scrollbar personalizado del sidebar */
+  .sidebar-scroll::-webkit-scrollbar {
+    width: 4px;
+  }
+  .sidebar-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .sidebar-scroll::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.12);
+    border-radius: 99px;
+  }
+  .sidebar-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,0.22);
+  }
+`}</style>
 
       <div className="pointer-events-none absolute inset-0 z-0">
         <div

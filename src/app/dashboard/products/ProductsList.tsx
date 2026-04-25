@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { formatMoneyByTimezone } from "@/lib/money/currency";
 import {
   deactivateProductAction,
   deleteProductAction,
@@ -54,10 +55,12 @@ export default function ProductsList({
   products,
   categories,
   theme,
+  timezone,
 }: {
   products: ProductRow[];
   categories: CategoryRow[];
   theme: Theme;
+  timezone: string;
 }) {
   const [selectedProduct, setSelectedProduct] = useState<ProductRow | null>(null);
 
@@ -98,7 +101,7 @@ export default function ProductsList({
                     </p>
 
                     <p className={`mt-1 truncate text-xs ${theme.textMuted}`}>
-                      Stock: {product.stock} · L {Number(product.price || 0).toFixed(2)}
+                      Stock: {product.stock} · {formatMoneyByTimezone(product.price, timezone)}
                     </p>
                   </div>
 

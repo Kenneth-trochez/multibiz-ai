@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getBusinessSettings } from "@/lib/business/getBusinessSettings";
+import { formatMoneyByTimezone } from "@/lib/money/currency";
 
 export type SummaryMetric = {
   label: string;
@@ -53,8 +54,8 @@ function getUtcRangeForTegucigalpaDay(ymd: string) {
   };
 }
 
-function formatMoney(value: number) {
-  return `L ${Number(value || 0).toFixed(2)}`;
+function formatMoney(value: number, timezone?: string | null) {
+  return formatMoneyByTimezone(value, timezone);
 }
 
 function clampProgress(current: number, goal: number) {
@@ -70,6 +71,7 @@ function buildOverview(params: {
   upcomingAppointmentsCount: number;
   lowStockCount: number;
   inactiveCustomersCount: number;
+  timezone: string;
 }) {
   const {
     salesTodayCount,
@@ -79,12 +81,15 @@ function buildOverview(params: {
     upcomingAppointmentsCount,
     lowStockCount,
     inactiveCustomersCount,
+    timezone,
   } = params;
 
   return `Hoy llevas ${salesTodayCount} venta(s) por ${formatMoney(
-    salesTodayTotal
+    salesTodayTotal,
+    timezone
   )}. En el mes actual acumulas ${monthlySalesCount} venta(s) y ${formatMoney(
-    monthlySalesTotal
+    monthlySalesTotal,
+    timezone
   )}. Además, tienes ${upcomingAppointmentsCount} cita(s) para mañana, ${lowStockCount} producto(s) con stock bajo y ${inactiveCustomersCount} cliente(s) inactivo(s) detectado(s).`;
 }
 
@@ -93,6 +98,7 @@ export async function getBusinessSummary(
 ): Promise<BusinessSummary> {
   const supabase = await createClient();
   const settings = await getBusinessSettings(businessId);
+  const timezone = settings.timezone || "America/Tegucigalpa";
 
   const { ymd: todayYmd } = getDatePartsInTegucigalpa();
   const tomorrowYmd = addDaysToYmd(todayYmd, 1);
@@ -360,13 +366,13 @@ export async function getBusinessSummary(
   const metrics: SummaryMetric[] = [
     {
       label: "Ventas hoy",
-      value: formatMoney(salesTodayTotal),
+      value: formatMoney(salesTodayTotal, timezone),
       helper: `${salesTodayCount} venta(s) registradas hoy`,
       progress: clampProgress(salesTodayTotal, dailySalesGoal),
     },
     {
       label: "Ventas del mes",
-      value: formatMoney(monthlySalesTotal),
+      value: formatMoney(monthlySalesTotal, timezone),
       helper: `${monthlySalesCount} venta(s) acumuladas en el mes`,
       progress: clampProgress(monthlySalesTotal, monthlySalesGoal),
     },
@@ -391,7 +397,7 @@ export async function getBusinessSummary(
   const opportunities: string[] = [];
 
   if (salesTodayCount > 0) {
-    highlights.push(`Ya registraste ${salesTodayCount} venta(s) hoy por ${formatMoney(salesTodayTotal)}.`);
+    highlights.push(`Ya registraste ${salesTodayCount} venta(s) hoy por ${formatMoney(salesTodayTotal, timezone)}.`);
   } else {
     risks.push("Todavía no se han registrado ventas hoy.");
   }
@@ -403,7 +409,7 @@ export async function getBusinessSummary(
   }
 
   if (topStaff) {
-    highlights.push(`"${topStaff.name}" lidera en ingresos registrados con ${formatMoney(topStaff.revenue)}.`);
+    highlights.push(`"${topStaff.name}" lidera en ingresos registrados con ${formatMoney(topStaff.revenue, timezone)}.`);
   } else {
     opportunities.push("Asocia ventas al staff para medir mejor el rendimiento del equipo.");
   }
@@ -447,6 +453,7 @@ export async function getBusinessSummary(
       upcomingAppointmentsCount,
       lowStockCount,
       inactiveCustomersCount,
+      timezone,
     }),
     highlights,
     risks,
