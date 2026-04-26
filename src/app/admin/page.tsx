@@ -107,6 +107,13 @@ export default async function AdminHomePage() {
             Edita roles y memberships del sistema.
           </p>
         </Link>
+
+        <Link
+          href="/admin/mobile-app-version"
+          className="rounded-xl px-3 py-2 text-center text-sm font-medium text-[#3f3128] transition hover:bg-[#f3e5d8] lg:text-left"
+        >
+          App móvil
+        </Link>
       </div>
     </div>
   );
