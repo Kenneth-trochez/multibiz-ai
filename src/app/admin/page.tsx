@@ -110,9 +110,17 @@ export default async function AdminHomePage() {
 
         <Link
           href="/admin/mobile-app-version"
-          className="rounded-xl px-3 py-2 text-center text-sm font-medium text-[#3f3128] transition hover:bg-[#f3e5d8] lg:text-left"
+          className="rounded-[1.5rem] border border-[#e7d8c7] bg-[#fffaf3] p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md md:col-span-2 xl:col-span-1"
         >
-          App móvil
+          <p className="text-sm uppercase tracking-[0.18em] text-[#8d582e]">
+            App Movil
+          </p>
+          <h3 className="mt-2 text-lg font-semibold text-[#2f241d] sm:text-xl">
+            Administrar App Movil
+          </h3>
+          <p className="mt-2 text-sm text-[#6b5b4d]">
+            Edita actualizaciones y notificar nueva actualizacion.
+          </p>
         </Link>
       </div>
     </div>
