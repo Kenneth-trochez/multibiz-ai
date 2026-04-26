@@ -139,6 +139,10 @@ export default async function LoginPage({
               >
                 Entrar
               </button>
+
+              <Link href="/login/forgot-password" className="text-sm font-bold underline">
+                ¿Olvidaste tu contraseña?
+              </Link>
             </form>
 
             <p className={`mt-6 text-sm ${theme.textMuted}`}>
