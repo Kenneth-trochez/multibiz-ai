@@ -6,12 +6,15 @@ import {
   ShieldCheck,
   Store,
   Clock,
+  CheckCircle,
 } from "lucide-react";
 import { getThemeClasses } from "@/lib/theme/getThemeClasses";
 
 export default function AppDownloadPage() {
   const theme = getThemeClasses("warm");
+
   const androidApkUrl = process.env.NEXT_PUBLIC_ANDROID_APK_URL || "";
+  const version = process.env.NEXT_PUBLIC_ANDROID_APP_VERSION || "1.0.0";
 
   return (
     <main className={`relative min-h-screen overflow-hidden px-4 py-10 ${theme.pageBg}`}>
@@ -29,6 +32,7 @@ export default function AppDownloadPage() {
 
         <section className={`rounded-[2rem] border p-6 shadow-xl md:p-10 ${theme.glassCard}`}>
           <div className="grid gap-8 md:grid-cols-[1fr_0.8fr] md:items-center">
+            {/* LEFT */}
             <div>
               <div className={`mb-5 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold ${theme.softAccent}`}>
                 <Smartphone className="h-4 w-4" />
@@ -40,14 +44,23 @@ export default function AppDownloadPage() {
               </h1>
 
               <p className={`mt-5 max-w-2xl text-base leading-7 ${theme.textMuted}`}>
-                Consulta citas, clientes, balance y recibe notificaciones desde la app móvil.
-                Actualmente está disponible para Android mediante APK privado.
+                Consulta citas, clientes, balance y recibe notificaciones en tiempo real.
+                Diseñada para gestionar tu negocio desde cualquier lugar.
               </p>
+
+              {/* VERSION */}
+              <div className="mt-4 flex items-center gap-2 text-sm font-semibold text-green-600">
+                <CheckCircle className="h-4 w-4" />
+                Versión disponible: {version}
+              </div>
 
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 {androidApkUrl ? (
                   <a
                     href={androidApkUrl}
+                    download
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className={`inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-bold transition ${theme.buttonPrimary}`}
                   >
                     <Download className="h-4 w-4" />
@@ -64,20 +77,22 @@ export default function AppDownloadPage() {
                   </button>
                 )}
 
+                {/* BOTÓN NUEVO */}
                 <Link
                   href="/login"
                   className={`inline-flex items-center justify-center rounded-2xl border px-5 py-3 text-sm font-bold transition ${theme.buttonSecondary}`}
                 >
-                  Entrar al SaaS
+                  Ya tengo la app
                 </Link>
               </div>
 
               <p className={`mt-4 text-xs leading-5 ${theme.textMuted}`}>
                 En Android puede aparecer una advertencia al instalar APKs fuera de Play Store.
-                Instala únicamente el archivo oficial compartido desde esta página.
+                Instala únicamente el archivo oficial proporcionado.
               </p>
             </div>
 
+            {/* RIGHT */}
             <div className={`rounded-[2rem] border p-5 ${theme.card}`}>
               <div className="mx-auto max-w-[260px] rounded-[2rem] border bg-[#2f241d] p-3 shadow-2xl">
                 <div className="rounded-[1.5rem] bg-[#f6f1e8] p-4">
@@ -116,7 +131,7 @@ export default function AppDownloadPage() {
                     <p className="text-sm font-bold">Conectada a tu negocio</p>
                   </div>
                   <p className={`mt-2 text-sm ${theme.textMuted}`}>
-                    Usa la misma cuenta y el mismo negocio configurado en el dashboard.
+                    Usa la misma cuenta y accede a toda tu información en tiempo real.
                   </p>
                 </div>
               </div>
