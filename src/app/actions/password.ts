@@ -17,7 +17,7 @@ export async function requestPasswordResetAction(formData: FormData) {
 
   const headersList = await headers();
   const origin =
-    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.SITE_URL ||
     headersList.get("origin") ||
     "http://localhost:3000";
 
