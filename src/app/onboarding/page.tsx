@@ -1,7 +1,16 @@
 import { redirect } from "next/navigation";
-import { Building2, MapPin, Phone, BriefcaseBusiness } from "lucide-react";
+import {
+  Building2,
+  MapPin,
+  Phone,
+  BriefcaseBusiness,
+  Sparkles,
+  ShieldCheck,
+  ArrowRight,
+} from "lucide-react";
 import { createBusinessAction } from "@/app/actions/auth";
 import { getCurrentBusiness } from "@/lib/tenant/getCurrentBusiness";
+import { getThemeClasses } from "@/lib/theme/getThemeClasses";
 
 export default async function OnboardingPage({
   searchParams,
@@ -15,57 +24,68 @@ export default async function OnboardingPage({
     redirect("/dashboard");
   }
 
+  const theme = getThemeClasses("warm");
+
   return (
-    <main className="min-h-full">
-      <div className="mx-auto flex min-h-screen max-w-6xl items-center px-4 py-10 sm:px-6 lg:px-8">
-        <div className="grid w-full gap-8 lg:grid-cols-[1.1fr_0.9fr]">
+    <main className={`relative overflow-hidden ${theme.pageBg}`}>
+      <div className="pointer-events-none absolute -left-24 top-16 h-72 w-72 rounded-full bg-[#a56a3a]/20 blur-3xl" />
+      <div className="pointer-events-none absolute -right-24 bottom-10 h-80 w-80 rounded-full bg-white/50 blur-3xl" />
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,transparent_0%,rgba(255,255,255,0.22)_45%,transparent_70%)]" />
+
+      <div className="relative mx-auto flex min-h-screen max-w-6xl items-center px-4 py-10 sm:px-6 lg:px-8">
+        <div className="grid w-full gap-8 lg:grid-cols-[1.05fr_0.95fr]">
           <section className="flex flex-col justify-center">
-            <div className="mb-4 inline-flex w-fit items-center rounded-full border border-[#e3d4bf] bg-white/70 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-[#8d582e] backdrop-blur">
+            <div className={`mb-5 inline-flex w-fit items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] ${theme.softAccent}`}>
+              <Sparkles className="h-4 w-4" />
               Configuración inicial
             </div>
 
-            <h1 className="max-w-2xl text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">
-              Crea tu negocio y empieza a usar tu dashboard
+            <h1 className="max-w-2xl text-4xl font-black leading-tight tracking-tight sm:text-5xl lg:text-6xl">
+              Crea tu negocio y activa tu espacio de trabajo
             </h1>
 
-            <p className="mt-4 max-w-2xl text-sm leading-6 text-[#6b5b4d] sm:text-base">
-              Configura el primer negocio dentro de tu cuenta SaaS. Después
-              podrás administrar clientes, servicios, personal, citas y métricas
-              desde un solo lugar.
+            <p className={`mt-5 max-w-2xl text-base leading-7 ${theme.textMuted}`}>
+              Configura la base de tu negocio en MultiBiz AI. Después podrás
+              administrar clientes, servicios, personal, citas, ventas y métricas
+              desde un solo dashboard.
             </p>
 
             <div className="mt-8 grid gap-4 sm:grid-cols-2">
-              <div className="rounded-2xl border border-[#eadfce] bg-white p-4 shadow-sm">
-                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-[#f3e8dc] text-[#8d582e]">
+              <div className={`rounded-3xl border p-5 ${theme.card}`}>
+                <div className={`mb-4 flex h-12 w-12 items-center justify-center rounded-2xl ${theme.softAccent}`}>
                   <Building2 className="h-5 w-5" />
                 </div>
-                <h2 className="text-sm font-semibold">Multi-negocio</h2>
-                <p className="mt-1 text-sm text-[#6b5b4d]">
-                  Estructura preparada para trabajar por negocio y mantener los
-                  datos separados correctamente.
+                <h2 className="text-base font-bold">Multi-negocio</h2>
+                <p className={`mt-2 text-sm leading-6 ${theme.textMuted}`}>
+                  Cada negocio mantiene sus datos separados: clientes, citas,
+                  ventas, servicios y personal.
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-[#eadfce] bg-white p-4 shadow-sm">
-                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-[#f3e8dc] text-[#8d582e]">
-                  <BriefcaseBusiness className="h-5 w-5" />
+              <div className={`rounded-3xl border p-5 ${theme.card}`}>
+                <div className={`mb-4 flex h-12 w-12 items-center justify-center rounded-2xl ${theme.softAccent}`}>
+                  <ShieldCheck className="h-5 w-5" />
                 </div>
-                <h2 className="text-sm font-semibold">Listo para crecer</h2>
-                <p className="mt-1 text-sm text-[#6b5b4d]">
-                  Deja tu negocio listo para luego configurar servicios,
-                  personal, branding y citas.
+                <h2 className="text-base font-bold">Listo para escalar</h2>
+                <p className={`mt-2 text-sm leading-6 ${theme.textMuted}`}>
+                  Tu negocio queda preparado para usar temas, horarios, métricas,
+                  roles y automatización con IA.
                 </p>
               </div>
             </div>
           </section>
 
           <section className="flex items-center justify-center">
-            <div className="w-full max-w-xl rounded-3xl border border-[#eadfce] bg-white p-6 shadow-sm sm:p-8">
-              <div className="mb-6">
-                <h2 className="text-2xl font-bold">Crear negocio</h2>
-                <p className="mt-2 text-sm text-[#6b5b4d]">
-                  Completa esta información para generar la base inicial de tu
-                  espacio de trabajo.
+            <div className={`w-full max-w-xl rounded-[2rem] border p-6 shadow-sm sm:p-8 ${theme.glassCard}`}>
+              <div className="mb-7">
+                <div className={`mb-4 flex h-14 w-14 items-center justify-center rounded-3xl ${theme.accent}`}>
+                  <BriefcaseBusiness className="h-6 w-6" />
+                </div>
+
+                <h2 className="text-2xl font-black">Crear negocio</h2>
+                <p className={`mt-2 text-sm leading-6 ${theme.textMuted}`}>
+                  Completa la información inicial para generar tu espacio de
+                  trabajo.
                 </p>
               </div>
 
@@ -77,15 +97,15 @@ export default async function OnboardingPage({
 
               <form action={createBusinessAction} className="space-y-4">
                 <div>
-                  <label className="mb-1.5 block text-sm font-medium text-[#3f3128]">
+                  <label className={`mb-1.5 block text-sm font-semibold ${theme.label}`}>
                     Nombre del negocio
                   </label>
                   <div className="relative">
-                    <Building2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8f7a68]" />
+                    <Building2 className={`pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 ${theme.textMuted}`} />
                     <input
                       type="text"
                       name="businessName"
-                      className="w-full rounded-2xl border border-[#d9c6b2] bg-white py-3 pl-10 pr-4 text-sm outline-none transition focus:border-[#a56a3a]"
+                      className={`w-full rounded-2xl border py-3 pl-10 pr-4 text-sm outline-none transition ${theme.input}`}
                       placeholder="Ej. Estilo Pro, Taller Norte, Clínica Nova"
                       required
                     />
@@ -93,56 +113,56 @@ export default async function OnboardingPage({
                 </div>
 
                 <div>
-                  <label className="mb-1.5 block text-sm font-medium text-[#3f3128]">
+                  <label className={`mb-1.5 block text-sm font-semibold ${theme.label}`}>
                     Tipo de negocio
                   </label>
                   <div className="relative">
-                    <BriefcaseBusiness className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8f7a68]" />
+                    <BriefcaseBusiness className={`pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 ${theme.textMuted}`} />
                     <select
                       name="businessType"
-                      className="w-full rounded-2xl border border-[#d9c6b2] bg-white py-3 pl-10 pr-4 text-sm outline-none transition focus:border-[#a56a3a]"
+                      className={`w-full rounded-2xl border py-3 pl-10 pr-4 text-sm outline-none transition ${theme.select}`}
                       required
                       defaultValue=""
                     >
-                      <option value="" disabled>
+                      <option value="" disabled className={theme.option}>
                         Selecciona una opción
                       </option>
-                      <option value="general">General</option>
-                      <option value="barbershop">Barbería</option>
-                      <option value="beauty_salon">Salón de belleza</option>
-                      <option value="spa">Spa</option>
-                      <option value="clinic">Clínica</option>
-                      <option value="workshop">Taller</option>
-                      <option value="store">Tienda</option>
+                      <option value="general" className={theme.option}>General</option>
+                      <option value="barbershop" className={theme.option}>Barbería</option>
+                      <option value="beauty_salon" className={theme.option}>Salón de belleza</option>
+                      <option value="spa" className={theme.option}>Spa</option>
+                      <option value="clinic" className={theme.option}>Clínica</option>
+                      <option value="workshop" className={theme.option}>Taller</option>
+                      <option value="store" className={theme.option}>Tienda</option>
                     </select>
                   </div>
                 </div>
 
                 <div>
-                  <label className="mb-1.5 block text-sm font-medium text-[#3f3128]">
+                  <label className={`mb-1.5 block text-sm font-semibold ${theme.label}`}>
                     Teléfono
                   </label>
                   <div className="relative">
-                    <Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8f7a68]" />
+                    <Phone className={`pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 ${theme.textMuted}`} />
                     <input
                       type="text"
                       name="phone"
-                      className="w-full rounded-2xl border border-[#d9c6b2] bg-white py-3 pl-10 pr-4 text-sm outline-none transition focus:border-[#a56a3a]"
+                      className={`w-full rounded-2xl border py-3 pl-10 pr-4 text-sm outline-none transition ${theme.input}`}
                       placeholder="Opcional"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="mb-1.5 block text-sm font-medium text-[#3f3128]">
+                  <label className={`mb-1.5 block text-sm font-semibold ${theme.label}`}>
                     Dirección
                   </label>
                   <div className="relative">
-                    <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8f7a68]" />
+                    <MapPin className={`pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 ${theme.textMuted}`} />
                     <input
                       type="text"
                       name="address"
-                      className="w-full rounded-2xl border border-[#d9c6b2] bg-white py-3 pl-10 pr-4 text-sm outline-none transition focus:border-[#a56a3a]"
+                      className={`w-full rounded-2xl border py-3 pl-10 pr-4 text-sm outline-none transition ${theme.input}`}
                       placeholder="Opcional"
                     />
                   </div>
@@ -150,9 +170,10 @@ export default async function OnboardingPage({
 
                 <button
                   type="submit"
-                  className="mt-2 w-full rounded-2xl bg-[#a56a3a] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#8d582e]"
+                  className={`mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-bold transition ${theme.buttonPrimary}`}
                 >
                   Crear negocio
+                  <ArrowRight className="h-4 w-4" />
                 </button>
               </form>
             </div>

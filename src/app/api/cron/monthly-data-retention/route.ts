@@ -197,8 +197,8 @@ export async function GET(request: Request) {
 
       const local = getLocalDateParts(timezone);
 
-      const shouldWarn = true;
-      const shouldCleanup =true;
+      const shouldWarn = isLastDayOfMonth(local.year, local.month, local.day);
+      const shouldCleanup = local.day === 1;
 
       const warningTarget = addMonths(local.year, local.month, -1);
       const cleanupTarget = addMonths(local.year, local.month, -2);
