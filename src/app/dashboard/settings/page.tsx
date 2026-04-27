@@ -230,6 +230,12 @@ export default async function SettingsPage({
                     <option value="dark" className={theme.option}>
                       Oscuro clásico
                     </option>
+                    <option value="resend" className={theme.option}>
+                      Resend Dark
+                    </option>
+                    <option value="coffee" className={theme.option}>
+                      Coffee
+                    </option>
                     <option value="rose_glam" className={theme.option}>
                       Rose Glam
                     </option>

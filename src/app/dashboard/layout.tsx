@@ -58,6 +58,10 @@ function getThemeGlow(theme: string) {
       return { primary: "bg-[#e11d48]/36", secondary: "bg-[#be185d]/28", tertiary: "bg-white/12" };
     case "blush_pop":
       return { primary: "bg-[#ec5f95]/28", secondary: "bg-[#f7bfd5]/30", tertiary: "bg-white/22" };
+    case "resend":
+      return { primary: "bg-white/8", secondary: "bg-white/4", tertiary: "bg-white/3", };
+    case "coffee":
+      return { primary: "bg-[#561c24]/45", secondary: "bg-[#6d2932]/30", tertiary: "bg-[#c7b7a3]/10", };
     case "cotton_candy":
       return { primary: "bg-[#d66bff]/28", secondary: "bg-[#f1d8ff]/30", tertiary: "bg-white/22" };
     case "pearl_rose":

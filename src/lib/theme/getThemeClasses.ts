@@ -473,6 +473,79 @@ const themes: Record<string, ThemeClasses> = {
     headerBg: "bg-[#f1f8ff]/78 border-[#cddff0] backdrop-blur-2xl",
   },
 
+  resend: {
+    pageBg:
+      "min-h-screen bg-[#0e0e0e] bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.03),transparent_0%,transparent_30%),radial-gradient(circle_at_80%_80%,rgba(255,255,255,0.02),transparent_0%,transparent_30%),linear-gradient(180deg,#111111_0%,#0e0e0e_100%)] bg-no-repeat text-white",
+    sidebarBg:
+      "bg-[#111111]/95 border-[#222222] backdrop-blur-2xl",
+    sidebarCard:
+      "bg-white/[0.04] border border-white/[0.07] shadow-[0_10px_30px_rgba(0,0,0,0.40)] backdrop-blur-xl",
+    card: "bg-white/[0.04] border border-white/[0.07] shadow-[0_14px_40px_rgba(0,0,0,0.45)] backdrop-blur-xl",
+    cardSoft:
+      "bg-white/[0.06] border border-white/[0.09] shadow-[0_10px_28px_rgba(0,0,0,0.35)] backdrop-blur-xl",
+    subtle: "bg-white/[0.03] border border-white/[0.07]",
+    input:
+      "bg-white/[0.06] border-white/[0.10] text-white placeholder:text-white/30 backdrop-blur-md focus:border-white/20 focus:bg-white/[0.08]",
+    select: "bg-[#1a1a1a] border-[#2e2e2e] text-white",
+    option: "bg-[#1a1a1a] text-white",
+    textMuted: "text-[#888888]",
+    label: "text-[#e8e8e8]",
+    hover: "hover:bg-white/[0.06]",
+    active:
+      "bg-white text-black shadow-[0_10px_25px_rgba(255,255,255,0.10)]",
+    accent:
+      "bg-white text-black shadow-[0_10px_25px_rgba(255,255,255,0.10)]",
+    softAccent: "bg-white/[0.08] text-white border border-white/[0.10]",
+    buttonPrimary:
+      "bg-white text-black hover:bg-[#e8e8e8] shadow-[0_12px_28px_rgba(255,255,255,0.10)] font-semibold",
+    buttonSecondary:
+      "bg-white/[0.06] border border-white/[0.10] text-white hover:bg-white/[0.10]",
+    logoutButton:
+      "bg-[#2a1a1a] border border-[#3d2222] text-white hover:bg-[#331f1f]",
+    danger: "bg-red-600 text-white hover:bg-red-700",
+    glassCard:
+      "bg-white/[0.05] border border-white/[0.08] text-white shadow-[0_18px_45px_rgba(0,0,0,0.50)] backdrop-blur-2xl",
+    headerBg:
+      "bg-[#0e0e0e]/90 border-[#1e1e1e] backdrop-blur-2xl",
+  },
+
+  coffee: {
+    pageBg:
+      "min-h-screen bg-[#1a0a0e] bg-[radial-gradient(circle_at_18%_18%,rgba(86,28,36,0.45),transparent_0%,transparent_30%),radial-gradient(circle_at_80%_78%,rgba(109,41,50,0.30),transparent_0%,transparent_32%),radial-gradient(circle_at_52%_34%,rgba(199,183,163,0.05),transparent_0%,transparent_20%),linear-gradient(180deg,#200d10_0%,#1a0a0e_100%)] bg-no-repeat text-[#e8d8c4]",
+    sidebarBg:
+      "bg-[#1e0d10]/92 border-[#3d1e24] backdrop-blur-2xl",
+    sidebarCard:
+      "bg-[#561c24]/20 border border-[#6d2932]/30 shadow-[0_10px_30px_rgba(0,0,0,0.35)] backdrop-blur-xl",
+    card: "bg-[#561c24]/15 border border-[#6d2932]/25 shadow-[0_14px_40px_rgba(0,0,0,0.40)] backdrop-blur-xl",
+    cardSoft:
+      "bg-[#561c24]/20 border border-[#6d2932]/30 shadow-[0_10px_28px_rgba(0,0,0,0.30)] backdrop-blur-xl",
+    subtle: "bg-[#561c24]/10 border border-[#6d2932]/20",
+    input:
+      "bg-[#561c24]/15 border-[#6d2932]/30 text-[#e8d8c4] placeholder:text-[#c7b7a3]/50 backdrop-blur-md focus:border-[#c7b7a3]/40 focus:bg-[#561c24]/20",
+    select: "bg-[#2a0e12] border-[#561c24] text-[#e8d8c4]",
+    option: "bg-[#2a0e12] text-[#e8d8c4]",
+    textMuted: "text-[#c7b7a3]",
+    label: "text-[#e8d8c4]",
+    hover: "hover:bg-[#561c24]/20",
+    active:
+      "bg-[#6d2932] text-[#e8d8c4] shadow-[0_12px_28px_rgba(86,28,36,0.35)]",
+    accent:
+      "bg-[#6d2932] text-[#e8d8c4] shadow-[0_12px_28px_rgba(86,28,36,0.35)]",
+    softAccent:
+      "bg-[#561c24]/20 text-[#c7b7a3] border border-[#6d2932]/30",
+    buttonPrimary:
+      "bg-[#6d2932] text-[#e8d8c4] hover:bg-[#7d3340] shadow-[0_12px_28px_rgba(86,28,36,0.30)]",
+    buttonSecondary:
+      "bg-[#561c24]/15 border border-[#6d2932]/30 text-[#e8d8c4] hover:bg-[#561c24]/25",
+    logoutButton:
+      "bg-[#3d1510] border border-[#561c24] text-[#e8d8c4] hover:bg-[#4a1a14]",
+    danger: "bg-red-700 text-white hover:bg-red-800",
+    glassCard:
+      "bg-[#561c24]/12 border border-[#6d2932]/22 text-[#e8d8c4] shadow-[0_18px_45px_rgba(0,0,0,0.45)] backdrop-blur-2xl",
+    headerBg:
+      "bg-[#1a0a0e]/88 border-[#3d1e24] backdrop-blur-2xl",
+  },
+
   warm: {
     pageBg:
       "min-h-screen bg-[#f6f1e8] bg-[radial-gradient(circle_at_12%_10%,rgba(165,106,58,0.10),transparent_0%,transparent_22%),radial-gradient(circle_at_88%_14%,rgba(255,255,255,0.42),transparent_0%,transparent_28%),linear-gradient(180deg,#fbf6ef_0%,#f6f1e8_44%,#efe6da_100%)] bg-no-repeat text-[#2f241d]",
