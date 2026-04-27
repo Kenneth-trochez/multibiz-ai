@@ -546,6 +546,43 @@ const themes: Record<string, ThemeClasses> = {
       "bg-[#1a0a0e]/88 border-[#3d1e24] backdrop-blur-2xl",
   },
 
+  coffee_light: {
+    pageBg:
+      "min-h-screen bg-[#e8d8c4] bg-[radial-gradient(circle_at_12%_10%,rgba(86,28,36,0.12),transparent_0%,transparent_24%),radial-gradient(circle_at_88%_14%,rgba(255,255,255,0.50),transparent_0%,transparent_28%),linear-gradient(180deg,#ede0ce_0%,#e8d8c4_44%,#dfc9b0_100%)] bg-no-repeat text-[#2a0e12]",
+    sidebarBg:
+      "bg-[#f2e6d6]/88 border-[#c7a898] backdrop-blur-2xl",
+    sidebarCard:
+      "bg-white/60 border border-white/50 shadow-[0_12px_30px_rgba(86,28,36,0.08)] backdrop-blur-xl",
+    card: "bg-white/55 border border-white/48 shadow-[0_16px_36px_rgba(86,28,36,0.10)] backdrop-blur-xl",
+    cardSoft:
+      "bg-white/70 border border-white/55 shadow-[0_12px_26px_rgba(86,28,36,0.07)] backdrop-blur-xl",
+    subtle: "bg-[#dfc9b0]/40 border border-[#c7a898]/50",
+    input:
+      "bg-white/70 border-white/55 text-[#2a0e12] placeholder:text-[#6d2932]/60 backdrop-blur-md focus:border-[#6d2932]/40 focus:bg-white/85",
+    select: "bg-white/80 border-[#c7a898] text-[#2a0e12]",
+    option: "bg-white text-[#2a0e12]",
+    textMuted: "text-[#6d2932]",
+    label: "text-[#2a0e12]",
+    hover: "hover:bg-[#561c24]/10",
+    active:
+      "bg-[#561c24] text-[#e8d8c4] shadow-[0_12px_28px_rgba(86,28,36,0.20)]",
+    accent:
+      "bg-[#561c24] text-[#e8d8c4] shadow-[0_12px_28px_rgba(86,28,36,0.20)]",
+    softAccent:
+      "bg-[#561c24]/15 text-[#561c24] border border-[#6d2932]/30",
+    buttonPrimary:
+      "bg-[#561c24] text-[#e8d8c4] hover:bg-[#6d2932] shadow-[0_12px_28px_rgba(86,28,36,0.20)]",
+    buttonSecondary:
+      "bg-white/70 border border-[#c7a898] text-[#2a0e12] hover:bg-[#f2e6d6]",
+    logoutButton:
+      "bg-[#6d2932] border border-[#6d2932] text-[#e8d8c4] hover:bg-[#7d3340]",
+    danger: "bg-red-600 text-white hover:bg-red-700",
+    glassCard:
+      "bg-white/52 border border-white/45 text-[#2a0e12] shadow-[0_20px_42px_rgba(86,28,36,0.10)] backdrop-blur-2xl",
+    headerBg:
+      "bg-[#e8d8c4]/82 border-[#c7a898] backdrop-blur-2xl",
+  },
+
   warm: {
     pageBg:
       "min-h-screen bg-[#f6f1e8] bg-[radial-gradient(circle_at_12%_10%,rgba(165,106,58,0.10),transparent_0%,transparent_22%),radial-gradient(circle_at_88%_14%,rgba(255,255,255,0.42),transparent_0%,transparent_28%),linear-gradient(180deg,#fbf6ef_0%,#f6f1e8_44%,#efe6da_100%)] bg-no-repeat text-[#2f241d]",

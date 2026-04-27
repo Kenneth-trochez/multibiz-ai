@@ -62,6 +62,8 @@ function getThemeGlow(theme: string) {
       return { primary: "bg-white/8", secondary: "bg-white/4", tertiary: "bg-white/3", };
     case "coffee":
       return { primary: "bg-[#561c24]/45", secondary: "bg-[#6d2932]/30", tertiary: "bg-[#c7b7a3]/10", };
+    case "coffee_light":
+      return { primary: "bg-[#561c24]/28", secondary: "bg-[#c7b7a3]/25", tertiary: "bg-white/20", };
     case "cotton_candy":
       return { primary: "bg-[#d66bff]/28", secondary: "bg-[#f1d8ff]/30", tertiary: "bg-white/22" };
     case "pearl_rose":

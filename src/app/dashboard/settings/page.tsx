@@ -236,6 +236,9 @@ export default async function SettingsPage({
                     <option value="coffee" className={theme.option}>
                       Coffee
                     </option>
+                    <option value="coffee_light" className={theme.option}>
+                      Coffee light
+                    </option>
                     <option value="rose_glam" className={theme.option}>
                       Rose Glam
                     </option>
