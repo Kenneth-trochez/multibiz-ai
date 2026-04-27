@@ -10,6 +10,12 @@ import {
 } from "lucide-react";
 import { getThemeClasses } from "@/lib/theme/getThemeClasses";
 
+export const metadata = {
+  title: "Descargar App MultiBiz AI | Gestión de negocios en tu teléfono",
+  description:
+    "Descarga la app móvil de MultiBiz AI para gestionar citas, clientes y recibir notificaciones en tiempo real desde tu teléfono.",
+};
+
 export default function AppDownloadPage() {
   const theme = getThemeClasses("warm");
 
