@@ -145,7 +145,10 @@ export default async function HomePage() {
               <div className="mb-2 flex flex-wrap items-center gap-2">
                 <h3 className="text-xl font-black">App móvil para tu equipo</h3>
                 <span className={`rounded-full border px-3 py-1 text-xs font-bold ${theme.softAccent}`}>
-                  Android primero
+                  Android primero app en desarrollo constante, en espera para confirmacion en playstore y appstore
+                </span>
+                <span className={`rounded-full border px-3 py-1 text-xs font-bold ${theme.softAccent}`}>
+                  descarga segura link verificado.
                 </span>
                 <span className={`rounded-full border px-3 py-1 text-xs font-bold ${theme.softAccent}`}>
                   Necesitas de plan bronze minimo para usar
