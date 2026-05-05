@@ -249,6 +249,7 @@ export async function createAndInviteStaffAction(formData: FormData): Promise<vo
   const roleId = String(formData.get("role_id") || "").trim();
   const specialty = String(formData.get("specialty") || "").trim();
   const email = normalizeEmail(String(formData.get("email") || ""));
+  const password = String(formData.get("password") || "").trim();
   const activeValue = String(formData.get("active") || "");
   const active = activeValue === "on" || activeValue === "true";
 
@@ -260,8 +261,14 @@ export async function createAndInviteStaffAction(formData: FormData): Promise<vo
     redirect("/dashboard/staff?error=El+correo+es+obligatorio+para+invitar");
   }
 
+  if (password) {
+    redirect(
+      "/dashboard/staff?error=Para+Guardar+e+invitar+deja+la+contraseña+vacía.+El+empleado+la+creará+desde+su+invitación"
+    );
+  }
+
   if (!roleId) {
-    redirect("/dashboard/staff?error=Debes+asignar+un+rol+para+invitar");
+    redirect("/dashboard/staff?error=Debes+asignar+un+rol+interno+para+invitar");
   }
 
   const { supabase, user, membership } = await getCurrentMembership(businessId);
@@ -292,6 +299,23 @@ export async function createAndInviteStaffAction(formData: FormData): Promise<vo
 
   if (existingStaffError) {
     redirect("/dashboard/staff?error=No+se+pudo+validar+el+staff+existente");
+  }
+
+  if (existingStaffByEmail?.profile_user_id) {
+    const { data: existingMembership, error: existingMembershipError } = await supabase
+      .from("business_members")
+      .select("business_id, user_id, role")
+      .eq("business_id", membership.business_id)
+      .eq("user_id", existingStaffByEmail.profile_user_id)
+      .maybeSingle();
+
+    if (existingMembershipError) {
+      redirect(`/dashboard/staff?error=${encodeURIComponent(existingMembershipError.message)}`);
+    }
+
+    if (existingMembership) {
+      redirect("/dashboard/staff?error=Ese+correo+ya+tiene+acceso+a+este+negocio");
+    }
   }
 
   let finalStaffId = "";
@@ -343,17 +367,14 @@ export async function createAndInviteStaffAction(formData: FormData): Promise<vo
     finalStaffId = insertedStaff.id;
   }
 
-  const { error: revokeOldInvitesError } = await supabase
+  const { error: deleteOldInvitesError } = await adminSupabase
     .from("staff_invitations")
-    .update({
-      status: "revoked",
-    })
+    .delete()
     .eq("business_id", membership.business_id)
-    .eq("email", email)
-    .eq("status", "pending");
+    .eq("email", email);
 
-  if (revokeOldInvitesError) {
-    redirect(`/dashboard/staff?error=${encodeURIComponent(revokeOldInvitesError.message)}`);
+  if (deleteOldInvitesError) {
+    redirect(`/dashboard/staff?error=${encodeURIComponent(deleteOldInvitesError.message)}`);
   }
 
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -386,7 +407,8 @@ export async function createAndInviteStaffAction(formData: FormData): Promise<vo
     redirect("/dashboard/staff?error=Falta+configurar+NEXT_PUBLIC_APP_URL");
   }
 
-  const redirectTo = `${appUrl}/auth/accept-invite?invitation=${invitation.token}`;
+  const nextPath = `/auth/staff-invite?invitation=${invitation.token}`;
+  const redirectTo = `${appUrl}/auth/callback?next=${encodeURIComponent(nextPath)}`;
 
   const { error: inviteError } = await adminSupabase.auth.admin.inviteUserByEmail(email, {
     redirectTo,
@@ -399,6 +421,13 @@ export async function createAndInviteStaffAction(formData: FormData): Promise<vo
   });
 
   if (inviteError) {
+    await adminSupabase.from("staff_invitations").delete().eq("id", invitation.id);
+    await supabase
+      .from("staff")
+      .update({ invite_status: "none" })
+      .eq("id", finalStaffId)
+      .eq("business_id", membership.business_id);
+
     redirect(`/dashboard/staff?error=${encodeURIComponent(inviteError.message)}`);
   }
 
@@ -562,13 +591,34 @@ export async function deleteStaffAction(formData: FormData): Promise<void> {
 }
 
 export async function acceptStaffInvitationAction(formData: FormData): Promise<void> {
+  return acceptStaffInvitationWithPasswordAction(formData);
+}
+
+export async function acceptStaffInvitationWithPasswordAction(formData: FormData): Promise<void> {
   const invitationToken = String(formData.get("invitationToken") || "").trim();
+  const password = String(formData.get("password") || "").trim();
+  const confirmPassword = String(formData.get("confirmPassword") || "").trim();
 
   if (!invitationToken) {
     redirect("/login?error=Invitación+inválida");
   }
 
+  const invitePath = `/auth/staff-invite?invitation=${encodeURIComponent(invitationToken)}`;
+
+  if (!password || !confirmPassword) {
+    redirect(`${invitePath}&error=Completa+ambos+campos`);
+  }
+
+  if (password.length < 8) {
+    redirect(`${invitePath}&error=La+contraseña+debe+tener+al+menos+8+caracteres`);
+  }
+
+  if (password !== confirmPassword) {
+    redirect(`${invitePath}&error=Las+contraseñas+no+coinciden`);
+  }
+
   const supabase = await createClient();
+  const adminSupabase = createAdminClient();
 
   const {
     data: { user },
@@ -577,13 +627,11 @@ export async function acceptStaffInvitationAction(formData: FormData): Promise<v
 
   if (authError || !user) {
     redirect(
-      `/login?error=Debes+iniciar+sesión+para+aceptar+la+invitación&next=${encodeURIComponent(
-        `/auth/accept-invite?invitation=${invitationToken}`
-      )}`
+      `${invitePath}&error=La+sesión+de+la+invitación+expiró.+Abre+el+enlace+del+correo+otra+vez`
     );
   }
 
-  const { data: invitation, error: invitationError } = await supabase
+  const { data: invitation, error: invitationError } = await adminSupabase
     .from("staff_invitations")
     .select(`
       id,
@@ -599,38 +647,46 @@ export async function acceptStaffInvitationAction(formData: FormData): Promise<v
     .maybeSingle();
 
   if (invitationError || !invitation) {
-    redirect("/dashboard/staff?error=La+invitación+no+existe+o+es+inválida");
+    redirect(`${invitePath}&error=La+invitación+no+existe+o+ya+fue+utilizada`);
   }
 
   if (invitation.status !== "pending") {
-    redirect("/dashboard/staff?error=La+invitación+ya+no+está+disponible");
+    await adminSupabase.from("staff_invitations").delete().eq("id", invitation.id);
+    redirect(`${invitePath}&error=La+invitación+ya+no+está+disponible`);
   }
 
   const expiresAtMs = new Date(invitation.expires_at).getTime();
-  if (Number.isNaN(expiresAtMs) || expiresAtMs < Date.now()) {
-    await supabase
-      .from("staff_invitations")
-      .update({ status: "expired" })
-      .eq("id", invitation.id);
 
+  if (Number.isNaN(expiresAtMs) || expiresAtMs < Date.now()) {
     if (invitation.staff_id) {
-      await supabase
+      await adminSupabase
         .from("staff")
         .update({ invite_status: "expired" })
-        .eq("id", invitation.staff_id);
+        .eq("id", invitation.staff_id)
+        .eq("business_id", invitation.business_id);
     }
 
-    redirect("/dashboard/staff?error=La+invitación+ha+expirado");
+    await adminSupabase.from("staff_invitations").delete().eq("id", invitation.id);
+
+    redirect(`${invitePath}&error=La+invitación+ha+expirado`);
   }
 
   const userEmail = (user.email || "").trim().toLowerCase();
   const invitationEmail = (invitation.email || "").trim().toLowerCase();
 
   if (!userEmail || userEmail !== invitationEmail) {
-    redirect("/dashboard/staff?error=Esta+invitación+no+corresponde+al+usuario+actual");
+    redirect(`${invitePath}&error=Esta+invitación+no+corresponde+al+correo+actual`);
   }
 
-  const { data: existingMembership, error: existingMembershipError } = await supabase
+  const { error: passwordError } = await supabase.auth.updateUser({
+    password,
+  });
+
+  if (passwordError) {
+    redirect(`${invitePath}&error=${encodeURIComponent(passwordError.message)}`);
+  }
+
+  const { data: existingMembership, error: existingMembershipError } = await adminSupabase
     .from("business_members")
     .select("business_id, user_id, role")
     .eq("business_id", invitation.business_id)
@@ -638,11 +694,11 @@ export async function acceptStaffInvitationAction(formData: FormData): Promise<v
     .maybeSingle();
 
   if (existingMembershipError) {
-    redirect(`/dashboard/staff?error=${encodeURIComponent(existingMembershipError.message)}`);
+    redirect(`${invitePath}&error=${encodeURIComponent(existingMembershipError.message)}`);
   }
 
   if (!existingMembership) {
-    const { error: insertMembershipError } = await supabase
+    const { error: insertMembershipError } = await adminSupabase
       .from("business_members")
       .insert({
         business_id: invitation.business_id,
@@ -650,13 +706,13 @@ export async function acceptStaffInvitationAction(formData: FormData): Promise<v
         role: "staff",
       });
 
-    if (insertMembershipError) {
-      redirect(`/dashboard/staff?error=${encodeURIComponent(insertMembershipError.message)}`);
+    if (insertMembershipError && insertMembershipError.code !== "23505") {
+      redirect(`${invitePath}&error=${encodeURIComponent(insertMembershipError.message)}`);
     }
   }
 
   if (invitation.staff_id) {
-    const { error: updateStaffError } = await supabase
+    const { error: updateStaffError } = await adminSupabase
       .from("staff")
       .update({
         profile_user_id: user.id,
@@ -667,20 +723,28 @@ export async function acceptStaffInvitationAction(formData: FormData): Promise<v
       .eq("business_id", invitation.business_id);
 
     if (updateStaffError) {
-      redirect(`/dashboard/staff?error=${encodeURIComponent(updateStaffError.message)}`);
+      redirect(`${invitePath}&error=${encodeURIComponent(updateStaffError.message)}`);
     }
   }
 
-  const { error: updateInvitationError } = await supabase
+  const { error: deleteOtherInvitationsError } = await adminSupabase
     .from("staff_invitations")
-    .update({
-      status: "accepted",
-      accepted_at: new Date().toISOString(),
-    })
+    .delete()
+    .eq("business_id", invitation.business_id)
+    .eq("email", invitationEmail)
+    .neq("id", invitation.id);
+
+  if (deleteOtherInvitationsError) {
+    redirect(`${invitePath}&error=${encodeURIComponent(deleteOtherInvitationsError.message)}`);
+  }
+
+  const { error: deleteCurrentInvitationError } = await adminSupabase
+    .from("staff_invitations")
+    .delete()
     .eq("id", invitation.id);
 
-  if (updateInvitationError) {
-    redirect(`/dashboard/staff?error=${encodeURIComponent(updateInvitationError.message)}`);
+  if (deleteCurrentInvitationError) {
+    redirect(`${invitePath}&error=${encodeURIComponent(deleteCurrentInvitationError.message)}`);
   }
 
   revalidatePath("/dashboard/staff");
