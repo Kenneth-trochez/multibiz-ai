@@ -1,7 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, CheckCircle2, Lock, ShieldCheck, UserRound } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Eye,
+  EyeOff,
+  Lock,
+  ShieldCheck,
+  UserRound,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { acceptStaffInvitationWithPasswordAction } from "@/app/actions/staff";
 
@@ -91,6 +99,9 @@ export default function StaffInviteClient({
   const [sessionState, setSessionState] = useState<SessionState>("checking");
   const [currentEmail, setCurrentEmail] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [inviteAccessToken, setInviteAccessToken] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -103,6 +114,10 @@ export default function StaffInviteClient({
         const accessToken = hashParams.get("access_token");
         const refreshToken = hashParams.get("refresh_token");
         const type = hashParams.get("type");
+
+        if (accessToken) {
+          setInviteAccessToken(accessToken);
+        }
 
         if (accessToken && refreshToken) {
           const { error: setSessionError } = await supabase.auth.setSession({
@@ -227,6 +242,7 @@ export default function StaffInviteClient({
 
       <form action={acceptStaffInvitationWithPasswordAction} className="mt-6 space-y-4">
         <input type="hidden" name="invitationToken" value={invitationToken} />
+        <input type="hidden" name="inviteAccessToken" value={inviteAccessToken} />
 
         <div>
           <label className={`mb-1.5 block text-sm font-semibold ${theme.label}`}>
@@ -237,14 +253,22 @@ export default function StaffInviteClient({
               className={`pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 ${theme.textMuted}`}
             />
             <input
-              type="password"
+              type={showPassword ? "text" : "password"}
               name="password"
               minLength={8}
               autoComplete="new-password"
-              className={`w-full rounded-2xl border py-3 pl-10 pr-4 outline-none transition ${theme.input}`}
+              className={`w-full rounded-2xl border py-3 pl-10 pr-12 outline-none transition ${theme.input}`}
               placeholder="Mínimo 8 caracteres"
               required
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword((value) => !value)}
+              className={`absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1 ${theme.textMuted}`}
+              aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+            >
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
           </div>
         </div>
 
@@ -257,20 +281,29 @@ export default function StaffInviteClient({
               className={`pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 ${theme.textMuted}`}
             />
             <input
-              type="password"
+              type={showConfirmPassword ? "text" : "password"}
               name="confirmPassword"
               minLength={8}
               autoComplete="new-password"
-              className={`w-full rounded-2xl border py-3 pl-10 pr-4 outline-none transition ${theme.input}`}
+              className={`w-full rounded-2xl border py-3 pl-10 pr-12 outline-none transition ${theme.input}`}
               placeholder="Repite la contraseña"
               required
             />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword((value) => !value)}
+              className={`absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1 ${theme.textMuted}`}
+              aria-label={showConfirmPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+            >
+              {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
           </div>
         </div>
 
         <button
           type="submit"
-          className={`w-full rounded-2xl px-4 py-3 font-bold transition ${theme.buttonPrimary}`}
+          disabled={!inviteAccessToken}
+          className={`w-full rounded-2xl px-4 py-3 font-bold transition disabled:cursor-not-allowed disabled:opacity-60 ${theme.buttonPrimary}`}
         >
           Crear contraseña y entrar
         </button>

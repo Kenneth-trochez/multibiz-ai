@@ -16,112 +16,6 @@ function normalizeAccessRole(role: string): AccessRole {
   return role === "manager" ? "manager" : "staff";
 }
 
-async function findAuthUserByEmail(adminSupabase: ReturnType<typeof createAdminClient>, email: string) {
-  const normalizedEmail = normalizeEmail(email);
-
-  if (!normalizedEmail) {
-    return null;
-  }
-
-  let page = 1;
-  const perPage = 1000;
-
-  while (page <= 20) {
-    const { data, error } = await adminSupabase.auth.admin.listUsers({
-      page,
-      perPage,
-    });
-
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    const foundUser = data.users.find(
-      (authUser) => normalizeEmail(authUser.email || "") === normalizedEmail
-    );
-
-    if (foundUser) {
-      return foundUser;
-    }
-
-    if (data.users.length < perPage) {
-      break;
-    }
-
-    page += 1;
-  }
-
-  return null;
-}
-
-async function deleteAuthUserIfOrphan(options: {
-  adminSupabase: ReturnType<typeof createAdminClient>;
-  userId: string;
-  currentUserId?: string;
-}) {
-  const { adminSupabase, userId, currentUserId } = options;
-
-  if (!userId || userId === currentUserId) {
-    return false;
-  }
-
-  const { count: remainingMemberships, error: remainingMembershipsError } =
-    await adminSupabase
-      .from("business_members")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", userId);
-
-  if (remainingMembershipsError) {
-    throw new Error(remainingMembershipsError.message);
-  }
-
-  if ((remainingMemberships || 0) > 0) {
-    return false;
-  }
-
-  const { count: ownedBusinesses, error: ownedBusinessesError } =
-    await adminSupabase
-      .from("businesses")
-      .select("*", { count: "exact", head: true })
-      .eq("owner_user_id", userId);
-
-  if (ownedBusinessesError) {
-    throw new Error(ownedBusinessesError.message);
-  }
-
-  if ((ownedBusinesses || 0) > 0) {
-    return false;
-  }
-
-  const { error: deleteUserError } =
-    await adminSupabase.auth.admin.deleteUser(userId);
-
-  if (deleteUserError) {
-    throw new Error(deleteUserError.message);
-  }
-
-  return true;
-}
-
-async function deleteOrphanAuthUserByEmail(options: {
-  adminSupabase: ReturnType<typeof createAdminClient>;
-  email: string;
-  currentUserId?: string;
-}) {
-  const { adminSupabase, email, currentUserId } = options;
-  const authUser = await findAuthUserByEmail(adminSupabase, email);
-
-  if (!authUser) {
-    return false;
-  }
-
-  return deleteAuthUserIfOrphan({
-    adminSupabase,
-    userId: authUser.id,
-    currentUserId,
-  });
-}
-
 async function getCurrentMembership(requiredBusinessId?: string) {
   const supabase = await createClient();
 
@@ -483,20 +377,6 @@ export async function createAndInviteStaffAction(formData: FormData): Promise<vo
     redirect(`/dashboard/staff?error=${encodeURIComponent(deleteOldInvitesError.message)}`);
   }
 
-  try {
-    await deleteOrphanAuthUserByEmail({
-      adminSupabase,
-      email,
-      currentUserId: user.id,
-    });
-  } catch (cleanupError: any) {
-    redirect(
-      `/dashboard/staff?error=${encodeURIComponent(
-        cleanupError?.message || "No se pudo limpiar el usuario anterior de Auth"
-      )}`
-    );
-  }
-
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
   const { data: invitation, error: invitationError } = await supabase
@@ -527,7 +407,8 @@ export async function createAndInviteStaffAction(formData: FormData): Promise<vo
     redirect("/dashboard/staff?error=Falta+configurar+NEXT_PUBLIC_APP_URL");
   }
 
-  const redirectTo = `${appUrl}/auth/staff-invite?invitation=${invitation.token}`;
+  const nextPath = `/auth/staff-invite?invitation=${invitation.token}`;
+  const redirectTo = `${appUrl}/auth/callback?next=${encodeURIComponent(nextPath)}`;
 
   const { error: inviteError } = await adminSupabase.auth.admin.inviteUserByEmail(email, {
     redirectTo,
@@ -606,7 +487,7 @@ export async function deleteStaffAction(formData: FormData): Promise<void> {
 
   const { data: staffRow, error: staffError } = await supabase
     .from("staff")
-    .select("id, business_id, display_name, email, profile_user_id")
+    .select("id, business_id, display_name, profile_user_id")
     .eq("id", staffId)
     .eq("business_id", membership.business_id)
     .maybeSingle();
@@ -640,9 +521,9 @@ export async function deleteStaffAction(formData: FormData): Promise<void> {
   }
 
   try {
-    // 1) borrar membership del negocio actual, si el staff ya tenía usuario vinculado.
+    // 1) borrar membership del negocio actual
     if (profileUserId) {
-      const { error: deleteMembershipError } = await adminSupabase
+      const { error: deleteMembershipError } = await supabase
         .from("business_members")
         .delete()
         .eq("business_id", membership.business_id)
@@ -653,33 +534,8 @@ export async function deleteStaffAction(formData: FormData): Promise<void> {
       }
     }
 
-    // 2) borrar invitaciones asociadas a ese staff dentro del negocio.
-    const { error: deleteInvitationsByStaffError } = await adminSupabase
-      .from("staff_invitations")
-      .delete()
-      .eq("business_id", membership.business_id)
-      .eq("staff_id", staffId);
-
-    if (deleteInvitationsByStaffError) {
-      throw new Error(deleteInvitationsByStaffError.message);
-    }
-
-    // 3) borrar invitaciones asociadas al mismo correo dentro del negocio.
-    // Esto cubre invitaciones anteriores donde staff_id pudo quedar nulo.
-    if (staffRow.email) {
-      const { error: deleteInvitationsByEmailError } = await adminSupabase
-        .from("staff_invitations")
-        .delete()
-        .eq("business_id", membership.business_id)
-        .eq("email", normalizeEmail(staffRow.email));
-
-      if (deleteInvitationsByEmailError) {
-        throw new Error(deleteInvitationsByEmailError.message);
-      }
-    }
-
-    // 4) borrar el staff.
-    const { error: deleteStaffError } = await adminSupabase
+    // 2) borrar el staff
+    const { error: deleteStaffError } = await supabase
       .from("staff")
       .delete()
       .eq("id", staffId)
@@ -689,24 +545,38 @@ export async function deleteStaffAction(formData: FormData): Promise<void> {
       throw new Error(deleteStaffError.message);
     }
 
-    // 5) borrar el usuario de Auth solo si quedó huérfano.
-    // Caso A: staff aceptado, tiene profile_user_id.
-    if (profileUserId) {
-      await deleteAuthUserIfOrphan({
-        adminSupabase,
-        userId: profileUserId,
-        currentUserId: user.id,
-      });
+    // 3) borrar invitaciones asociadas a ese staff o email dentro del negocio
+    const { error: deleteInvitationsError } = await supabase
+      .from("staff_invitations")
+      .delete()
+      .eq("business_id", membership.business_id)
+      .eq("staff_id", staffId);
+
+    if (deleteInvitationsError) {
+      throw new Error(deleteInvitationsError.message);
     }
 
-    // Caso B: staff invitado pero no aceptado. Supabase Auth pudo haber creado
-    // un usuario por inviteUserByEmail, aunque staff.profile_user_id siga null.
-    if (!profileUserId && staffRow.email) {
-      await deleteOrphanAuthUserByEmail({
-        adminSupabase,
-        email: staffRow.email,
-        currentUserId: user.id,
-      });
+    // 4) si tenía cuenta vinculada, revisar si aún pertenece a otros negocios
+    if (profileUserId) {
+      const { count: remainingMemberships, error: remainingMembershipsError } =
+        await supabase
+          .from("business_members")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", profileUserId);
+
+      if (remainingMembershipsError) {
+        throw new Error(remainingMembershipsError.message);
+      }
+
+      // Solo borramos auth.users si ya no pertenece a ningún negocio
+      if ((remainingMemberships || 0) === 0) {
+        const { error: deleteUserError } =
+          await adminSupabase.auth.admin.deleteUser(profileUserId);
+
+        if (deleteUserError) {
+          throw new Error(deleteUserError.message);
+        }
+      }
     }
   } catch (error: any) {
     redirect(
@@ -728,6 +598,7 @@ export async function acceptStaffInvitationWithPasswordAction(formData: FormData
   const invitationToken = String(formData.get("invitationToken") || "").trim();
   const password = String(formData.get("password") || "").trim();
   const confirmPassword = String(formData.get("confirmPassword") || "").trim();
+  const inviteAccessToken = String(formData.get("inviteAccessToken") || "").trim();
 
   if (!invitationToken) {
     redirect("/login?error=Invitación+inválida");
@@ -747,15 +618,20 @@ export async function acceptStaffInvitationWithPasswordAction(formData: FormData
     redirect(`${invitePath}&error=Las+contraseñas+no+coinciden`);
   }
 
-  const supabase = await createClient();
+  if (!inviteAccessToken) {
+    redirect(
+      `${invitePath}&error=La+sesión+de+la+invitación+expiró.+Abre+el+enlace+del+correo+otra+vez`
+    );
+  }
+
   const adminSupabase = createAdminClient();
 
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  const { data: tokenUserData, error: tokenUserError } =
+    await adminSupabase.auth.getUser(inviteAccessToken);
 
-  if (authError || !user) {
+  const user = tokenUserData?.user;
+
+  if (tokenUserError || !user) {
     redirect(
       `${invitePath}&error=La+sesión+de+la+invitación+expiró.+Abre+el+enlace+del+correo+otra+vez`
     );
@@ -808,9 +684,17 @@ export async function acceptStaffInvitationWithPasswordAction(formData: FormData
     redirect(`${invitePath}&error=Esta+invitación+no+corresponde+al+correo+actual`);
   }
 
-  const { error: passwordError } = await supabase.auth.updateUser({
-    password,
-  });
+  const { error: passwordError } = await adminSupabase.auth.admin.updateUserById(
+    user.id,
+    {
+      password,
+      email_confirm: true,
+      user_metadata: {
+        ...(user.user_metadata || {}),
+        staff_invitation_accepted: true,
+      },
+    }
+  );
 
   if (passwordError) {
     redirect(`${invitePath}&error=${encodeURIComponent(passwordError.message)}`);
@@ -880,3 +764,4 @@ export async function acceptStaffInvitationWithPasswordAction(formData: FormData
   revalidatePath("/dashboard/staff");
   redirect("/dashboard?success=invite_accepted");
 }
+
