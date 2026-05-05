@@ -100,6 +100,7 @@ export default function StaffInviteClient({
   const [currentEmail, setCurrentEmail] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [inviteAccessToken, setInviteAccessToken] = useState("");
+  const [inviteRefreshToken, setInviteRefreshToken] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -117,6 +118,10 @@ export default function StaffInviteClient({
 
         if (accessToken) {
           setInviteAccessToken(accessToken);
+        }
+
+        if (refreshToken) {
+          setInviteRefreshToken(refreshToken);
         }
 
         if (accessToken && refreshToken) {
@@ -243,6 +248,7 @@ export default function StaffInviteClient({
       <form action={acceptStaffInvitationWithPasswordAction} className="mt-6 space-y-4">
         <input type="hidden" name="invitationToken" value={invitationToken} />
         <input type="hidden" name="inviteAccessToken" value={inviteAccessToken} />
+        <input type="hidden" name="inviteRefreshToken" value={inviteRefreshToken} />
 
         <div>
           <label className={`mb-1.5 block text-sm font-semibold ${theme.label}`}>
@@ -302,7 +308,7 @@ export default function StaffInviteClient({
 
         <button
           type="submit"
-          disabled={!inviteAccessToken}
+          disabled={!inviteAccessToken || !inviteRefreshToken}
           className={`w-full rounded-2xl px-4 py-3 font-bold transition disabled:cursor-not-allowed disabled:opacity-60 ${theme.buttonPrimary}`}
         >
           Crear contraseña y entrar

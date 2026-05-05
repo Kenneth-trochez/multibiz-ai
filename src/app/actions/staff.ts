@@ -729,6 +729,7 @@ export async function acceptStaffInvitationWithPasswordAction(formData: FormData
   const password = String(formData.get("password") || "").trim();
   const confirmPassword = String(formData.get("confirmPassword") || "").trim();
   const inviteAccessToken = String(formData.get("inviteAccessToken") || "").trim();
+  const inviteRefreshToken = String(formData.get("inviteRefreshToken") || "").trim();
 
   if (!invitationToken) {
     redirect("/login?error=Invitación+inválida");
@@ -748,7 +749,7 @@ export async function acceptStaffInvitationWithPasswordAction(formData: FormData
     redirect(`${invitePath}&error=Las+contraseñas+no+coinciden`);
   }
 
-  if (!inviteAccessToken) {
+  if (!inviteAccessToken || !inviteRefreshToken) {
     redirect(
       `${invitePath}&error=La+sesión+de+la+invitación+expiró.+Abre+el+enlace+del+correo+otra+vez`
     );
@@ -891,6 +892,21 @@ export async function acceptStaffInvitationWithPasswordAction(formData: FormData
     redirect(`${invitePath}&error=${encodeURIComponent(deleteCurrentInvitationError.message)}`);
   }
 
+  const sessionSupabase = await createClient();
+  const { error: setSessionError } = await sessionSupabase.auth.setSession({
+    access_token: inviteAccessToken,
+    refresh_token: inviteRefreshToken,
+  });
+
+  if (setSessionError) {
+    redirect(
+      `/login?success=invite_accepted&message=${encodeURIComponent(
+        "Tu cuenta fue creada. Inicia sesión con tu correo y contraseña nueva."
+      )}`
+    );
+  }
+
+  revalidatePath("/dashboard");
   revalidatePath("/dashboard/staff");
   redirect("/dashboard?success=invite_accepted");
 }
