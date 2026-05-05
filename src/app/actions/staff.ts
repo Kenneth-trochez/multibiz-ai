@@ -527,8 +527,7 @@ export async function createAndInviteStaffAction(formData: FormData): Promise<vo
     redirect("/dashboard/staff?error=Falta+configurar+NEXT_PUBLIC_APP_URL");
   }
 
-  const nextPath = `/auth/staff-invite?invitation=${invitation.token}`;
-  const redirectTo = `${appUrl}/auth/callback?next=${encodeURIComponent(nextPath)}`;
+  const redirectTo = `${appUrl}/auth/staff-invite?invitation=${invitation.token}`;
 
   const { error: inviteError } = await adminSupabase.auth.admin.inviteUserByEmail(email, {
     redirectTo,
