@@ -7,7 +7,7 @@ import { requireSectionAccess } from "@/lib/auth/requireSectionAccess";
 import { createClient } from "@/lib/supabase/server";
 import { getThemeClasses } from "@/lib/theme/getThemeClasses";
 import Link from "next/link";
-import StaffList from "./StaffList";
+import StaffList, { StaffInvitePasswordGuard } from "./StaffList";
 
 type RoleOption = {
   id: string;
@@ -84,7 +84,7 @@ export default async function StaffPage({
     return (
       <main className={`min-h-screen p-6 ${theme.pageBg}`}>
         <div className={`rounded-2xl border p-6 ${theme.card}`}>
-          Error cargando staff:{" "}
+          Error cargando staff: {" "}
           {error?.message || countError?.message || rolesError?.message}
         </div>
       </main>
@@ -170,20 +170,22 @@ export default async function StaffPage({
               <div className="flex items-center gap-2">
                 <Link
                   href={`/dashboard/staff?page=${currentPage - 1}`}
-                  className={`rounded-xl px-4 py-2 text-sm font-medium transition ${currentPage <= 1
-                    ? "pointer-events-none opacity-50"
-                    : theme.buttonSecondary
-                    }`}
+                  className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
+                    currentPage <= 1
+                      ? "pointer-events-none opacity-50"
+                      : theme.buttonSecondary
+                  }`}
                 >
                   ← Anterior
                 </Link>
 
                 <Link
                   href={`/dashboard/staff?page=${currentPage + 1}`}
-                  className={`rounded-xl px-4 py-2 text-sm font-medium transition ${currentPage >= totalPages
-                    ? "pointer-events-none opacity-50"
-                    : theme.buttonSecondary
-                    }`}
+                  className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
+                    currentPage >= totalPages
+                      ? "pointer-events-none opacity-50"
+                      : theme.buttonSecondary
+                  }`}
                 >
                   Siguiente →
                 </Link>
@@ -196,8 +198,9 @@ export default async function StaffPage({
           >
             <h2 className="mb-4 text-xl font-semibold">Nuevo miembro</h2>
 
-            <form action={createStaffAction} className="grid gap-4">
+            <form id="new-staff-form" action={createStaffAction} className="grid gap-4">
               <input type="hidden" name="businessId" value={business.id} />
+              <StaffInvitePasswordGuard formId="new-staff-form" />
 
               <div>
                 <label
@@ -226,7 +229,8 @@ export default async function StaffPage({
                 />
                 <p className={`mt-1 text-xs ${theme.textMuted}`}>
                   Déjalo vacío si solo quieres crear el staff sin acceso al
-                  sistema.
+                  sistema. Para invitar o crear cuenta manual, el correo es
+                  obligatorio.
                 </p>
               </div>
 
@@ -243,6 +247,10 @@ export default async function StaffPage({
                   className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
                   placeholder="Solo para crear cuenta manual"
                 />
+                <p className={`mt-1 text-xs ${theme.textMuted}`}>
+                  Si usas “Guardar e invitar”, deja este campo vacío. La persona
+                  creará su contraseña desde el correo de invitación.
+                </p>
               </div>
 
               <div>
@@ -293,6 +301,9 @@ export default async function StaffPage({
                     </option>
                   ))}
                 </select>
+                <p className={`mt-1 text-xs ${theme.textMuted}`}>
+                  Para “Guardar e invitar” debes seleccionar un rol interno.
+                </p>
               </div>
 
               <div>
@@ -326,6 +337,8 @@ export default async function StaffPage({
               <div className="flex flex-wrap gap-3">
                 <button
                   type="submit"
+                  name="submitIntent"
+                  value="manual"
                   formAction={createStaffUserAction}
                   className={`rounded-xl border px-4 py-2 font-medium transition ${theme.buttonPrimary}`}
                 >
@@ -333,10 +346,11 @@ export default async function StaffPage({
                 </button>
 
                 <button
-                  type="button"
-                  disabled
-                  title="Guardar e invitar está desactivado por el momento"
-                  className={`rounded-xl border px-4 py-2 font-medium opacity-50 cursor-not-allowed transition ${theme.buttonSecondary}`}
+                  type="submit"
+                  name="submitIntent"
+                  value="invite"
+                  formAction={createAndInviteStaffAction}
+                  className={`rounded-xl border px-4 py-2 font-medium transition ${theme.buttonSecondary}`}
                 >
                   Guardar e invitar
                 </button>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   deleteStaffAction,
   updateStaffAction,
@@ -15,9 +15,11 @@ type StaffMember = {
   id: string;
   display_name: string;
   specialty: string | null;
+  email: string | null;
   active: boolean;
   created_at: string;
   role_id: string | null;
+  invite_status: string | null;
   role: {
     id: string;
     name: string;
@@ -47,6 +49,48 @@ type Theme = {
   glassCard: string;
   headerBg: string;
 };
+
+function getInviteStatusLabel(status: string | null) {
+  if (status === "pending") return "Invitación pendiente";
+  if (status === "accepted") return "Invitación aceptada";
+  if (status === "expired") return "Invitación expirada";
+  if (status === "revoked") return "Invitación revocada";
+  return "Sin invitación";
+}
+
+export function StaffInvitePasswordGuard({ formId }: { formId: string }) {
+  useEffect(() => {
+    const form = document.getElementById(formId) as HTMLFormElement | null;
+
+    if (!form) return;
+
+    const handleSubmit = (event: SubmitEvent) => {
+      const submitter = event.submitter as HTMLButtonElement | null;
+      const isInviteSubmit = submitter?.value === "invite";
+
+      if (!isInviteSubmit) return;
+
+      const passwordInput = form.elements.namedItem("password") as HTMLInputElement | null;
+      const password = passwordInput?.value.trim() || "";
+
+      if (password) {
+        event.preventDefault();
+        alert(
+          "Para usar Guardar e invitar, deja la contraseña temporal vacía. La persona creará su contraseña desde el correo de invitación."
+        );
+        passwordInput?.focus();
+      }
+    };
+
+    form.addEventListener("submit", handleSubmit);
+
+    return () => {
+      form.removeEventListener("submit", handleSubmit);
+    };
+  }, [formId]);
+
+  return null;
+}
 
 export default function StaffList({
   staff,
@@ -95,6 +139,10 @@ export default function StaffList({
                     </p>
 
                     <p className={`mt-1 truncate text-xs ${theme.textMuted}`}>
+                      Correo: {member.email || "Sin correo"}
+                    </p>
+
+                    <p className={`mt-1 truncate text-xs ${theme.textMuted}`}>
                       Rol: {member.role?.name || "Sin rol"}
                     </p>
                   </div>
@@ -102,6 +150,9 @@ export default function StaffList({
                   <div className="shrink-0 text-right">
                     <p className={`text-xs ${theme.textMuted}`}>
                       {member.active ? "Activo" : "Inactivo"}
+                    </p>
+                    <p className={`mt-1 text-xs ${theme.textMuted}`}>
+                      {getInviteStatusLabel(member.invite_status)}
                     </p>
                   </div>
                 </div>
@@ -114,7 +165,7 @@ export default function StaffList({
       {selectedStaff && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div
-            className={`w-full max-w-2xl rounded-2xl border p-6 shadow-xl ${theme.card}`}
+            className={`max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border p-6 shadow-xl ${theme.card}`}
           >
             <div className="mb-4 flex items-start justify-between gap-4">
               <div>
@@ -146,6 +197,24 @@ export default function StaffList({
                   className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
                   required
                 />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
+                  Correo
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  defaultValue={selectedStaff.email || ""}
+                  className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+                  placeholder="ejemplo@correo.com"
+                />
+                <p className={`mt-1 text-xs ${theme.textMuted}`}>
+                  Este correo se guarda en el registro de staff. Si el empleado ya
+                  tiene cuenta vinculada, cambiarlo aquí no cambia automáticamente
+                  el correo de Supabase Auth.
+                </p>
               </div>
 
               <div>
