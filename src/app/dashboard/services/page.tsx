@@ -14,6 +14,10 @@ type ServiceRow = {
   duration_minutes: number;
   active: boolean;
   created_at: string;
+  discount_enabled: boolean;
+  discount_name: string | null;
+  discount_type: "fixed" | "percent" | null;
+  discount_value: number;
 };
 
 export default async function ServicesPage({
@@ -47,12 +51,24 @@ export default async function ServicesPage({
 
   let servicesQuery = supabase
     .from("services")
-    .select("id, name, description, price, duration_minutes, active, created_at")
+    .select(`
+      id,
+      name,
+      description,
+      price,
+      duration_minutes,
+      active,
+      created_at,
+      discount_enabled,
+      discount_name,
+      discount_type,
+      discount_value
+    `)
     .eq("business_id", business.id)
     .order("created_at", { ascending: false });
 
   if (searchTerm) {
-    const searchFilter = `name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`;
+    const searchFilter = `name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,discount_name.ilike.%${searchTerm}%`;
     countQuery = countQuery.or(searchFilter);
     servicesQuery = servicesQuery.or(searchFilter);
   }
@@ -139,7 +155,7 @@ export default async function ServicesPage({
               type="text"
               name="q"
               defaultValue={searchTerm}
-              placeholder="Buscar por nombre o descripción..."
+              placeholder="Buscar por nombre, descripción o descuento..."
               className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
             />
 
@@ -236,7 +252,7 @@ export default async function ServicesPage({
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
-                    Precio
+                    Precio normal
                   </label>
                   <input
                     name="price"
@@ -260,6 +276,66 @@ export default async function ServicesPage({
                     className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
                     required
                   />
+                </div>
+              </div>
+
+              <div className={`rounded-2xl border p-4 ${theme.cardSoft}`}>
+                <label className="flex items-center gap-3 text-sm">
+                  <input type="checkbox" name="discount_enabled" />
+                  <span className={`font-medium ${theme.label}`}>
+                    Este servicio tiene descuento especial
+                  </span>
+                </label>
+
+                <div className="mt-4 grid gap-4">
+                  <div>
+                    <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
+                      Nombre del descuento
+                    </label>
+                    <input
+                      name="discount_name"
+                      className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+                      placeholder="Ej. Tercera edad, estudiante, promoción"
+                    />
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
+                        Tipo de descuento
+                      </label>
+                      <select
+                        name="discount_type"
+                        defaultValue="percent"
+                        className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.select}`}
+                      >
+                        <option className={theme.option} value="percent">
+                          Porcentaje %
+                        </option>
+                        <option className={theme.option} value="fixed">
+                          Monto fijo
+                        </option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className={`mb-1 block text-sm font-medium ${theme.label}`}>
+                        Valor
+                      </label>
+                      <input
+                        name="discount_value"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        className={`w-full rounded-xl border px-3 py-2 outline-none ${theme.input}`}
+                        placeholder="Ej. 10"
+                      />
+                    </div>
+                  </div>
+
+                  <p className={`text-xs ${theme.textMuted}`}>
+                    Si activas el descuento, completa nombre, tipo y valor. El precio normal se conserva.
+                  </p>
                 </div>
               </div>
 
