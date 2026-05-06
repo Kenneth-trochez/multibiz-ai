@@ -126,7 +126,7 @@ export default function SidebarShell({
       >
         <header
           className={[
-            "fixed top-0 left-0 right-0 z-20 flex items-center justify-between border-b px-4 py-4 backdrop-blur transition-all duration-300",
+            "fixed top-0 left-0 right-0 z-20 flex items-center justify-between border-b border-white/10 px-4 py-4 shadow-sm backdrop-blur-xl transition-all duration-300",
             isDesktopCollapsed ? "lg:left-0" : "lg:left-72",
             headerClassName,
           ].join(" ")}

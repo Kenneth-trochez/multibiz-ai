@@ -842,15 +842,15 @@ export default function BalanceClient({
       )}
 
       {showRecordsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-start justify-center p-3 py-6 sm:items-center sm:p-4">
           <div
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => setShowRecordsModal(false)}
           />
           <div
-            className={`relative max-h-[90vh] w-full max-w-6xl overflow-hidden rounded-3xl border shadow-xl ${theme.glassCard}`}
+            className={`relative flex max-h-[calc(100dvh-1.5rem)] w-full max-w-6xl flex-col overflow-hidden rounded-3xl border shadow-xl sm:max-h-[calc(100dvh-3rem)] ${theme.glassCard}`}
           >
-            <div className={`flex flex-col gap-4 border-b px-6 py-4 lg:flex-row lg:items-center lg:justify-between ${theme.headerBg}`}>
+            <div className={`flex shrink-0 flex-col gap-4 border-b px-6 py-4 lg:flex-row lg:items-center lg:justify-between ${theme.headerBg}`}>
               <div>
                 <h3 className="text-xl font-semibold">Registros del período</h3>
                 <p className={`mt-1 text-sm ${theme.textMuted}`}>
@@ -912,7 +912,7 @@ export default function BalanceClient({
               </div>
             </div>
 
-            <div className="max-h-[70vh] overflow-auto p-6">
+            <div className="min-h-0 flex-1 overflow-auto p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
               {canSeeAdvancedBalance ? (
                 <div className="space-y-8">
                   <div>

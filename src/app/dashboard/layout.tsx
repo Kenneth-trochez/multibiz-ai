@@ -163,7 +163,7 @@ export default async function DashboardLayout({
   );
 
   return (
-    <div className={`${theme.pageBg} relative overflow-hidden`}>
+    <div className={`${theme.pageBg} dashboard-scrollbar relative overflow-hidden`}>
       <style>{`
         @keyframes blob-1 {
           0%, 100% { transform: translate(0px, 0px) scale(1); }
@@ -187,6 +187,11 @@ export default async function DashboardLayout({
         .sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
         .sidebar-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 99px; }
         .sidebar-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.22); }
+        .dashboard-scrollbar, .dashboard-scrollbar * { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.18) transparent; }
+        .dashboard-scrollbar ::-webkit-scrollbar { width: 5px; height: 5px; }
+        .dashboard-scrollbar ::-webkit-scrollbar-track { background: transparent; }
+        .dashboard-scrollbar ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.14); border-radius: 99px; }
+        .dashboard-scrollbar ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.24); }
       `}</style>
 
       <div className="pointer-events-none absolute inset-0 z-0">
@@ -205,7 +210,7 @@ export default async function DashboardLayout({
           businessInitials={getInitials(business.name)}
           sidebarClassName={theme.sidebarBg}
           sidebarCardClassName={theme.sidebarCard}
-          headerClassName={theme.headerBg}
+          headerClassName={theme.sidebarBg}
           contentClassName="p-4 md:p-6"
           buttonClassName={theme.buttonSecondary}
           title={business.name}

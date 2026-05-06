@@ -106,11 +106,11 @@ export default function CustomersList({
             onClick={() => setSelectedCustomer(null)}
           />
 
-          <div className="relative flex min-h-full items-start justify-center sm:items-center">
+          <div className="relative flex min-h-[100dvh] items-start justify-center py-3 sm:items-center sm:py-6">
             <div
-              className={`mt-4 w-full max-w-2xl overflow-hidden rounded-2xl border shadow-xl ${theme.card} max-h-[92vh]`}
+              className={`flex max-h-[calc(100dvh-1.5rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border shadow-xl sm:max-h-[calc(100dvh-3rem)] ${theme.card}`}
             >
-              <div className="flex items-start justify-between gap-3 border-b px-4 py-4 sm:px-6">
+              <div className="flex shrink-0 items-start justify-between gap-3 border-b px-4 py-4 sm:px-6">
                 <div className="min-w-0">
                   <h3 className="text-xl font-semibold">Editar cliente</h3>
                   <p className={`mt-1 text-sm ${theme.textMuted}`}>
@@ -127,7 +127,7 @@ export default function CustomersList({
                 </button>
               </div>
 
-              <div className="overflow-y-auto px-4 py-4 sm:px-6 sm:py-5 max-h-[calc(92vh-81px)]">
+              <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-5">
                 <form action={updateCustomerAction} className="grid gap-4 md:grid-cols-2">
                   <input type="hidden" name="customerId" value={selectedCustomer.id} />
 

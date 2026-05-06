@@ -163,9 +163,9 @@ export default function StaffList({
       </section>
 
       {selectedStaff && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-3 py-6 sm:items-center sm:p-4">
           <div
-            className={`max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border p-6 shadow-xl ${theme.card}`}
+            className={`max-h-[calc(100dvh-1.5rem)] w-full max-w-2xl overflow-y-auto rounded-2xl border p-6 shadow-xl sm:max-h-[calc(100dvh-3rem)] ${theme.card}`}
           >
             <div className="mb-4 flex items-start justify-between gap-4">
               <div>
